@@ -493,3 +493,136 @@ a:focus-visible {
     overflow-x: auto;
   }
 }
+
+.centered-state,
+.login-page {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.centered-state {
+  flex-direction: column;
+  text-align: center;
+}
+
+.login-page {
+  background:
+    radial-gradient(circle at 15% 15%, rgb(34 108 73 / 12%), transparent 32%),
+    #f4f6f3;
+}
+
+.login-card {
+  background: #ffffff;
+  border: 1px solid #dfe5df;
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgb(25 45 32 / 10%);
+  max-width: 420px;
+  padding: 34px;
+  width: 100%;
+}
+
+.login-card > h1 {
+  font-size: 25px;
+  margin-top: 18px;
+}
+
+.login-card > p {
+  color: #68736c;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.login-mark {
+  align-items: center;
+  background: #226c49;
+  border-radius: 11px;
+  color: white;
+  display: inline-flex;
+  font-family: ui-monospace, monospace;
+  font-weight: 750;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.oidc-button,
+.login-submit {
+  justify-content: center;
+  width: 100%;
+}
+
+.oidc-button {
+  background: #ffffff;
+  border-color: #cfd7d0;
+  color: #253129;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.login-divider {
+  border-top: 1px solid #e0e5e0;
+  margin: 27px 0 23px;
+  position: relative;
+  text-align: center;
+}
+
+.login-divider span {
+  background: #ffffff;
+  color: #838c85;
+  font-size: 12px;
+  padding: 0 10px;
+  position: relative;
+  top: -9px;
+}
+
+.login-card label {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  margin-bottom: 7px;
+}
+
+.login-input {
+  align-items: center;
+  border: 1px solid #cfd7d0;
+  border-radius: 8px;
+  display: flex;
+  gap: 8px;
+  padding: 0 11px;
+}
+
+.login-input:focus-within {
+  border-color: #2b7653;
+  box-shadow: 0 0 0 3px rgb(34 108 73 / 10%);
+}
+
+.login-input svg {
+  color: #778179;
+}
+
+.login-input input {
+  border: 0;
+  height: 42px;
+  min-width: 0;
+  outline: 0;
+  width: 100%;
+}
+
+.login-submit {
+  margin-top: 18px;
+}
+
+.login-message {
+  background: #edf4ef;
+  border-radius: 8px;
+  color: #265c40 !important;
+  font-size: 13px;
+  margin: 18px 0 0 !important;
+  padding: 11px 12px;
+}

@@ -36,6 +36,13 @@ PROXY_INTERNAL_TOKEN="lokaler-nur-für-die-entwicklung-token" npm run dev:proxy
 Der Browser soll diesen Token später nicht erhalten. Die fachliche API prüft den
 Supabase-Nutzer und ruft den isolierten Proxy anschließend serverseitig auf.
 
+## Authentifizierung
+
+Die Web-App unterstützt Supabase-E-Mail-Login und optional einen über Supabase
+konfigurierten Custom-OIDC-Provider. Die benötigten öffentlichen Variablen
+stehen in `.env.example`; Provider-Secrets gehören niemals ins Frontend.
+Details enthält `docs/authentication.md`.
+
 Alle Prüfungen:
 
 ```bash

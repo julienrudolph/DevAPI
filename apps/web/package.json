@@ -12,6 +12,7 @@
   "dependencies": {
     "@api-client/contracts": "*",
     "@hookform/resolvers": "^4.1.0",
+    "@supabase/supabase-js": "^2.57.4",
     "@tanstack/react-query": "^5.66.8",
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",

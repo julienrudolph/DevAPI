@@ -1,20 +1,31 @@
 import { createBrowserRouter, RouterProvider } from "react-router";
 
+import { LoginPage } from "../features/auth/login-page";
+import { ProtectedRoute } from "../features/auth/protected-route";
 import { WorkspacePage } from "../features/workspaces/workspace-page";
 import { RootLayout } from "./root-layout";
 
 const router = createBrowserRouter([
   {
-    path: "/",
-    element: <RootLayout />,
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    element: <ProtectedRoute />,
     children: [
       {
-        index: true,
-        element: <WorkspacePage />,
-      },
-      {
-        path: "workspaces/:workspaceId",
-        element: <WorkspacePage />,
+        path: "/",
+        element: <RootLayout />,
+        children: [
+          {
+            index: true,
+            element: <WorkspacePage />,
+          },
+          {
+            path: "workspaces/:workspaceId",
+            element: <WorkspacePage />,
+          },
+        ],
       },
     ],
   },
@@ -23,4 +34,3 @@ const router = createBrowserRouter([
 export function AppRouter() {
   return <RouterProvider router={router} />;
 }
-
