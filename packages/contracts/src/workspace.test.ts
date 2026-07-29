@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { workspaceTreeSchema } from "./workspace.js";
+import {
+  createWorkspaceSchema,
+  workspaceTreeSchema,
+} from "./workspace.js";
 
 describe("workspaceTreeSchema", () => {
   it("accepts a flat, versioned navigation tree", () => {
@@ -22,5 +25,22 @@ describe("workspaceTreeSchema", () => {
         ],
       }).success,
     ).toBe(true);
+  });
+});
+
+describe("createWorkspaceSchema", () => {
+  it("trims valid names and rejects empty names", () => {
+    expect(
+      createWorkspaceSchema.parse({
+        teamName: " Team ",
+        workspaceName: " API ",
+      }),
+    ).toEqual({ teamName: "Team", workspaceName: "API" });
+    expect(
+      createWorkspaceSchema.safeParse({
+        teamName: " ",
+        workspaceName: "API",
+      }).success,
+    ).toBe(false);
   });
 });

@@ -257,6 +257,60 @@ button {
   padding: 10px 8px;
 }
 
+.creation-form,
+.inline-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.creation-form {
+  background: #ffffff;
+  border: 1px solid #dfe5df;
+  border-radius: 12px;
+  margin-top: 18px;
+  max-width: 390px;
+  padding: 20px;
+  text-align: left;
+  width: 100%;
+}
+
+.creation-form label {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.creation-form input,
+.inline-create-form input {
+  border: 1px solid #cfd7d0;
+  border-radius: 7px;
+  height: 40px;
+  padding: 0 10px;
+}
+
+.creation-form .button {
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.inline-create-form {
+  background: #ffffff;
+  border: 1px solid #dfe5df;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+}
+
+.inline-create-form > div {
+  display: flex;
+  gap: 6px;
+}
+
+.inline-create-form .button {
+  height: 32px;
+  padding: 0 9px;
+}
+
 .retry-link {
   background: transparent;
   border: 0;

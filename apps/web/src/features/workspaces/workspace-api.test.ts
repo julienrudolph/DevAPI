@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createCollection,
+  createWorkspace,
   fetchWorkspaces,
   fetchWorkspaceTree,
 } from "./workspace-api";
@@ -52,5 +54,69 @@ describe("workspace API client", () => {
         "session-token",
       ),
     ).rejects.toThrow();
+  });
+
+  it("creates a team workspace with the authenticated session", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "85e52968-22cc-483d-b6a6-bdc169e46ede",
+          teamId: "76a26d02-fc07-4cd7-9b6a-1e2c15fc127b",
+          name: "Platform APIs",
+          role: "owner",
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createWorkspace(
+      { teamName: "Platform", workspaceName: "Platform APIs" },
+      "session-token",
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/workspaces", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer session-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        teamName: "Platform",
+        workspaceName: "Platform APIs",
+      }),
+    });
+  });
+
+  it("creates a versioned collection in the selected workspace", async () => {
+    const workspaceId = "85e52968-22cc-483d-b6a6-bdc169e46ede";
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "95da6097-0742-4164-9c9a-75dc64d2cd8f",
+          workspaceId,
+          name: "Customers",
+          position: 0,
+          version: 1,
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await createCollection(
+      workspaceId,
+      { name: "Customers" },
+      "session-token",
+    );
+
+    expect(result.version).toBe(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/v1/workspaces/${workspaceId}/collections`,
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ name: "Customers" }),
+      }),
+    );
   });
 });

@@ -1,4 +1,6 @@
 import {
+  createCollectionSchema,
+  createWorkspaceSchema,
   requestIdParamsSchema,
   updateRequestSchema,
   workspaceIdParamsSchema,
@@ -42,6 +44,62 @@ export function buildApp(dependencies: ApiDependencies) {
       return reply.code(200).send(workspaces);
     } catch {
       return reply.code(500).send({ code: "WORKSPACE_LIST_FAILED" });
+    }
+  });
+
+  app.post("/v1/workspaces", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({ code: user.kind === "unavailable" ? "AUTHENTICATION_UNAVAILABLE" : "UNAUTHORIZED" });
+    }
+    const body = createWorkspaceSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    try {
+      const workspace = await dependencies.workspaces.create({
+        ...body.data,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return reply.code(201).send(workspace);
+    } catch {
+      return reply.code(500).send({ code: "WORKSPACE_CREATE_FAILED" });
+    }
+  });
+
+  app.post("/v1/workspaces/:workspaceId/collections", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({ code: user.kind === "unavailable" ? "AUTHENTICATION_UNAVAILABLE" : "UNAUTHORIZED" });
+    }
+    const params = workspaceIdParamsSchema.safeParse(request.params);
+    const body = createCollectionSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    try {
+      const collection = await dependencies.workspaces.createCollection({
+        ...body.data,
+        workspaceId: params.data.workspaceId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return collection
+        ? reply.code(201).send(collection)
+        : reply.code(403).send({ code: "FORBIDDEN" });
+    } catch {
+      return reply.code(500).send({ code: "COLLECTION_CREATE_FAILED" });
     }
   });
 

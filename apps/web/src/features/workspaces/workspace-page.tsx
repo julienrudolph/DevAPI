@@ -15,6 +15,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { RequestEditor } from "../requests/request-editor";
+import { CollectionCreateForm } from "./collection-create-form";
+import { WorkspaceCreateForm } from "./workspace-create-form";
 import {
   useWorkspaces,
   useWorkspaceTree,
@@ -29,6 +31,7 @@ export function WorkspacePage() {
     workspaces.data?.[0];
   const tree = useWorkspaceTree(activeWorkspace?.id);
   const [activeRequestId, setActiveRequestId] = useState<string>();
+  const [creatingCollection, setCreatingCollection] = useState(false);
 
   useEffect(() => {
     setActiveRequestId(undefined);
@@ -90,6 +93,7 @@ export function WorkspacePage() {
       <main className="centered-state">
         <h1>Noch kein Workspace</h1>
         <p>Erstelle als Nächstes den ersten gemeinsamen Team-Workspace.</p>
+        <WorkspaceCreateForm />
       </main>
     );
   }
@@ -121,12 +125,20 @@ export function WorkspacePage() {
           <span>Collections</span>
           <button
             className="icon-button compact"
+            onClick={() => setCreatingCollection(true)}
             type="button"
             aria-label="Collection erstellen"
           >
             <Plus aria-hidden="true" size={16} />
           </button>
         </div>
+
+        {creatingCollection ? (
+          <CollectionCreateForm
+            onClose={() => setCreatingCollection(false)}
+            workspaceId={activeWorkspace.id}
+          />
+        ) : null}
 
         {tree.isPending ? (
           <p className="sidebar-state">Navigation wird geladen …</p>

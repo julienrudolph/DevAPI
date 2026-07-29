@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildApp } from "./app.js";
+import type { WorkspaceRepository } from "./domain/workspace-repository.js";
 
 const user = {
   id: "4776ac0f-28ba-474a-ad0d-d566be4199e8",
@@ -12,6 +13,12 @@ const workspace = {
   name: "Commerce API",
   role: "owner" as const,
 };
+const emptyWorkspaceRepository: WorkspaceRepository = {
+  list: async () => [],
+  getTree: async () => null,
+  create: async () => workspace,
+  createCollection: async () => null,
+};
 
 describe("workspace routes", () => {
   it("lists only repository-visible workspaces", async () => {
@@ -19,8 +26,8 @@ describe("workspace routes", () => {
       authenticate: async () => user,
       requests: { update: async () => ({ kind: "not-found" }) },
       workspaces: {
+        ...emptyWorkspaceRepository,
         list: async () => [workspace],
-        getTree: async () => null,
       },
     });
     const response = await app.inject({
@@ -38,8 +45,7 @@ describe("workspace routes", () => {
       authenticate: async () => user,
       requests: { update: async () => ({ kind: "not-found" }) },
       workspaces: {
-        list: async () => [],
-        getTree: async () => null,
+        ...emptyWorkspaceRepository,
       },
     });
     const response = await app.inject({
@@ -56,8 +62,7 @@ describe("workspace routes", () => {
       authenticate: async () => null,
       requests: { update: async () => ({ kind: "not-found" }) },
       workspaces: {
-        list: async () => [],
-        getTree: async () => null,
+        ...emptyWorkspaceRepository,
       },
     });
     const response = await app.inject({
@@ -65,6 +70,39 @@ describe("workspace routes", () => {
       url: "/v1/workspaces",
     });
     expect(response.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it("creates the first team workspace for an authenticated user", async () => {
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: { update: async () => ({ kind: "not-found" }) },
+      workspaces: emptyWorkspaceRepository,
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/workspaces",
+      headers: { authorization: "Bearer verified-token" },
+      payload: { teamName: "Platform", workspaceName: "Internal API" },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual(workspace);
+    await app.close();
+  });
+
+  it("maps denied collection creation to 403", async () => {
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: { update: async () => ({ kind: "not-found" }) },
+      workspaces: emptyWorkspaceRepository,
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspace.id}/collections`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { name: "Customers" },
+    });
+    expect(response.statusCode).toBe(403);
     await app.close();
   });
 });

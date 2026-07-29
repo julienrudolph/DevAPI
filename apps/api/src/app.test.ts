@@ -34,6 +34,10 @@ const repository: RequestRepository = {
 const workspaceRepository: WorkspaceRepository = {
   list: async () => [],
   getTree: async () => null,
+  create: async () => {
+    throw new Error("not used");
+  },
+  createCollection: async () => null,
 };
 
 describe("request API authentication", () => {

@@ -3,6 +3,7 @@ import {
   folderSummarySchema,
   requestSummarySchema,
   workspaceSummarySchema,
+  type CollectionSummary,
   type WorkspaceSummary,
   type WorkspaceTree,
 } from "@api-client/contracts";
@@ -10,6 +11,8 @@ import { z } from "zod";
 
 import type {
   AuthenticatedRepositoryCommand,
+  CreateCollectionCommand,
+  CreateWorkspaceCommand,
   WorkspaceRepository,
   WorkspaceTreeCommand,
 } from "../domain/workspace-repository.js";
@@ -36,12 +39,14 @@ const collectionRowSchema = z
     workspace_id: z.string().uuid(),
     name: z.string(),
     position: z.number().int(),
+    version: z.number().int(),
   })
   .transform((row) => ({
     id: row.id,
     workspaceId: row.workspace_id,
     name: row.name,
     position: row.position,
+    version: row.version,
   }))
   .pipe(collectionSummarySchema);
 
@@ -119,7 +124,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
     const [collections, folders, requests] = await Promise.all([
       client
         .from("collections")
-        .select("id, workspace_id, name, position")
+        .select("id, workspace_id, name, position, version")
         .eq("workspace_id", command.workspaceId)
         .order("position"),
       client
@@ -147,6 +152,50 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       folders: parseRows(folders.data, folderRowSchema),
       requests: parseRows(requests.data, requestRowSchema),
     };
+  }
+
+  async create(command: CreateWorkspaceCommand): Promise<WorkspaceSummary> {
+    const client = this.client(command.accessToken);
+    const { data, error } = await client.rpc("create_team_workspace", {
+      p_team_name: command.teamName,
+      p_workspace_name: command.workspaceName,
+    });
+    if (error) throw new Error("WORKSPACE_CREATE_FAILED", { cause: error });
+    const rows = parseRows(data, z.object({
+      id: z.string().uuid(),
+      team_id: z.string().uuid(),
+      name: z.string(),
+      role: z.string(),
+    }).transform((row) => ({
+      id: row.id,
+      teamId: row.team_id,
+      name: row.name,
+      role: row.role,
+    })).pipe(workspaceSummarySchema));
+    const workspace = rows[0];
+    if (!workspace) throw new Error("INVALID_WORKSPACE_CREATE_RESPONSE");
+    return workspace;
+  }
+
+  async createCollection(
+    command: CreateCollectionCommand,
+  ): Promise<CollectionSummary | null> {
+    const client = this.client(command.accessToken);
+    const { data, error } = await client
+      .from("collections")
+      .insert({
+        workspace_id: command.workspaceId,
+        name: command.name,
+        created_by: command.userId,
+        updated_by: command.userId,
+      })
+      .select("id, workspace_id, name, position, version")
+      .maybeSingle();
+    if (error) {
+      if (error.code === "42501") return null;
+      throw new Error("COLLECTION_CREATE_FAILED", { cause: error });
+    }
+    return data ? collectionRowSchema.parse(data) : null;
   }
 
   private client(accessToken: string) {

@@ -1,7 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { WorkspaceSummary } from "@api-client/contracts";
 
 import { useAuth } from "../auth/auth-context";
 import {
+  createCollection,
+  createWorkspace,
   fetchWorkspaces,
   fetchWorkspaceTree,
 } from "./workspace-api";
@@ -18,6 +21,38 @@ export function useWorkspaces() {
     queryKey: workspaceKeys.all,
     queryFn: () => fetchWorkspaces(accessToken!),
     enabled: accessToken !== null,
+  });
+}
+
+export function useCreateWorkspace() {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Parameters<typeof createWorkspace>[0]) =>
+      createWorkspace(input, accessToken!),
+    onSuccess: (workspace) => {
+      queryClient.setQueryData(
+        workspaceKeys.all,
+        (current: WorkspaceSummary[] | undefined) => [
+          ...(current ?? []),
+          workspace,
+        ],
+      );
+    },
+  });
+}
+
+export function useCreateCollection(workspaceId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Parameters<typeof createCollection>[1]) =>
+      createCollection(workspaceId, input, accessToken!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceKeys.tree(workspaceId),
+      });
+    },
   });
 }
 

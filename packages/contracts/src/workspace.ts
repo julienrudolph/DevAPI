@@ -7,6 +7,15 @@ export const workspaceIdParamsSchema = z.object({
   workspaceId: z.string().uuid(),
 });
 
+export const createWorkspaceSchema = z.object({
+  teamName: z.string().trim().min(1).max(160),
+  workspaceName: z.string().trim().min(1).max(160),
+});
+
+export const createCollectionSchema = z.object({
+  name: z.string().trim().min(1).max(160),
+});
+
 export const workspaceSummarySchema = z.object({
   id: z.string().uuid(),
   teamId: z.string().uuid(),
@@ -19,6 +28,7 @@ export const collectionSummarySchema = z.object({
   workspaceId: z.string().uuid(),
   name: z.string().min(1).max(160),
   position: z.number().int().nonnegative(),
+  version: z.number().int().positive(),
 });
 
 export const folderSummarySchema = z.object({
@@ -48,6 +58,8 @@ export const workspaceTreeSchema = z.object({
 });
 
 export type WorkspaceSummary = z.infer<typeof workspaceSummarySchema>;
+export type CreateWorkspace = z.infer<typeof createWorkspaceSchema>;
+export type CreateCollection = z.infer<typeof createCollectionSchema>;
 export type CollectionSummary = z.infer<typeof collectionSummarySchema>;
 export type FolderSummary = z.infer<typeof folderSummarySchema>;
 export type RequestSummary = z.infer<typeof requestSummarySchema>;
