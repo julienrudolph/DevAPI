@@ -1,7 +1,15 @@
 import { Braces, CircleUserRound, Settings } from "lucide-react";
 import { Outlet } from "react-router";
 
+import { useAuth } from "../features/auth/auth-context";
+
 export function RootLayout() {
+  const { client, user } = useAuth();
+
+  async function signOut() {
+    await client?.auth.signOut();
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -15,9 +23,14 @@ export function RootLayout() {
           <button className="icon-button" type="button" aria-label="Einstellungen">
             <Settings aria-hidden="true" size={18} />
           </button>
-          <button className="profile-button" type="button">
+          <button
+            className="profile-button"
+            onClick={signOut}
+            title="Abmelden"
+            type="button"
+          >
             <CircleUserRound aria-hidden="true" size={20} />
-            <span>Demo-Team</span>
+            <span>{user?.email ?? "Abmelden"}</span>
           </button>
         </div>
       </header>
@@ -27,4 +40,3 @@ export function RootLayout() {
     </div>
   );
 }
-

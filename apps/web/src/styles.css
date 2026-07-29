@@ -124,6 +124,17 @@ button {
   padding: 11px 12px;
 }
 
+.workspace-select select {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: #17211b;
+  font-weight: 700;
+  min-width: 0;
+  outline: 0;
+  width: 100%;
+}
+
 .workspace-select strong,
 .workspace-select span {
   display: block;
@@ -183,6 +194,12 @@ button {
   font-weight: 650;
 }
 
+.nested-folder {
+  color: #59655d;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .tree-action {
   margin-left: auto;
 }
@@ -231,6 +248,35 @@ button {
   gap: 8px;
   margin-top: auto;
   padding: 10px;
+}
+
+.sidebar-state {
+  color: #778179;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 10px 8px;
+}
+
+.retry-link {
+  background: transparent;
+  border: 0;
+  color: #226c49;
+  text-align: left;
+}
+
+.workbench-empty {
+  min-height: calc(100vh - 64px);
+}
+
+.sr-only {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 .request-workbench {

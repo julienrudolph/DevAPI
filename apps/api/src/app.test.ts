@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildApp } from "./app.js";
 import type { RequestRepository } from "./domain/request-repository.js";
+import type { WorkspaceRepository } from "./domain/workspace-repository.js";
 
 const requestId = "3ac6a7df-5e80-427d-a6e4-d48427ac924d";
 const userId = "4776ac0f-28ba-474a-ad0d-d566be4199e8";
@@ -30,12 +31,17 @@ const updated: ApiRequest = {
 const repository: RequestRepository = {
   update: async () => ({ kind: "updated", request: updated }),
 };
+const workspaceRepository: WorkspaceRepository = {
+  list: async () => [],
+  getTree: async () => null,
+};
 
 describe("request API authentication", () => {
   it("rejects missing or invalid sessions", async () => {
     const app = buildApp({
       authenticate: async () => null,
       requests: repository,
+      workspaces: workspaceRepository,
     });
     const response = await app.inject({
       method: "PATCH",
@@ -61,6 +67,7 @@ describe("request API authentication", () => {
           return { kind: "updated", request: updated };
         },
       },
+      workspaces: workspaceRepository,
     });
     const response = await app.inject({
       method: "PATCH",
@@ -78,6 +85,7 @@ describe("request API authentication", () => {
     const app = buildApp({
       authenticate: async () => null,
       requests: repository,
+      workspaces: workspaceRepository,
     });
     const response = await app.inject({
       method: "PATCH",
@@ -98,6 +106,7 @@ describe("request API authentication", () => {
         throw new Error("sensitive upstream detail");
       },
       requests: repository,
+      workspaces: workspaceRepository,
     });
     const response = await app.inject({
       method: "PATCH",
@@ -122,6 +131,7 @@ describe("request API authentication", () => {
       requests: {
         update: async () => ({ kind }),
       },
+      workspaces: workspaceRepository,
     });
     const response = await app.inject({
       method: "PATCH",

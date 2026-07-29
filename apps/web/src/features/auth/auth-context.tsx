@@ -15,6 +15,7 @@ interface AuthContextValue {
   client: SupabaseClient | null;
   env: PublicEnv | null;
   user: User | null;
+  accessToken: string | null;
   loading: boolean;
   configurationError: boolean;
 }
@@ -53,6 +54,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       client,
       env,
       user: session?.user ?? null,
+      accessToken: session?.access_token ?? null,
       loading,
       configurationError: env === null,
     }),

@@ -1,6 +1,7 @@
 import {
   requestIdParamsSchema,
   updateRequestSchema,
+  workspaceIdParamsSchema,
 } from "@api-client/contracts";
 import Fastify from "fastify";
 
@@ -9,16 +10,69 @@ import type {
   Authenticator,
 } from "./auth/authenticator.js";
 import type { RequestRepository } from "./domain/request-repository.js";
+import type { WorkspaceRepository } from "./domain/workspace-repository.js";
 
 export interface ApiDependencies {
   authenticate: Authenticator;
   requests: RequestRepository;
+  workspaces: WorkspaceRepository;
 }
 
 export function buildApp(dependencies: ApiDependencies) {
   const app = Fastify({ logger: false });
 
   app.get("/health", async () => ({ status: "ok" }));
+
+  app.get("/v1/workspaces", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind === "unavailable") {
+      return reply.code(503).send({ code: "AUTHENTICATION_UNAVAILABLE" });
+    }
+    if (user.kind === "unauthorized") {
+      return reply.code(401).send({ code: "UNAUTHORIZED" });
+    }
+    try {
+      const workspaces = await dependencies.workspaces.list({
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return reply.code(200).send(workspaces);
+    } catch {
+      return reply.code(500).send({ code: "WORKSPACE_LIST_FAILED" });
+    }
+  });
+
+  app.get("/v1/workspaces/:workspaceId/tree", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind === "unavailable") {
+      return reply.code(503).send({ code: "AUTHENTICATION_UNAVAILABLE" });
+    }
+    if (user.kind === "unauthorized") {
+      return reply.code(401).send({ code: "UNAUTHORIZED" });
+    }
+    const params = workspaceIdParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    try {
+      const tree = await dependencies.workspaces.getTree({
+        workspaceId: params.data.workspaceId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return tree
+        ? reply.code(200).send(tree)
+        : reply.code(404).send({ code: "NOT_FOUND" });
+    } catch {
+      return reply.code(500).send({ code: "WORKSPACE_TREE_FAILED" });
+    }
+  });
 
   app.patch("/v1/requests/:requestId", async (request, reply) => {
     let user: AuthenticatedUser | null;
@@ -76,4 +130,23 @@ export function buildApp(dependencies: ApiDependencies) {
   });
 
   return app;
+}
+
+type AuthenticationResult =
+  | { kind: "authenticated"; user: AuthenticatedUser }
+  | { kind: "unauthorized" }
+  | { kind: "unavailable" };
+
+async function authenticateSafely(
+  authenticate: Authenticator,
+  authorizationHeader: string | undefined,
+): Promise<AuthenticationResult> {
+  try {
+    const user = await authenticate(authorizationHeader);
+    return user
+      ? { kind: "authenticated", user }
+      : { kind: "unauthorized" };
+  } catch {
+    return { kind: "unavailable" };
+  }
 }

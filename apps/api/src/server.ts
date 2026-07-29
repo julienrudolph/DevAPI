@@ -2,6 +2,7 @@ import { createSupabaseAuthenticator } from "./auth/authenticator.js";
 import { buildApp } from "./app.js";
 import { readApiConfig } from "./config.js";
 import { SupabaseRequestRepository } from "./infrastructure/supabase-request-repository.js";
+import { SupabaseWorkspaceRepository } from "./infrastructure/supabase-workspace-repository.js";
 
 const config = readApiConfig();
 const app = buildApp({
@@ -10,6 +11,10 @@ const app = buildApp({
     config.SUPABASE_PUBLISHABLE_KEY,
   ),
   requests: new SupabaseRequestRepository(
+    config.SUPABASE_URL,
+    config.SUPABASE_PUBLISHABLE_KEY,
+  ),
+  workspaces: new SupabaseWorkspaceRepository(
     config.SUPABASE_URL,
     config.SUPABASE_PUBLISHABLE_KEY,
   ),

@@ -2,7 +2,7 @@ import {
   apiRequestSchema,
   type ApiRequest,
 } from "@api-client/contracts";
-import { createClient, type PostgrestError } from "@supabase/supabase-js";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import type {
@@ -10,6 +10,7 @@ import type {
   UpdatePersistedRequestCommand,
 } from "../domain/request-repository.js";
 import type { UpdateResult } from "../domain/request-store.js";
+import { createUserSupabaseClient } from "./supabase-user-client.js";
 
 const databaseRequestSchema = z
   .object({
@@ -57,7 +58,11 @@ export class SupabaseRequestRepository implements RequestRepository {
   async update(
     command: UpdatePersistedRequestCommand,
   ): Promise<UpdateResult> {
-    const client = this.createUserClient(command.accessToken);
+    const client = createUserSupabaseClient(
+      this.supabaseUrl,
+      this.publishableKey,
+      command.accessToken,
+    );
     const { data, error } = await client.rpc("update_request_with_revision", {
       p_request_id: command.requestId,
       p_expected_version: command.expectedVersion,
@@ -98,24 +103,15 @@ export class SupabaseRequestRepository implements RequestRepository {
     throw new Error("REQUEST_UPDATE_FAILED", { cause: error });
   }
 
-  private createUserClient(accessToken: string) {
-    return createClient(this.supabaseUrl, this.publishableKey, {
-      auth: {
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-        persistSession: false,
-      },
-      global: {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      },
-    });
-  }
-
   private async findVisibleRequest(
     requestId: string,
     accessToken: string,
   ): Promise<ApiRequest | null> {
-    const client = this.createUserClient(accessToken);
+    const client = createUserSupabaseClient(
+      this.supabaseUrl,
+      this.publishableKey,
+      accessToken,
+    );
     const { data, error } = await client
       .from("requests")
       .select("*")
