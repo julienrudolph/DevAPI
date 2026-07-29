@@ -1,4 +1,5 @@
 import type {
+  ApiRequest,
   RequestDraft,
 } from "@api-client/contracts";
 
@@ -13,6 +14,12 @@ export interface UpdatePersistedRequestCommand {
   changeType?: "update" | "overwrite";
 }
 
+export interface FindPersistedRequestCommand {
+  requestId: string;
+  accessToken: string;
+}
+
 export interface RequestRepository {
+  find(command: FindPersistedRequestCommand): Promise<ApiRequest | null>;
   update(command: UpdatePersistedRequestCommand): Promise<UpdateResult>;
 }

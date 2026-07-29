@@ -38,6 +38,7 @@ export function WorkspacePage() {
   const canEdit =
     activeWorkspace?.role === "owner" || activeWorkspace?.role === "editor";
   const [activeRequestId, setActiveRequestId] = useState<string>();
+  const [editorDirty, setEditorDirty] = useState(false);
   const [creatingCollection, setCreatingCollection] = useState(false);
   const [creatingChild, setCreatingChild] = useState<{
     collectionId: string;
@@ -46,7 +47,21 @@ export function WorkspacePage() {
 
   useEffect(() => {
     setActiveRequestId(undefined);
+    setEditorDirty(false);
   }, [activeWorkspace?.id]);
+
+  function selectRequest(requestId: string) {
+    if (
+      editorDirty &&
+      !window.confirm(
+        "Du hast ungespeicherte Änderungen. Möchtest du sie verwerfen?",
+      )
+    ) {
+      return;
+    }
+    setEditorDirty(false);
+    setActiveRequestId(requestId);
+  }
 
   useEffect(() => {
     if (!activeRequestId && tree.data?.requests[0]) {
@@ -119,9 +134,18 @@ export function WorkspacePage() {
           </span>
           <select
             value={activeWorkspace.id}
-            onChange={(event) =>
-              navigate(`/workspaces/${event.target.value}`)
-            }
+            onChange={(event) => {
+              if (
+                editorDirty &&
+                !window.confirm(
+                  "Du hast ungespeicherte Änderungen. Möchtest du sie verwerfen?",
+                )
+              ) {
+                event.target.value = activeWorkspace.id;
+                return;
+              }
+              navigate(`/workspaces/${event.target.value}`);
+            }}
           >
             {workspaces.data?.map((workspace) => (
               <option key={workspace.id} value={workspace.id}>
@@ -217,7 +241,7 @@ export function WorkspacePage() {
                     <RequestCreateForm
                       collectionId={collection.id}
                       onClose={() => setCreatingChild(undefined)}
-                      onCreated={setActiveRequestId}
+                      onCreated={selectRequest}
                       workspaceId={activeWorkspace.id}
                     />
                   ) : null}
@@ -228,7 +252,7 @@ export function WorkspacePage() {
                         folder={folder}
                         foldersByParent={foldersByParent}
                         key={folder.id}
-                        onSelectRequest={setActiveRequestId}
+                        onSelectRequest={selectRequest}
                         requestsByFolder={requestsByFolder}
                       />
                     ),
@@ -240,7 +264,7 @@ export function WorkspacePage() {
                         key={request.id}
                         method={request.method}
                         name={request.name}
-                        onClick={() => setActiveRequestId(request.id)}
+                        onClick={() => selectRequest(request.id)}
                       />
                     ),
                   )}
@@ -253,7 +277,7 @@ export function WorkspacePage() {
                 key={request.id}
                 method={request.method}
                 name={request.name}
-                onClick={() => setActiveRequestId(request.id)}
+                onClick={() => selectRequest(request.id)}
               />
             ))}
             {tree.data?.requests.length === 0 ? (
@@ -277,15 +301,24 @@ export function WorkspacePage() {
                 <h1>{activeRequest.name}</h1>
               </div>
               <div className="toolbar-actions">
-                <span className="save-state">Alle Änderungen gespeichert</span>
-                <button className="button secondary" type="button">
-                  <Save aria-hidden="true" size={16} />
-                  Speichern
-                </button>
+                {canEdit ? (
+                  <button
+                    className="button secondary"
+                    form="request-form"
+                    name="intent"
+                    type="submit"
+                    value="save"
+                  >
+                    <Save aria-hidden="true" size={16} />
+                    Speichern
+                  </button>
+                ) : null}
                 <button
                   className="button primary"
                   form="request-form"
+                  name="intent"
                   type="submit"
+                  value="execute"
                 >
                   <Send aria-hidden="true" size={16} />
                   Senden
@@ -294,7 +327,10 @@ export function WorkspacePage() {
             </div>
             <RequestEditor
               key={activeRequest.id}
-              requestName={activeRequest.name}
+              requestId={activeRequest.id}
+              workspaceId={activeWorkspace.id}
+              onDirtyChange={setEditorDirty}
+              readOnly={!canEdit}
             />
           </>
         ) : (

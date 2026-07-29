@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import type {
   RequestRepository,
+  FindPersistedRequestCommand,
   UpdatePersistedRequestCommand,
 } from "../domain/request-repository.js";
 import type { UpdateResult } from "../domain/request-store.js";
@@ -54,6 +55,10 @@ export class SupabaseRequestRepository implements RequestRepository {
     private readonly supabaseUrl: string,
     private readonly publishableKey: string,
   ) {}
+
+  async find(command: FindPersistedRequestCommand): Promise<ApiRequest | null> {
+    return this.findVisibleRequest(command.requestId, command.accessToken);
+  }
 
   async update(
     command: UpdatePersistedRequestCommand,

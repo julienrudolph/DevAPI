@@ -324,6 +324,68 @@ button {
   text-align: left;
 }
 
+.editor-state {
+  color: #68736a;
+  font-size: 12px;
+  min-height: 20px;
+}
+
+.modal-backdrop {
+  align-items: center;
+  background: rgb(18 25 20 / 45%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 50;
+}
+
+.conflict-dialog {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgb(18 25 20 / 25%);
+  max-width: 640px;
+  padding: 24px;
+  width: 100%;
+}
+
+.conflict-dialog h2 {
+  margin-top: 0;
+}
+
+.conflict-comparison {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+  margin: 20px 0;
+}
+
+.conflict-comparison div {
+  background: #f3f6f3;
+  border-radius: 8px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.conflict-comparison dt {
+  color: #68736a;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.conflict-comparison dd {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .workbench-empty {
   min-height: calc(100vh - 64px);
 }

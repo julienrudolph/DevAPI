@@ -1,22 +1,127 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RequestEditor } from "./request-editor";
+import { RequestConflictError } from "./request-api";
+import { useRequest, useUpdateRequest } from "./request-queries";
+
+vi.mock("./request-queries", () => ({
+  useRequest: vi.fn(),
+  useUpdateRequest: vi.fn(),
+}));
+
+const request = {
+  id: "fa7596b3-0041-4fe8-9ddf-956e7a107014",
+  workspaceId: "85e52968-22cc-483d-b6a6-bdc169e46ede",
+  collectionId: "95da6097-0742-4164-9c9a-75dc64d2cd8f",
+  folderId: null,
+  name: "List customers",
+  method: "GET" as const,
+  url: "https://api.example.com/customers",
+  queryParams: [],
+  headers: [],
+  body: { type: "none" as const },
+  version: 2,
+  createdBy: "4776ac0f-28ba-474a-ad0d-d566be4199e8",
+  updatedBy: "4776ac0f-28ba-474a-ad0d-d566be4199e8",
+  createdAt: "2026-01-01T12:00:00.000Z",
+  updatedAt: "2026-01-01T13:00:00.000Z",
+};
+
+const mutateAsync = vi.fn();
+
+beforeEach(() => {
+  mutateAsync.mockReset();
+  vi.mocked(useRequest).mockReturnValue({
+    data: request,
+    isPending: false,
+    isError: false,
+  } as unknown as ReturnType<typeof useRequest>);
+  vi.mocked(useUpdateRequest).mockReturnValue({
+    mutateAsync,
+    isPending: false,
+  } as unknown as ReturnType<typeof useUpdateRequest>);
+});
+afterEach(cleanup);
 
 describe("RequestEditor", () => {
-  it("shows a response after submitting a valid request", async () => {
+  it("loads the persisted request and marks local edits as dirty", async () => {
     const user = userEvent.setup();
-    render(<RequestEditor requestName="List customers" />);
+    render(
+      <RequestEditor
+        requestId={request.id}
+        workspaceId={request.workspaceId}
+      />,
+    );
+
+    const url = screen.getByLabelText("Request-URL");
+    expect(url).toHaveValue(request.url);
+    await user.clear(url);
+    await user.type(url, "https://api.example.com/accounts");
+    expect(screen.getByText("Ungespeicherte Änderungen")).toBeInTheDocument();
+  });
+
+  it("saves with the loaded version", async () => {
+    mutateAsync.mockResolvedValue({ ...request, version: 3 });
+    render(
+      <RequestEditor
+        requestId={request.id}
+        workspaceId={request.workspaceId}
+      />,
+    );
+
+    screen
+      .getByLabelText("Request-URL")
+      .closest("form")
+      ?.dispatchEvent(new SubmitEvent("submit", { bubbles: true }));
+
+    await waitFor(() =>
+      expect(mutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ expectedVersion: 2 }),
+      ),
+    );
+  });
+
+  it("keeps the local draft when the server reports a conflict", async () => {
+    const user = userEvent.setup();
+    mutateAsync.mockRejectedValue(
+      new RequestConflictError({
+        code: "REQUEST_VERSION_CONFLICT",
+        message: "Der Request wurde zwischenzeitlich geändert.",
+        expectedVersion: 2,
+        currentVersion: 3,
+        current: {
+          ...request,
+          url: "https://team.example.com/customers",
+          version: 3,
+        },
+        updatedBy: {
+          id: request.updatedBy,
+          displayName: "Teammitglied",
+        },
+        updatedAt: request.updatedAt,
+      }),
+    );
+    render(
+      <RequestEditor
+        requestId={request.id}
+        workspaceId={request.workspaceId}
+      />,
+    );
+    const url = screen.getByLabelText("Request-URL");
+    await user.clear(url);
+    await user.type(url, "https://local.example.com/customers");
+    url
+      .closest("form")
+      ?.dispatchEvent(new SubmitEvent("submit", { bubbles: true }));
 
     expect(
-      screen.getByText("Sende den Request, um die Response hier zu sehen."),
+      await screen.findByText("Request wurde zwischenzeitlich geändert"),
     ).toBeInTheDocument();
-
-    const form = screen.getByLabelText("Request-URL").closest("form");
-    form?.dispatchEvent(new SubmitEvent("submit", { bubbles: true }));
-
-    expect(await screen.findByText("200 OK")).toBeInTheDocument();
+    expect(url).toHaveValue("https://local.example.com/customers");
+    expect(
+      screen.getByText("https://team.example.com/customers"),
+    ).toBeInTheDocument();
   });
 });
-

@@ -29,6 +29,7 @@ const updated: ApiRequest = {
 };
 
 const repository: RequestRepository = {
+  find: async () => updated,
   update: async () => ({ kind: "updated", request: updated }),
 };
 const workspaceRepository: WorkspaceRepository = {
@@ -43,6 +44,25 @@ const workspaceRepository: WorkspaceRepository = {
 };
 
 describe("request API authentication", () => {
+  it("loads a visible request through the verified session", async () => {
+    const app = buildApp({
+      authenticate: async () => ({
+        id: userId,
+        accessToken: "verified-token",
+      }),
+      requests: repository,
+      workspaces: workspaceRepository,
+    });
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/requests/${requestId}`,
+      headers: { authorization: "Bearer verified-token" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(updated);
+    await app.close();
+  });
+
   it("rejects missing or invalid sessions", async () => {
     const app = buildApp({
       authenticate: async () => null,
@@ -67,6 +87,7 @@ describe("request API authentication", () => {
         accessToken: "verified-token",
       }),
       requests: {
+        find: async () => updated,
         update: async (command) => {
           receivedUserId = command.userId;
           receivedToken = command.accessToken;
@@ -135,6 +156,7 @@ describe("request API authentication", () => {
         accessToken: "verified-token",
       }),
       requests: {
+        find: async () => updated,
         update: async () => ({ kind }),
       },
       workspaces: workspaceRepository,

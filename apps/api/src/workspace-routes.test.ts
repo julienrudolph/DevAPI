@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildApp } from "./app.js";
+import type { RequestRepository } from "./domain/request-repository.js";
 import type { WorkspaceRepository } from "./domain/workspace-repository.js";
 
 const user = {
@@ -21,12 +22,16 @@ const emptyWorkspaceRepository: WorkspaceRepository = {
   createFolder: async () => null,
   createRequest: async () => null,
 };
+const requestRepository: RequestRepository = {
+  find: async () => null,
+  update: async () => ({ kind: "not-found" }),
+};
 
 describe("workspace routes", () => {
   it("lists only repository-visible workspaces", async () => {
     const app = buildApp({
       authenticate: async () => user,
-      requests: { update: async () => ({ kind: "not-found" }) },
+      requests: requestRepository,
       workspaces: {
         ...emptyWorkspaceRepository,
         list: async () => [workspace],
@@ -45,7 +50,7 @@ describe("workspace routes", () => {
   it("returns 404 for a workspace hidden by RLS", async () => {
     const app = buildApp({
       authenticate: async () => user,
-      requests: { update: async () => ({ kind: "not-found" }) },
+      requests: requestRepository,
       workspaces: {
         ...emptyWorkspaceRepository,
       },
@@ -62,7 +67,7 @@ describe("workspace routes", () => {
   it("rejects workspace reads without authentication", async () => {
     const app = buildApp({
       authenticate: async () => null,
-      requests: { update: async () => ({ kind: "not-found" }) },
+      requests: requestRepository,
       workspaces: {
         ...emptyWorkspaceRepository,
       },
@@ -78,7 +83,7 @@ describe("workspace routes", () => {
   it("creates the first team workspace for an authenticated user", async () => {
     const app = buildApp({
       authenticate: async () => user,
-      requests: { update: async () => ({ kind: "not-found" }) },
+      requests: requestRepository,
       workspaces: emptyWorkspaceRepository,
     });
     const response = await app.inject({
@@ -95,7 +100,7 @@ describe("workspace routes", () => {
   it("maps denied collection creation to 403", async () => {
     const app = buildApp({
       authenticate: async () => user,
-      requests: { update: async () => ({ kind: "not-found" }) },
+      requests: requestRepository,
       workspaces: emptyWorkspaceRepository,
     });
     const response = await app.inject({
@@ -120,7 +125,7 @@ describe("workspace routes", () => {
     };
     const app = buildApp({
       authenticate: async () => user,
-      requests: { update: async () => ({ kind: "not-found" }) },
+      requests: requestRepository,
       workspaces: {
         ...emptyWorkspaceRepository,
         createFolder: async () => folder,
@@ -150,7 +155,7 @@ describe("workspace routes", () => {
     };
     const app = buildApp({
       authenticate: async () => user,
-      requests: { update: async () => ({ kind: "not-found" }) },
+      requests: requestRepository,
       workspaces: {
         ...emptyWorkspaceRepository,
         createRequest: async (command) => {

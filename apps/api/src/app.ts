@@ -204,6 +204,38 @@ export function buildApp(dependencies: ApiDependencies) {
     }
   });
 
+  app.get("/v1/requests/:requestId", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const params = requestIdParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    try {
+      const persistedRequest = await dependencies.requests.find({
+        requestId: params.data.requestId,
+        accessToken: user.user.accessToken,
+      });
+      return persistedRequest
+        ? reply.code(200).send(persistedRequest)
+        : reply.code(404).send({ code: "NOT_FOUND" });
+    } catch {
+      return reply.code(500).send({ code: "REQUEST_READ_FAILED" });
+    }
+  });
+
   app.patch("/v1/requests/:requestId", async (request, reply) => {
     let user: AuthenticatedUser | null;
     try {
@@ -231,7 +263,7 @@ export function buildApp(dependencies: ApiDependencies) {
       });
     }
 
-    const { expectedVersion, ...draft } = body.data;
+    const { expectedVersion, overwrite, ...draft } = body.data;
     try {
       const result = await dependencies.requests.update({
         requestId: params.data.requestId,
@@ -239,6 +271,7 @@ export function buildApp(dependencies: ApiDependencies) {
         accessToken: user.accessToken,
         expectedVersion,
         draft,
+        changeType: overwrite ? "overwrite" : "update",
       });
 
       if (result.kind === "forbidden") {
