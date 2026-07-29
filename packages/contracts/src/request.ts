@@ -16,10 +16,28 @@ export const keyValueEntrySchema = z.object({
 });
 
 export const requestBodySchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("none") }),
-  z.object({ type: z.literal("json"), content: z.string() }),
-  z.object({ type: z.literal("text"), content: z.string() }),
-]);
+  z.object({ type: z.literal("none"), content: z.string().optional() }),
+  z.object({
+    type: z.literal("json"),
+    content: z.string().max(1_048_576),
+  }),
+  z.object({
+    type: z.literal("text"),
+    content: z.string().max(1_048_576),
+  }),
+]).superRefine((body, context) => {
+  if (body.type === "json") {
+      try {
+        JSON.parse(body.content);
+      } catch {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["content"],
+          message: "Der JSON-Body ist ungültig.",
+        });
+      }
+  }
+});
 
 export const requestDraftSchema = z.object({
   name: z.string().trim().min(1).max(160),

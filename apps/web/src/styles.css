@@ -556,7 +556,8 @@ h1 {
 .table-head,
 .table-row {
   display: grid;
-  grid-template-columns: 42px minmax(160px, 0.8fr) minmax(220px, 1.2fr);
+  grid-template-columns:
+    42px minmax(160px, 0.8fr) minmax(220px, 1.2fr) 38px;
 }
 
 .table-head {
@@ -586,12 +587,45 @@ h1 {
 }
 
 .add-row {
+  align-items: center;
   background: transparent;
   border: 0;
   color: #226c49;
   font-size: 12px;
+  display: inline-flex;
+  gap: 5px;
   margin-top: 10px;
   padding: 6px 0;
+}
+
+.body-editor > label {
+  align-items: center;
+  display: flex;
+  font-size: 12px;
+  font-weight: 650;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.body-editor select {
+  border: 1px solid #cfd7d0;
+  border-radius: 7px;
+  height: 34px;
+  padding: 0 9px;
+}
+
+.body-editor .monaco-editor {
+  border: 1px solid #dfe5df;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.editor-loading {
+  align-items: center;
+  color: #778179;
+  display: flex;
+  height: 280px;
+  justify-content: center;
 }
 
 .empty-panel {

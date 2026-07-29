@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,6 +20,21 @@ vi.mock("./request-queries", () => ({
   useRequest: vi.fn(),
   useUpdateRequest: vi.fn(),
   useExecuteRequest: vi.fn(),
+}));
+vi.mock("../../components/editors/monaco-editor", () => ({
+  default: ({
+    value,
+    onChange,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+  }) => (
+    <textarea
+      aria-label="Body-Inhalt"
+      onChange={(event) => onChange(event.target.value)}
+      value={value}
+    />
+  ),
 }));
 
 const request = {
@@ -162,5 +183,57 @@ describe("RequestEditor", () => {
     expect(screen.getByText("201 Created")).toBeInTheDocument();
     expect(screen.getByText("37 ms")).toBeInTheDocument();
     expect(screen.getByText(/cus_123/)).toBeInTheDocument();
+  });
+
+  it("adds query parameters to the persisted draft", async () => {
+    const user = userEvent.setup();
+    mutateAsync.mockResolvedValue({ ...request, version: 3 });
+    render(
+      <RequestEditor
+        requestId={request.id}
+        workspaceId={request.workspaceId}
+      />,
+    );
+
+    await user.click(screen.getByText("Query-Parameter hinzufügen"));
+    await user.type(screen.getByLabelText("Schlüssel"), "limit");
+    await user.type(screen.getByLabelText("Wert"), "20");
+    screen
+      .getByLabelText("Request-URL")
+      .closest("form")
+      ?.dispatchEvent(new SubmitEvent("submit", { bubbles: true }));
+
+    await waitFor(() =>
+      expect(mutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryParams: [
+            expect.objectContaining({ key: "limit", value: "20" }),
+          ],
+        }),
+      ),
+    );
+  });
+
+  it("blocks malformed JSON before it reaches persistence", async () => {
+    const user = userEvent.setup();
+    render(
+      <RequestEditor
+        requestId={request.id}
+        workspaceId={request.workspaceId}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Body" }));
+    await user.selectOptions(screen.getByLabelText("Body-Typ"), "json");
+    const body = await screen.findByLabelText("Body-Inhalt");
+    fireEvent.change(body, { target: { value: '{"name":' } });
+    body
+      .closest("form")
+      ?.dispatchEvent(new SubmitEvent("submit", { bubbles: true }));
+
+    expect(
+      await screen.findByText("Der JSON-Body ist ungültig."),
+    ).toBeInTheDocument();
+    expect(mutateAsync).not.toHaveBeenCalled();
   });
 });

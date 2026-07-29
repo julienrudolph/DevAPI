@@ -5,8 +5,15 @@ import {
   type RequestDraft,
   requestDraftSchema,
 } from "@api-client/contracts";
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Minus, Plus } from "lucide-react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import {
+  Controller,
+  type Control,
+  useFieldArray,
+  useForm,
+  type UseFormRegister,
+} from "react-hook-form";
 
 import { RequestConflictError } from "./request-api";
 import {
@@ -14,6 +21,10 @@ import {
   useRequest,
   useUpdateRequest,
 } from "./request-queries";
+
+const MonacoEditor = lazy(
+  () => import("../../components/editors/monaco-editor"),
+);
 
 interface RequestEditorProps {
   requestId: string;
@@ -75,11 +86,15 @@ function LoadedRequestEditor({
     register,
     reset,
     getValues,
+    control,
+    setValue,
+    watch,
     formState: { errors, isDirty },
   } = useForm<RequestDraft>({
     resolver: zodResolver(requestDraftSchema),
     defaultValues: toDraft(request),
   });
+  const bodyType = watch("body.type");
 
   useEffect(() => {
     if (!isDirty && request.version !== baseVersion) {
@@ -191,7 +206,7 @@ function LoadedRequestEditor({
           {activeTab === "params" ? (
             <KeyValueTable
               emptyLabel="Query-Parameter hinzufügen"
-              entries={request.queryParams}
+              control={control}
               field="queryParams"
               register={register}
               readOnly={readOnly}
@@ -200,15 +215,84 @@ function LoadedRequestEditor({
           {activeTab === "headers" ? (
             <KeyValueTable
               emptyLabel="Header hinzufügen"
-              entries={request.headers}
+              control={control}
               field="headers"
               register={register}
               readOnly={readOnly}
             />
           ) : null}
           {activeTab === "body" ? (
-            <div className="empty-panel">
-              Body-Bearbeitung wird im nächsten Editor-Schritt ergänzt.
+            <div className="body-editor">
+              <label>
+                Body-Typ
+                <select
+                  disabled={readOnly}
+                  onChange={(event) => {
+                    const type = event.target.value as
+                      | "none"
+                      | "json"
+                      | "text";
+                    setValue(
+                      "body",
+                      type === "none"
+                        ? { type: "none" }
+                        : {
+                            type,
+                            content: type === "json" ? "{}" : "",
+                          },
+                      { shouldDirty: true, shouldValidate: true },
+                    );
+                  }}
+                  value={bodyType}
+                >
+                  <option value="none">Kein Body</option>
+                  <option value="json">JSON</option>
+                  <option value="text">Text</option>
+                </select>
+              </label>
+              {bodyType !== "none" ? (
+                <Controller
+                  control={control}
+                  name="body.content"
+                  render={({ field }) => (
+                    <Suspense
+                      fallback={
+                        <div className="editor-loading">
+                          Body-Editor wird geladen …
+                        </div>
+                      }
+                    >
+                      <MonacoEditor
+                        height="280px"
+                        language={bodyType === "json" ? "json" : "plaintext"}
+                        onChange={(value) => field.onChange(value ?? "")}
+                        options={{
+                          automaticLayout: true,
+                          minimap: { enabled: false },
+                          readOnly,
+                          scrollBeyondLastLine: false,
+                          tabSize: 2,
+                        }}
+                        theme="vs"
+                        value={field.value ?? ""}
+                      />
+                    </Suspense>
+                  )}
+                />
+              ) : (
+                <div className="empty-panel">
+                  Dieser Request sendet keinen Body.
+                </div>
+              )}
+              {errors.body?.message ? (
+                <p className="field-error">{errors.body.message}</p>
+              ) : null}
+              {errors.body && "content" in errors.body &&
+              errors.body.content?.message ? (
+                <p className="field-error">
+                  {errors.body.content.message}
+                </p>
+              ) : null}
             </div>
           ) : null}
           {activeTab === "auth" ? (
@@ -337,30 +421,35 @@ function toDraft(request: ApiRequest): RequestDraft {
   };
 }
 
-type Register = ReturnType<typeof useForm<RequestDraft>>["register"];
-
 function KeyValueTable({
   emptyLabel,
-  entries,
   field,
+  control,
   register,
   readOnly,
 }: {
   emptyLabel: string;
-  entries: RequestDraft["headers"];
   field: "headers" | "queryParams";
-  register: Register;
+  control: Control<RequestDraft>;
+  register: UseFormRegister<RequestDraft>;
   readOnly: boolean;
 }) {
+  const { append, fields, remove } = useFieldArray({
+    control,
+    keyName: "fieldKey",
+    name: field,
+  });
+
   return (
     <div className="key-value-table">
       <div className="table-head">
         <span />
         <span>Schlüssel</span>
         <span>Wert</span>
+        <span />
       </div>
-      {entries.map((entry, index) => (
-        <div className="table-row" key={entry.id}>
+      {fields.map((entry, index) => (
+        <div className="table-row" key={entry.fieldKey}>
           <input
             aria-label="Eintrag aktivieren"
             disabled={readOnly}
@@ -380,11 +469,34 @@ function KeyValueTable({
             {...register(`${field}.${index}.value`)}
           />
           <input type="hidden" {...register(`${field}.${index}.id`)} />
+          {!readOnly ? (
+            <button
+              aria-label="Eintrag entfernen"
+              className="icon-button compact"
+              onClick={() => remove(index)}
+              type="button"
+            >
+              <Minus aria-hidden="true" size={14} />
+            </button>
+          ) : null}
         </div>
       ))}
-      <button className="add-row" type="button">
-        + {emptyLabel}
-      </button>
+      {!readOnly ? (
+        <button
+          className="add-row"
+          onClick={() =>
+            append({
+              id: crypto.randomUUID(),
+              key: "",
+              value: "",
+              enabled: true,
+            })
+          }
+          type="button"
+        >
+          <Plus aria-hidden="true" size={14} /> {emptyLabel}
+        </button>
+      ) : null}
     </div>
   );
 }

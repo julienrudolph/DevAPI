@@ -28,6 +28,19 @@ describe("requestDraftSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("rejects malformed JSON bodies before persistence or execution", () => {
+    const result = requestDraftSchema.safeParse({
+      name: "Create user",
+      method: "POST",
+      url: "https://example.test/users",
+      queryParams: [],
+      headers: [],
+      body: { type: "json", content: '{"name":' },
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("role permissions", () => {
