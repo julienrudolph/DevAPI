@@ -1,31 +1,46 @@
 import {
   requestIdParamsSchema,
   updateRequestSchema,
-  workspaceRoleSchema,
 } from "@api-client/contracts";
 import Fastify from "fastify";
 
-import { InMemoryRequestStore } from "./domain/request-store.js";
+import type {
+  AuthenticatedUser,
+  Authenticator,
+} from "./auth/authenticator.js";
+import type { RequestRepository } from "./domain/request-repository.js";
 
-const actorHeadersSchema = workspaceRoleSchema;
+export interface ApiDependencies {
+  authenticate: Authenticator;
+  requests: RequestRepository;
+}
 
-export function buildApp(store = new InMemoryRequestStore()) {
+export function buildApp(dependencies: ApiDependencies) {
   const app = Fastify({ logger: false });
 
   app.get("/health", async () => ({ status: "ok" }));
 
   app.patch("/v1/requests/:requestId", async (request, reply) => {
+    let user: AuthenticatedUser | null;
+    try {
+      user = await dependencies.authenticate(request.headers.authorization);
+    } catch {
+      return reply.code(503).send({
+        code: "AUTHENTICATION_UNAVAILABLE",
+        message: "Die Anmeldung kann momentan nicht geprüft werden.",
+      });
+    }
+    if (!user) {
+      return reply.code(401).send({
+        code: "UNAUTHORIZED",
+        message: "Eine gültige Anmeldung ist erforderlich.",
+      });
+    }
+
     const params = requestIdParamsSchema.safeParse(request.params);
     const body = updateRequestSchema.safeParse(request.body);
-    const role = actorHeadersSchema.safeParse(request.headers["x-demo-role"]);
-    const actorId = request.headers["x-demo-user-id"];
 
-    if (
-      !params.success ||
-      !body.success ||
-      !role.success ||
-      typeof actorId !== "string"
-    ) {
+    if (!params.success || !body.success) {
       return reply.code(400).send({
         code: "INVALID_REQUEST",
         message: "Die Anfrage ist ungültig.",
@@ -33,23 +48,31 @@ export function buildApp(store = new InMemoryRequestStore()) {
     }
 
     const { expectedVersion, ...draft } = body.data;
-    const result = store.update({
-      requestId: params.data.requestId,
-      expectedVersion,
-      draft,
-      actor: { id: actorId, displayName: "Demo", role: role.data },
-    });
+    try {
+      const result = await dependencies.requests.update({
+        requestId: params.data.requestId,
+        userId: user.id,
+        accessToken: user.accessToken,
+        expectedVersion,
+        draft,
+      });
 
-    if (result.kind === "forbidden") {
-      return reply.code(403).send({ code: "FORBIDDEN" });
+      if (result.kind === "forbidden") {
+        return reply.code(403).send({ code: "FORBIDDEN" });
+      }
+      if (result.kind === "not-found") {
+        return reply.code(404).send({ code: "NOT_FOUND" });
+      }
+      if (result.kind === "conflict") {
+        return reply.code(409).send(result.conflict);
+      }
+      return reply.code(200).send(result.request);
+    } catch {
+      return reply.code(500).send({
+        code: "INTERNAL_ERROR",
+        message: "Der Request konnte nicht gespeichert werden.",
+      });
     }
-    if (result.kind === "not-found") {
-      return reply.code(404).send({ code: "NOT_FOUND" });
-    }
-    if (result.kind === "conflict") {
-      return reply.code(409).send(result.conflict);
-    }
-    return reply.code(200).send(result.request);
   });
 
   return app;

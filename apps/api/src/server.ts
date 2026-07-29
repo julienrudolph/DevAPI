@@ -1,6 +1,18 @@
+import { createSupabaseAuthenticator } from "./auth/authenticator.js";
 import { buildApp } from "./app.js";
+import { readApiConfig } from "./config.js";
+import { SupabaseRequestRepository } from "./infrastructure/supabase-request-repository.js";
 
-const port = Number(process.env.API_PORT ?? 3001);
-const app = buildApp();
+const config = readApiConfig();
+const app = buildApp({
+  authenticate: createSupabaseAuthenticator(
+    config.SUPABASE_URL,
+    config.SUPABASE_PUBLISHABLE_KEY,
+  ),
+  requests: new SupabaseRequestRepository(
+    config.SUPABASE_URL,
+    config.SUPABASE_PUBLISHABLE_KEY,
+  ),
+});
 
-await app.listen({ host: "127.0.0.1", port });
+await app.listen({ host: "127.0.0.1", port: config.API_PORT });
