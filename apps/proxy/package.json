@@ -12,7 +12,8 @@
   "dependencies": {
     "@api-client/contracts": "*",
     "fastify": "^5.2.1",
-    "ipaddr.js": "^2.2.0"
+    "ipaddr.js": "^2.2.0",
+    "undici": "^7.16.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",
