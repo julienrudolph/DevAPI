@@ -1,0 +1,78 @@
+name: devapi
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      API_PORT: 3001
+      SUPABASE_URL: ${SUPABASE_INTERNAL_URL}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/health').then(r=>{if(!r.ok)process.exit(1)})"
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-3001}:3001"
+    networks:
+      - backend
+
+  proxy:
+    build:
+      context: .
+      dockerfile: apps/proxy/Dockerfile
+    restart: unless-stopped
+    environment:
+      PROXY_PORT: 3002
+      PROXY_INTERNAL_TOKEN: ${PROXY_INTERNAL_TOKEN}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3002/health').then(r=>{if(!r.ok)process.exit(1)})"
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "127.0.0.1:${PROXY_HOST_PORT:-3002}:3002"
+    networks:
+      - backend
+      - egress
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${SUPABASE_PUBLIC_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+        VITE_OIDC_PROVIDER: ${OIDC_PROVIDER:-}
+        VITE_OIDC_LABEL: ${OIDC_LABEL:-}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_HOST_PORT:-8080}:8080"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+  egress:
+    driver: bridge

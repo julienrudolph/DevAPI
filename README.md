@@ -54,4 +54,17 @@ Alle Prüfungen:
 npm run check
 ```
 
+## Docker
+
+Ein lokaler Integrationsstack mit Web, API, Proxy, Supabase Auth, PostgREST,
+PostgreSQL, Migrationen und Mail-Capture kann so gestartet werden:
+
+```bash
+npm run compose:env
+npm run compose:up
+```
+
+Ausführliche Hinweise für lokale Tests, Hosted Supabase und einen späteren
+Rollout stehen in `docs/docker.md`.
+
 Die verbindlichen Produkt- und Entwicklungsregeln stehen in `AGENTS.md`.
