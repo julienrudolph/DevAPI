@@ -1,11 +1,14 @@
 import {
   createCollectionSchema,
   createFolderSchema,
+  createEnvironmentSchema,
   createRequestSummarySchema,
   createWorkspaceSchema,
   executeRequestSchema,
+  environmentIdParamsSchema,
   requestIdParamsSchema,
   updateRequestSchema,
+  upsertEnvironmentVariableSchema,
   workspaceIdParamsSchema,
 } from "@api-client/contracts";
 import Fastify from "fastify";
@@ -14,11 +17,12 @@ import type {
   AuthenticatedUser,
   Authenticator,
 } from "./auth/authenticator.js";
-import type { RequestRepository } from "./domain/request-repository.js";
+import type { EnvironmentRepository } from "./domain/environment-repository.js";
 import {
   RequestExecutionError,
   type RequestExecutor,
 } from "./domain/request-executor.js";
+import type { RequestRepository } from "./domain/request-repository.js";
 import type { WorkspaceRepository } from "./domain/workspace-repository.js";
 
 export interface ApiDependencies {
@@ -26,12 +30,133 @@ export interface ApiDependencies {
   requests: RequestRepository;
   workspaces: WorkspaceRepository;
   executor?: RequestExecutor;
+  environments?: EnvironmentRepository;
 }
 
 export function buildApp(dependencies: ApiDependencies) {
   const app = Fastify({ logger: false });
 
   app.get("/health", async () => ({ status: "ok" }));
+
+  app.get("/v1/workspaces/:workspaceId/environments", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const params = workspaceIdParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.environments) {
+      return reply.code(503).send({ code: "ENVIRONMENTS_UNAVAILABLE" });
+    }
+    try {
+      return reply.code(200).send(
+        await dependencies.environments.list({
+          workspaceId: params.data.workspaceId,
+          userId: user.user.id,
+          accessToken: user.user.accessToken,
+        }),
+      );
+    } catch {
+      return reply.code(500).send({ code: "ENVIRONMENT_LIST_FAILED" });
+    }
+  });
+
+  app.post("/v1/workspaces/:workspaceId/environments", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const params = workspaceIdParamsSchema.safeParse(request.params);
+    const body = createEnvironmentSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.environments) {
+      return reply.code(503).send({ code: "ENVIRONMENTS_UNAVAILABLE" });
+    }
+    try {
+      const environment = await dependencies.environments.create({
+        workspaceId: params.data.workspaceId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+        ...body.data,
+      });
+      return environment
+        ? reply.code(201).send(environment)
+        : reply.code(403).send({ code: "FORBIDDEN" });
+    } catch {
+      return reply.code(500).send({ code: "ENVIRONMENT_CREATE_FAILED" });
+    }
+  });
+
+  app.post(
+    "/v1/environments/:environmentId/variables",
+    async (request, reply) => {
+      const user = await authenticateSafely(
+        dependencies.authenticate,
+        request.headers.authorization,
+      );
+      if (user.kind !== "authenticated") {
+        return reply
+          .code(user.kind === "unavailable" ? 503 : 401)
+          .send({
+            code:
+              user.kind === "unavailable"
+                ? "AUTHENTICATION_UNAVAILABLE"
+                : "UNAUTHORIZED",
+          });
+      }
+      const params = environmentIdParamsSchema.safeParse(request.params);
+      const body = upsertEnvironmentVariableSchema.safeParse(request.body);
+      if (!params.success || !body.success) {
+        return reply.code(400).send({ code: "INVALID_REQUEST" });
+      }
+      if (!dependencies.environments) {
+        return reply.code(503).send({ code: "ENVIRONMENTS_UNAVAILABLE" });
+      }
+      try {
+        const result = await dependencies.environments.createVariable({
+          environmentId: params.data.environmentId,
+          userId: user.user.id,
+          accessToken: user.user.accessToken,
+          ...body.data,
+        });
+        if (result.kind === "forbidden") {
+          return reply.code(403).send({ code: "FORBIDDEN" });
+        }
+        if (result.kind === "duplicate") {
+          return reply.code(409).send({ code: "VARIABLE_ALREADY_EXISTS" });
+        }
+        return reply.code(201).send(result.variable);
+      } catch {
+        return reply
+          .code(500)
+          .send({ code: "ENVIRONMENT_VARIABLE_CREATE_FAILED" });
+      }
+    },
+  );
 
   app.post("/v1/execute", async (request, reply) => {
     const user = await authenticateSafely(

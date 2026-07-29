@@ -16,6 +16,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { RequestEditor } from "../requests/request-editor";
+import { EnvironmentControls } from "../environments/environment-controls";
+import { useEnvironments } from "../environments/environment-queries";
 import { CollectionCreateForm } from "./collection-create-form";
 import {
   FolderCreateForm,
@@ -35,10 +37,13 @@ export function WorkspacePage() {
     workspaces.data?.find(({ id }) => id === routeWorkspaceId) ??
     workspaces.data?.[0];
   const tree = useWorkspaceTree(activeWorkspace?.id);
+  const environments = useEnvironments(activeWorkspace?.id);
   const canEdit =
     activeWorkspace?.role === "owner" || activeWorkspace?.role === "editor";
   const [activeRequestId, setActiveRequestId] = useState<string>();
   const [editorDirty, setEditorDirty] = useState(false);
+  const [selectedEnvironmentId, setSelectedEnvironmentId] =
+    useState<string>();
   const [creatingCollection, setCreatingCollection] = useState(false);
   const [creatingChild, setCreatingChild] = useState<{
     collectionId: string;
@@ -48,6 +53,7 @@ export function WorkspacePage() {
   useEffect(() => {
     setActiveRequestId(undefined);
     setEditorDirty(false);
+    setSelectedEnvironmentId(undefined);
   }, [activeWorkspace?.id]);
 
   function selectRequest(requestId: string) {
@@ -301,6 +307,12 @@ export function WorkspacePage() {
                 <h1>{activeRequest.name}</h1>
               </div>
               <div className="toolbar-actions">
+                <EnvironmentControls
+                  canEditShared={canEdit}
+                  onSelect={setSelectedEnvironmentId}
+                  selectedId={selectedEnvironmentId}
+                  workspaceId={activeWorkspace.id}
+                />
                 {canEdit ? (
                   <button
                     className="button secondary"
@@ -331,6 +343,11 @@ export function WorkspacePage() {
               workspaceId={activeWorkspace.id}
               onDirtyChange={setEditorDirty}
               readOnly={!canEdit}
+              variables={
+                environments.data?.find(
+                  ({ id }) => id === selectedEnvironmentId,
+                )?.variables ?? []
+              }
             />
           </>
         ) : (

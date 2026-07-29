@@ -175,4 +175,32 @@ describe("workspace routes", () => {
     expect(response.json()).toEqual(createdRequest);
     await app.close();
   });
+
+  it("returns only environments supplied by the RLS-backed repository", async () => {
+    const environment = {
+      id: "a768f717-d11f-4ce0-a72b-8e1d439222b0",
+      workspaceId: workspace.id,
+      name: "Development",
+      version: 1,
+      variables: [],
+    };
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: requestRepository,
+      workspaces: emptyWorkspaceRepository,
+      environments: {
+        list: async () => [environment],
+        create: async () => null,
+        createVariable: async () => ({ kind: "forbidden" }),
+      },
+    });
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/workspaces/${workspace.id}/environments`,
+      headers: { authorization: "Bearer verified-token" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual([environment]);
+    await app.close();
+  });
 });

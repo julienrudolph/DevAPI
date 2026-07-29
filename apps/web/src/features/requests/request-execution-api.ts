@@ -3,10 +3,13 @@ import {
   proxyResponseSchema,
   requestAuthSchema,
   type ProxyResponse,
+  type EnvironmentVariable,
   type RequestAuth,
   type RequestDraft,
 } from "@api-client/contracts";
 import { z } from "zod";
+
+import { resolveVariables } from "../environments/resolve-variables";
 
 const executionErrorSchema = z.object({
   code: z.string(),
@@ -20,7 +23,11 @@ export class RequestExecutionError extends Error {
 }
 
 export async function executeRequest(
-  input: { request: RequestDraft; auth: RequestAuth },
+  input: {
+    request: RequestDraft;
+    auth: RequestAuth;
+    variables: EnvironmentVariable[];
+  },
   accessToken: string,
 ): Promise<ProxyResponse> {
   const draft = input.request;
@@ -34,9 +41,26 @@ export async function executeRequest(
     body: JSON.stringify(
       executeRequestSchema.parse({
         method: draft.method,
-        url: withQueryParams(draft.url, draft.queryParams),
-        headers: executionHeaders(draft.headers, auth),
-        body: draft.body.type === "none" ? undefined : draft.body.content,
+        url: withQueryParams(
+          resolveVariables(draft.url, input.variables),
+          draft.queryParams.map((entry) => ({
+            ...entry,
+            key: resolveVariables(entry.key, input.variables),
+            value: resolveVariables(entry.value, input.variables),
+          })),
+        ),
+        headers: executionHeaders(
+          draft.headers.map((header) => ({
+            ...header,
+            key: resolveVariables(header.key, input.variables),
+            value: resolveVariables(header.value, input.variables),
+          })),
+          auth,
+        ),
+        body:
+          draft.body.type === "none"
+            ? undefined
+            : resolveVariables(draft.body.content, input.variables),
       }),
     ),
   });

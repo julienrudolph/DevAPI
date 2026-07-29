@@ -28,7 +28,7 @@ describe("request execution API", () => {
         request: {
           name: "Health",
           method: "GET",
-          url: "https://api.example.com/health",
+          url: "{{baseUrl}}/health",
           queryParams: [
             {
               id: "e5c539a4-3fa9-4bc4-b6dc-acba97f1c9a3",
@@ -48,6 +48,16 @@ describe("request execution API", () => {
           body: { type: "none" },
         },
         auth: { type: "none" },
+        variables: [
+          {
+            id: "8f48a4d0-05e0-4cd2-bdbc-35c0a19a8bd8",
+            environmentId: "a768f717-d11f-4ce0-a72b-8e1d439222b0",
+            key: "baseUrl",
+            value: "https://api.example.com",
+            scope: "shared",
+            version: 1,
+          },
+        ],
       },
       "session-token",
     );
@@ -90,6 +100,7 @@ describe("request execution API", () => {
             body: { type: "none" },
           },
           auth: { type: "none" },
+          variables: [],
         },
         "session-token",
       ),
@@ -139,6 +150,7 @@ describe("request execution API", () => {
           body: { type: "none" },
         },
         auth,
+        variables: [],
       },
       "session-token",
     );

@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   type ApiRequest,
+  type EnvironmentVariable,
   type RequestConflict,
   type RequestAuth,
   type RequestDraft,
@@ -32,6 +33,7 @@ interface RequestEditorProps {
   workspaceId: string;
   onDirtyChange?: (dirty: boolean) => void;
   readOnly?: boolean;
+  variables?: EnvironmentVariable[];
 }
 
 export function RequestEditor({
@@ -39,6 +41,7 @@ export function RequestEditor({
   workspaceId,
   onDirtyChange,
   readOnly = false,
+  variables = [],
 }: RequestEditorProps) {
   const request = useRequest(requestId);
 
@@ -62,6 +65,7 @@ export function RequestEditor({
       workspaceId={workspaceId}
       onDirtyChange={onDirtyChange}
       readOnly={readOnly}
+      variables={variables}
     />
   );
 }
@@ -71,11 +75,13 @@ function LoadedRequestEditor({
   workspaceId,
   onDirtyChange,
   readOnly,
+  variables,
 }: {
   request: ApiRequest;
   workspaceId: string;
   onDirtyChange?: (dirty: boolean) => void;
   readOnly: boolean;
+  variables: EnvironmentVariable[];
 }) {
   const [activeTab, setActiveTab] = useState("params");
   const [auth, setAuth] = useState<RequestAuth>({ type: "none" });
@@ -148,7 +154,7 @@ function LoadedRequestEditor({
             intent.value === "execute"
           ) {
             await execution
-              .mutateAsync({ request: draft, auth })
+              .mutateAsync({ request: draft, auth, variables })
               .catch(() => undefined);
             return;
           }
