@@ -1,5 +1,7 @@
 import {
   createCollectionSchema,
+  createFolderSchema,
+  createRequestSummarySchema,
   createWorkspaceSchema,
   requestIdParamsSchema,
   updateRequestSchema,
@@ -100,6 +102,76 @@ export function buildApp(dependencies: ApiDependencies) {
         : reply.code(403).send({ code: "FORBIDDEN" });
     } catch {
       return reply.code(500).send({ code: "COLLECTION_CREATE_FAILED" });
+    }
+  });
+
+  app.post("/v1/workspaces/:workspaceId/folders", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const params = workspaceIdParamsSchema.safeParse(request.params);
+    const body = createFolderSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    try {
+      const folder = await dependencies.workspaces.createFolder({
+        ...body.data,
+        workspaceId: params.data.workspaceId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return folder
+        ? reply.code(201).send(folder)
+        : reply.code(403).send({ code: "FORBIDDEN" });
+    } catch {
+      return reply.code(500).send({ code: "FOLDER_CREATE_FAILED" });
+    }
+  });
+
+  app.post("/v1/workspaces/:workspaceId/requests", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const params = workspaceIdParamsSchema.safeParse(request.params);
+    const body = createRequestSummarySchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    try {
+      const createdRequest = await dependencies.workspaces.createRequest({
+        ...body.data,
+        workspaceId: params.data.workspaceId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return createdRequest
+        ? reply.code(201).send(createdRequest)
+        : reply.code(403).send({ code: "FORBIDDEN" });
+    } catch {
+      return reply.code(500).send({ code: "REQUEST_CREATE_FAILED" });
     }
   });
 

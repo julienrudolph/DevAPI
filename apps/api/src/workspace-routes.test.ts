@@ -18,6 +18,8 @@ const emptyWorkspaceRepository: WorkspaceRepository = {
   getTree: async () => null,
   create: async () => workspace,
   createCollection: async () => null,
+  createFolder: async () => null,
+  createRequest: async () => null,
 };
 
 describe("workspace routes", () => {
@@ -103,6 +105,69 @@ describe("workspace routes", () => {
       payload: { name: "Customers" },
     });
     expect(response.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it("creates a folder inside an editable collection", async () => {
+    const collectionId = "95da6097-0742-4164-9c9a-75dc64d2cd8f";
+    const folder = {
+      id: "cc0814af-eeb4-45ad-8686-0784a67ea823",
+      workspaceId: workspace.id,
+      collectionId,
+      parentFolderId: null,
+      name: "Customers",
+      position: 0,
+    };
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: { update: async () => ({ kind: "not-found" }) },
+      workspaces: {
+        ...emptyWorkspaceRepository,
+        createFolder: async () => folder,
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspace.id}/folders`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { collectionId, name: "Customers" },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual(folder);
+    await app.close();
+  });
+
+  it("creates a request with safe defaults", async () => {
+    const collectionId = "95da6097-0742-4164-9c9a-75dc64d2cd8f";
+    const createdRequest = {
+      id: "fa7596b3-0041-4fe8-9ddf-956e7a107014",
+      workspaceId: workspace.id,
+      collectionId,
+      folderId: null,
+      name: "List customers",
+      method: "GET" as const,
+      version: 1,
+    };
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: { update: async () => ({ kind: "not-found" }) },
+      workspaces: {
+        ...emptyWorkspaceRepository,
+        createRequest: async (command) => {
+          expect(command.method).toBe("GET");
+          expect(command.url).toBe("https://");
+          return createdRequest;
+        },
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspace.id}/requests`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { collectionId, name: "List customers" },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual(createdRequest);
     await app.close();
   });
 });

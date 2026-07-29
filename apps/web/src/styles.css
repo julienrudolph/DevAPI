@@ -200,7 +200,9 @@ button {
   font-weight: 600;
 }
 
-.tree-action {
+.tree-actions {
+  display: flex;
+  gap: 2px;
   margin-left: auto;
 }
 
@@ -262,6 +264,10 @@ button {
   display: flex;
   flex-direction: column;
   gap: 9px;
+}
+
+.nested-create-form {
+  margin: 4px 0 8px;
 }
 
 .creation-form {

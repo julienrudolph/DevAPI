@@ -4,6 +4,8 @@ import {
   requestSummarySchema,
   workspaceSummarySchema,
   type CollectionSummary,
+  type FolderSummary,
+  type RequestSummary,
   type WorkspaceSummary,
   type WorkspaceTree,
 } from "@api-client/contracts";
@@ -12,6 +14,8 @@ import { z } from "zod";
 import type {
   AuthenticatedRepositoryCommand,
   CreateCollectionCommand,
+  CreateFolderCommand,
+  CreateRequestCommand,
   CreateWorkspaceCommand,
   WorkspaceRepository,
   WorkspaceTreeCommand,
@@ -196,6 +200,58 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       throw new Error("COLLECTION_CREATE_FAILED", { cause: error });
     }
     return data ? collectionRowSchema.parse(data) : null;
+  }
+
+  async createFolder(
+    command: CreateFolderCommand,
+  ): Promise<FolderSummary | null> {
+    const client = this.client(command.accessToken);
+    const { data, error } = await client
+      .from("folders")
+      .insert({
+        workspace_id: command.workspaceId,
+        collection_id: command.collectionId,
+        parent_folder_id: command.parentFolderId,
+        name: command.name,
+        created_by: command.userId,
+        updated_by: command.userId,
+      })
+      .select(
+        "id, workspace_id, collection_id, parent_folder_id, name, position",
+      )
+      .maybeSingle();
+    if (error) {
+      if (error.code === "42501" || error.code === "23503") return null;
+      throw new Error("FOLDER_CREATE_FAILED", { cause: error });
+    }
+    return data ? folderRowSchema.parse(data) : null;
+  }
+
+  async createRequest(
+    command: CreateRequestCommand,
+  ): Promise<RequestSummary | null> {
+    const client = this.client(command.accessToken);
+    const { data, error } = await client
+      .from("requests")
+      .insert({
+        workspace_id: command.workspaceId,
+        collection_id: command.collectionId,
+        folder_id: command.folderId,
+        name: command.name,
+        method: command.method,
+        url: command.url,
+        created_by: command.userId,
+        updated_by: command.userId,
+      })
+      .select(
+        "id, workspace_id, collection_id, folder_id, name, method, version",
+      )
+      .maybeSingle();
+    if (error) {
+      if (error.code === "42501" || error.code === "23503") return null;
+      throw new Error("REQUEST_CREATE_FAILED", { cause: error });
+    }
+    return data ? requestRowSchema.parse(data) : null;
   }
 
   private client(accessToken: string) {

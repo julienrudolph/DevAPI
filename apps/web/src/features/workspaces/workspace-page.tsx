@@ -5,8 +5,9 @@ import {
 import {
   ChevronDown,
   Clock3,
+  FilePlus2,
   FolderClosed,
-  MoreHorizontal,
+  FolderPlus,
   Plus,
   Save,
   Send,
@@ -16,6 +17,10 @@ import { useNavigate, useParams } from "react-router";
 
 import { RequestEditor } from "../requests/request-editor";
 import { CollectionCreateForm } from "./collection-create-form";
+import {
+  FolderCreateForm,
+  RequestCreateForm,
+} from "./navigation-create-form";
 import { WorkspaceCreateForm } from "./workspace-create-form";
 import {
   useWorkspaces,
@@ -30,8 +35,14 @@ export function WorkspacePage() {
     workspaces.data?.find(({ id }) => id === routeWorkspaceId) ??
     workspaces.data?.[0];
   const tree = useWorkspaceTree(activeWorkspace?.id);
+  const canEdit =
+    activeWorkspace?.role === "owner" || activeWorkspace?.role === "editor";
   const [activeRequestId, setActiveRequestId] = useState<string>();
   const [creatingCollection, setCreatingCollection] = useState(false);
+  const [creatingChild, setCreatingChild] = useState<{
+    collectionId: string;
+    kind: "folder" | "request";
+  }>();
 
   useEffect(() => {
     setActiveRequestId(undefined);
@@ -123,14 +134,16 @@ export function WorkspacePage() {
 
         <div className="sidebar-heading">
           <span>Collections</span>
-          <button
-            className="icon-button compact"
-            onClick={() => setCreatingCollection(true)}
-            type="button"
-            aria-label="Collection erstellen"
-          >
-            <Plus aria-hidden="true" size={16} />
-          </button>
+          {canEdit ? (
+            <button
+              className="icon-button compact"
+              onClick={() => setCreatingCollection(true)}
+              type="button"
+              aria-label="Collection erstellen"
+            >
+              <Plus aria-hidden="true" size={16} />
+            </button>
+          ) : null}
         </div>
 
         {creatingCollection ? (
@@ -143,24 +156,71 @@ export function WorkspacePage() {
         {tree.isPending ? (
           <p className="sidebar-state">Navigation wird geladen …</p>
         ) : tree.isError ? (
-          <button className="sidebar-state retry-link" onClick={() => tree.refetch()}>
+          <button
+            className="sidebar-state retry-link"
+            onClick={() => tree.refetch()}
+          >
             Laden erneut versuchen
           </button>
         ) : (
           <nav className="collection-tree">
             {tree.data?.collections.map((collection) => (
               <div key={collection.id}>
-                <button className="tree-row tree-parent" type="button">
+                <div className="tree-row tree-parent">
                   <ChevronDown aria-hidden="true" size={15} />
                   <FolderClosed aria-hidden="true" size={16} />
                   <span>{collection.name}</span>
-                  <MoreHorizontal
-                    aria-hidden="true"
-                    className="tree-action"
-                    size={15}
-                  />
-                </button>
+                  {canEdit ? (
+                    <span className="tree-actions">
+                      <button
+                        aria-label={`Request in ${collection.name} erstellen`}
+                        className="icon-button compact"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setCreatingChild({
+                            collectionId: collection.id,
+                            kind: "request",
+                          });
+                        }}
+                        type="button"
+                      >
+                        <FilePlus2 aria-hidden="true" size={14} />
+                      </button>
+                      <button
+                        aria-label={`Ordner in ${collection.name} erstellen`}
+                        className="icon-button compact"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setCreatingChild({
+                            collectionId: collection.id,
+                            kind: "folder",
+                          });
+                        }}
+                        type="button"
+                      >
+                        <FolderPlus aria-hidden="true" size={14} />
+                      </button>
+                    </span>
+                  ) : null}
+                </div>
                 <div className="tree-children">
+                  {creatingChild?.collectionId === collection.id &&
+                  creatingChild.kind === "folder" ? (
+                    <FolderCreateForm
+                      collectionId={collection.id}
+                      onClose={() => setCreatingChild(undefined)}
+                      workspaceId={activeWorkspace.id}
+                    />
+                  ) : null}
+                  {creatingChild?.collectionId === collection.id &&
+                  creatingChild.kind === "request" ? (
+                    <RequestCreateForm
+                      collectionId={collection.id}
+                      onClose={() => setCreatingChild(undefined)}
+                      onCreated={setActiveRequestId}
+                      workspaceId={activeWorkspace.id}
+                    />
+                  ) : null}
                   {(foldersByParent.get(`collection:${collection.id}`) ?? []).map(
                     (folder) => (
                       <FolderTreeNode

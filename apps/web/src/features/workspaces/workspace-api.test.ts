@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createCollection,
+  createFolder,
+  createRequest,
   createWorkspace,
   fetchWorkspaces,
   fetchWorkspaceTree,
@@ -117,6 +119,69 @@ describe("workspace API client", () => {
         method: "POST",
         body: JSON.stringify({ name: "Customers" }),
       }),
+    );
+  });
+
+  it("creates folders and requests through authenticated workspace routes", async () => {
+    const workspaceId = "85e52968-22cc-483d-b6a6-bdc169e46ede";
+    const collectionId = "95da6097-0742-4164-9c9a-75dc64d2cd8f";
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "cc0814af-eeb4-45ad-8686-0784a67ea823",
+            workspaceId,
+            collectionId,
+            parentFolderId: null,
+            name: "Customers",
+            position: 0,
+          }),
+          { status: 201, headers: { "content-type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "fa7596b3-0041-4fe8-9ddf-956e7a107014",
+            workspaceId,
+            collectionId,
+            folderId: null,
+            name: "List customers",
+            method: "GET",
+            version: 1,
+          }),
+          { status: 201, headers: { "content-type": "application/json" } },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createFolder(
+      workspaceId,
+      { collectionId, parentFolderId: null, name: "Customers" },
+      "session-token",
+    );
+    await createRequest(
+      workspaceId,
+      {
+        collectionId,
+        folderId: null,
+        name: "List customers",
+        method: "GET",
+        url: "https://",
+      },
+      "session-token",
+    );
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      `/api/v1/workspaces/${workspaceId}/folders`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      `/api/v1/workspaces/${workspaceId}/requests`,
+      expect.objectContaining({ method: "POST" }),
     );
   });
 });

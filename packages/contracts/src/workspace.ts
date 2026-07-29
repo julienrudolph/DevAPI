@@ -16,6 +16,20 @@ export const createCollectionSchema = z.object({
   name: z.string().trim().min(1).max(160),
 });
 
+export const createFolderSchema = z.object({
+  collectionId: z.string().uuid(),
+  parentFolderId: z.string().uuid().nullable().default(null),
+  name: z.string().trim().min(1).max(160),
+});
+
+export const createRequestSummarySchema = z.object({
+  collectionId: z.string().uuid(),
+  folderId: z.string().uuid().nullable().default(null),
+  name: z.string().trim().min(1).max(160),
+  method: httpMethodSchema.default("GET"),
+  url: z.string().trim().min(1).max(8_192).default("https://"),
+});
+
 export const workspaceSummarySchema = z.object({
   id: z.string().uuid(),
   teamId: z.string().uuid(),
@@ -60,6 +74,8 @@ export const workspaceTreeSchema = z.object({
 export type WorkspaceSummary = z.infer<typeof workspaceSummarySchema>;
 export type CreateWorkspace = z.infer<typeof createWorkspaceSchema>;
 export type CreateCollection = z.infer<typeof createCollectionSchema>;
+export type CreateFolder = z.infer<typeof createFolderSchema>;
+export type CreateRequestSummary = z.infer<typeof createRequestSummarySchema>;
 export type CollectionSummary = z.infer<typeof collectionSummarySchema>;
 export type FolderSummary = z.infer<typeof folderSummarySchema>;
 export type RequestSummary = z.infer<typeof requestSummarySchema>;

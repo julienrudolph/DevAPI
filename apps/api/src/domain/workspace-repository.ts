@@ -1,7 +1,11 @@
 import type {
   CollectionSummary,
   CreateCollection,
+  CreateFolder,
+  CreateRequestSummary,
   CreateWorkspace,
+  FolderSummary,
+  RequestSummary,
   WorkspaceSummary,
   WorkspaceTree,
 } from "@api-client/contracts";
@@ -25,6 +29,18 @@ export interface CreateCollectionCommand
   workspaceId: string;
 }
 
+export interface CreateFolderCommand
+  extends AuthenticatedRepositoryCommand,
+    CreateFolder {
+  workspaceId: string;
+}
+
+export interface CreateRequestCommand
+  extends AuthenticatedRepositoryCommand,
+    CreateRequestSummary {
+  workspaceId: string;
+}
+
 export interface WorkspaceRepository {
   list(command: AuthenticatedRepositoryCommand): Promise<WorkspaceSummary[]>;
   getTree(command: WorkspaceTreeCommand): Promise<WorkspaceTree | null>;
@@ -32,4 +48,6 @@ export interface WorkspaceRepository {
   createCollection(
     command: CreateCollectionCommand,
   ): Promise<CollectionSummary | null>;
+  createFolder(command: CreateFolderCommand): Promise<FolderSummary | null>;
+  createRequest(command: CreateRequestCommand): Promise<RequestSummary | null>;
 }

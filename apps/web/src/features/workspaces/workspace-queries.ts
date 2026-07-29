@@ -4,6 +4,8 @@ import type { WorkspaceSummary } from "@api-client/contracts";
 import { useAuth } from "../auth/auth-context";
 import {
   createCollection,
+  createFolder,
+  createRequest,
   createWorkspace,
   fetchWorkspaces,
   fetchWorkspaceTree,
@@ -48,6 +50,34 @@ export function useCreateCollection(workspaceId: string) {
   return useMutation({
     mutationFn: (input: Parameters<typeof createCollection>[1]) =>
       createCollection(workspaceId, input, accessToken!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceKeys.tree(workspaceId),
+      });
+    },
+  });
+}
+
+export function useCreateFolder(workspaceId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Parameters<typeof createFolder>[1]) =>
+      createFolder(workspaceId, input, accessToken!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceKeys.tree(workspaceId),
+      });
+    },
+  });
+}
+
+export function useCreateRequest(workspaceId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Parameters<typeof createRequest>[1]) =>
+      createRequest(workspaceId, input, accessToken!),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: workspaceKeys.tree(workspaceId),

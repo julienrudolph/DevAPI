@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createRequestSummarySchema,
   createWorkspaceSchema,
   workspaceTreeSchema,
 } from "./workspace.js";
@@ -42,5 +43,20 @@ describe("createWorkspaceSchema", () => {
         workspaceName: "API",
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("createRequestSummarySchema", () => {
+  it("applies safe defaults to a newly created request", () => {
+    expect(
+      createRequestSummarySchema.parse({
+        collectionId: "95da6097-0742-4164-9c9a-75dc64d2cd8f",
+        name: "List customers",
+      }),
+    ).toMatchObject({
+      folderId: null,
+      method: "GET",
+      url: "https://",
+    });
   });
 });

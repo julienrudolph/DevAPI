@@ -38,6 +38,8 @@ const workspaceRepository: WorkspaceRepository = {
     throw new Error("not used");
   },
   createCollection: async () => null,
+  createFolder: async () => null,
+  createRequest: async () => null,
 };
 
 describe("request API authentication", () => {
