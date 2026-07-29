@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { canEdit, requestDraftSchema } from "./index.js";
+import {
+  canEdit,
+  requestAuthSchema,
+  requestDraftSchema,
+} from "./index.js";
 
 describe("requestDraftSchema", () => {
   it("accepts a minimal REST request", () => {
@@ -40,6 +44,32 @@ describe("requestDraftSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("requestAuthSchema", () => {
+  it("validates local Basic and Bearer credentials without adding them to drafts", () => {
+    expect(
+      requestAuthSchema.safeParse({
+        type: "bearer",
+        token: "token",
+      }).success,
+    ).toBe(true);
+    expect(
+      requestAuthSchema.safeParse({
+        type: "basic",
+        username: "user",
+        password: "password",
+      }).success,
+    ).toBe(true);
+    expect("auth" in requestDraftSchema.parse({
+      name: "Health",
+      method: "GET",
+      url: "https://example.test",
+      queryParams: [],
+      headers: [],
+      body: { type: "none" },
+    })).toBe(false);
   });
 });
 

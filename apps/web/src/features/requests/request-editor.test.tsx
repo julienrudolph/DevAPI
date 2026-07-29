@@ -236,4 +236,46 @@ describe("RequestEditor", () => {
     ).toBeInTheDocument();
     expect(mutateAsync).not.toHaveBeenCalled();
   });
+
+  it("keeps bearer credentials local and uses them only for execution", async () => {
+    const user = userEvent.setup();
+    executeAsync.mockResolvedValue({
+      status: 200,
+      statusText: "OK",
+      headers: {},
+      body: "",
+      durationMs: 10,
+    });
+    render(
+      <RequestEditor
+        requestId={request.id}
+        workspaceId={request.workspaceId}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("tab", { name: "Authentifizierung" }),
+    );
+    await user.selectOptions(
+      screen.getByLabelText("Authentifizierung"),
+      "bearer",
+    );
+    await user.type(screen.getByLabelText("Bearer Token"), "local-secret");
+
+    const form = screen.getByLabelText("Request-URL").closest("form")!;
+    const executeButton = document.createElement("button");
+    executeButton.type = "submit";
+    executeButton.value = "execute";
+    form.append(executeButton);
+    await user.click(executeButton);
+
+    await waitFor(() =>
+      expect(executeAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          auth: { type: "bearer", token: "local-secret" },
+        }),
+      ),
+    );
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
 });

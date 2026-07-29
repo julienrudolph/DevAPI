@@ -37,7 +37,7 @@ export function useUpdateRequest(workspaceId: string, requestId: string) {
 export function useExecuteRequest() {
   const { accessToken } = useAuth();
   return useMutation({
-    mutationFn: (draft: Parameters<typeof executeRequest>[0]) =>
-      executeRequest(draft, accessToken!),
+    mutationFn: (input: Parameters<typeof executeRequest>[0]) =>
+      executeRequest(input, accessToken!),
   });
 }

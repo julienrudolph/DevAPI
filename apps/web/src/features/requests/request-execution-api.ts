@@ -1,7 +1,9 @@
 import {
   executeRequestSchema,
   proxyResponseSchema,
+  requestAuthSchema,
   type ProxyResponse,
+  type RequestAuth,
   type RequestDraft,
 } from "@api-client/contracts";
 import { z } from "zod";
@@ -18,9 +20,11 @@ export class RequestExecutionError extends Error {
 }
 
 export async function executeRequest(
-  draft: RequestDraft,
+  input: { request: RequestDraft; auth: RequestAuth },
   accessToken: string,
 ): Promise<ProxyResponse> {
+  const draft = input.request;
+  const auth = requestAuthSchema.parse(input.auth);
   const response = await fetch("/api/v1/execute", {
     method: "POST",
     headers: {
@@ -31,7 +35,7 @@ export async function executeRequest(
       executeRequestSchema.parse({
         method: draft.method,
         url: withQueryParams(draft.url, draft.queryParams),
-        headers: draft.headers.filter((header) => header.enabled),
+        headers: executionHeaders(draft.headers, auth),
         body: draft.body.type === "none" ? undefined : draft.body.content,
       }),
     ),
@@ -47,6 +51,37 @@ export async function executeRequest(
     );
   }
   return proxyResponseSchema.parse(body);
+}
+
+function executionHeaders(
+  headers: RequestDraft["headers"],
+  auth: RequestAuth,
+): RequestDraft["headers"] {
+  const withoutAuthorization = headers.filter(
+    (header) =>
+      header.enabled && header.key.toLowerCase() !== "authorization",
+  );
+  if (auth.type === "none") return withoutAuthorization;
+  const value =
+    auth.type === "bearer"
+      ? `Bearer ${auth.token}`
+      : `Basic ${encodeBasicCredentials(auth.username, auth.password)}`;
+  return [
+    ...withoutAuthorization,
+    {
+      id: crypto.randomUUID(),
+      key: "Authorization",
+      value,
+      enabled: true,
+    },
+  ];
+}
+
+function encodeBasicCredentials(username: string, password: string): string {
+  const bytes = new TextEncoder().encode(`${username}:${password}`);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
 }
 
 function withQueryParams(

@@ -39,6 +39,19 @@ export const requestBodySchema = z.discriminatedUnion("type", [
   }
 });
 
+export const requestAuthSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("none") }),
+  z.object({
+    type: z.literal("bearer"),
+    token: z.string().max(8_192),
+  }),
+  z.object({
+    type: z.literal("basic"),
+    username: z.string().max(1_024),
+    password: z.string().max(8_192),
+  }),
+]);
+
 export const requestDraftSchema = z.object({
   name: z.string().trim().min(1).max(160),
   method: httpMethodSchema,
@@ -71,4 +84,5 @@ export const requestIdParamsSchema = z.object({
 
 export type ApiRequest = z.infer<typeof apiRequestSchema>;
 export type RequestDraft = z.infer<typeof requestDraftSchema>;
+export type RequestAuth = z.infer<typeof requestAuthSchema>;
 export type UpdateRequest = z.infer<typeof updateRequestSchema>;

@@ -628,6 +628,37 @@ h1 {
   justify-content: center;
 }
 
+.auth-editor {
+  display: grid;
+  gap: 12px;
+  max-width: 560px;
+}
+
+.auth-editor label {
+  display: grid;
+  font-size: 12px;
+  font-weight: 650;
+  gap: 6px;
+}
+
+.auth-editor input,
+.auth-editor select {
+  border: 1px solid #cfd7d0;
+  border-radius: 7px;
+  height: 38px;
+  padding: 0 10px;
+}
+
+.security-hint {
+  background: #f3f6f3;
+  border-radius: 8px;
+  color: #5f6a62;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 2px 0 0;
+  padding: 10px 12px;
+}
+
 .empty-panel {
   color: #778179;
   padding: 30px 4px;

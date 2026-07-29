@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   type ApiRequest,
   type RequestConflict,
+  type RequestAuth,
   type RequestDraft,
   requestDraftSchema,
 } from "@api-client/contracts";
@@ -77,6 +78,7 @@ function LoadedRequestEditor({
   readOnly: boolean;
 }) {
   const [activeTab, setActiveTab] = useState("params");
+  const [auth, setAuth] = useState<RequestAuth>({ type: "none" });
   const [conflict, setConflict] = useState<RequestConflict>();
   const [baseVersion, setBaseVersion] = useState(request.version);
   const mutation = useUpdateRequest(workspaceId, request.id);
@@ -145,7 +147,9 @@ function LoadedRequestEditor({
             intent instanceof HTMLButtonElement &&
             intent.value === "execute"
           ) {
-            await execution.mutateAsync(draft).catch(() => undefined);
+            await execution
+              .mutateAsync({ request: draft, auth })
+              .catch(() => undefined);
             return;
           }
           await save(draft);
@@ -296,8 +300,73 @@ function LoadedRequestEditor({
             </div>
           ) : null}
           {activeTab === "auth" ? (
-            <div className="empty-panel">
-              Keine Authentifizierung ausgewählt.
+            <div className="auth-editor">
+              <label>
+                Authentifizierung
+                <select
+                  onChange={(event) => {
+                    const type = event.target.value;
+                    setAuth(
+                      type === "bearer"
+                        ? { type: "bearer", token: "" }
+                        : type === "basic"
+                          ? { type: "basic", username: "", password: "" }
+                          : { type: "none" },
+                    );
+                  }}
+                  value={auth.type}
+                >
+                  <option value="none">Keine</option>
+                  <option value="bearer">Bearer Token</option>
+                  <option value="basic">Basic Auth</option>
+                </select>
+              </label>
+              {auth.type === "bearer" ? (
+                <label>
+                  Token
+                  <input
+                    aria-label="Bearer Token"
+                    autoComplete="off"
+                    onChange={(event) =>
+                      setAuth({ type: "bearer", token: event.target.value })
+                    }
+                    type="password"
+                    value={auth.token}
+                  />
+                </label>
+              ) : null}
+              {auth.type === "basic" ? (
+                <>
+                  <label>
+                    Benutzername
+                    <input
+                      aria-label="Basic Benutzername"
+                      autoComplete="username"
+                      onChange={(event) =>
+                        setAuth({ ...auth, username: event.target.value })
+                      }
+                      value={auth.username}
+                    />
+                  </label>
+                  <label>
+                    Passwort
+                    <input
+                      aria-label="Basic Passwort"
+                      autoComplete="current-password"
+                      onChange={(event) =>
+                        setAuth({ ...auth, password: event.target.value })
+                      }
+                      type="password"
+                      value={auth.password}
+                    />
+                  </label>
+                </>
+              ) : null}
+              <p className="security-hint">
+                Zugangsdaten gelten nur für diesen geöffneten Editor. Sie
+                werden nicht im Workspace, in Revisionen oder im Browser-Cache
+                gespeichert.
+              </p>
             </div>
           ) : null}
         </div>
