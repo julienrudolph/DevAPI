@@ -4,11 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RequestEditor } from "./request-editor";
 import { RequestConflictError } from "./request-api";
-import { useRequest, useUpdateRequest } from "./request-queries";
+import {
+  useExecuteRequest,
+  useRequest,
+  useUpdateRequest,
+} from "./request-queries";
 
 vi.mock("./request-queries", () => ({
   useRequest: vi.fn(),
   useUpdateRequest: vi.fn(),
+  useExecuteRequest: vi.fn(),
 }));
 
 const request = {
@@ -30,9 +35,11 @@ const request = {
 };
 
 const mutateAsync = vi.fn();
+const executeAsync = vi.fn();
 
 beforeEach(() => {
   mutateAsync.mockReset();
+  executeAsync.mockReset();
   vi.mocked(useRequest).mockReturnValue({
     data: request,
     isPending: false,
@@ -42,6 +49,12 @@ beforeEach(() => {
     mutateAsync,
     isPending: false,
   } as unknown as ReturnType<typeof useUpdateRequest>);
+  vi.mocked(useExecuteRequest).mockReturnValue({
+    mutateAsync: executeAsync,
+    isPending: false,
+    isError: false,
+    data: undefined,
+  } as unknown as ReturnType<typeof useExecuteRequest>);
 });
 afterEach(cleanup);
 
@@ -123,5 +136,31 @@ describe("RequestEditor", () => {
     expect(
       screen.getByText("https://team.example.com/customers"),
     ).toBeInTheDocument();
+  });
+
+  it("renders the real proxy response", () => {
+    vi.mocked(useExecuteRequest).mockReturnValue({
+      mutateAsync: executeAsync,
+      isPending: false,
+      isError: false,
+      data: {
+        status: 201,
+        statusText: "Created",
+        headers: { "content-type": "application/json" },
+        body: '{"id":"cus_123"}',
+        durationMs: 37,
+      },
+    } as unknown as ReturnType<typeof useExecuteRequest>);
+
+    render(
+      <RequestEditor
+        requestId={request.id}
+        workspaceId={request.workspaceId}
+      />,
+    );
+
+    expect(screen.getByText("201 Created")).toBeInTheDocument();
+    expect(screen.getByText("37 ms")).toBeInTheDocument();
+    expect(screen.getByText(/cus_123/)).toBeInTheDocument();
   });
 });

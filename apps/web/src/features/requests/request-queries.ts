@@ -4,6 +4,7 @@ import type { UpdateRequest } from "@api-client/contracts";
 import { useAuth } from "../auth/auth-context";
 import { workspaceKeys } from "../workspaces/workspace-queries";
 import { fetchRequest, updateRequest } from "./request-api";
+import { executeRequest } from "./request-execution-api";
 
 export const requestKeys = {
   detail: (requestId: string) => ["requests", requestId] as const,
@@ -30,5 +31,13 @@ export function useUpdateRequest(workspaceId: string, requestId: string) {
         queryKey: workspaceKeys.tree(workspaceId),
       });
     },
+  });
+}
+
+export function useExecuteRequest() {
+  const { accessToken } = useAuth();
+  return useMutation({
+    mutationFn: (draft: Parameters<typeof executeRequest>[0]) =>
+      executeRequest(draft, accessToken!),
   });
 }

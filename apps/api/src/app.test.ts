@@ -44,6 +44,39 @@ const workspaceRepository: WorkspaceRepository = {
 };
 
 describe("request API authentication", () => {
+  it("executes requests only after validating the user session", async () => {
+    const app = buildApp({
+      authenticate: async () => ({
+        id: userId,
+        accessToken: "verified-token",
+      }),
+      requests: repository,
+      workspaces: workspaceRepository,
+      executor: {
+        execute: async () => ({
+          status: 200,
+          statusText: "OK",
+          headers: { "content-type": "application/json" },
+          body: '{"ok":true}',
+          durationMs: 18,
+        }),
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/execute",
+      headers: { authorization: "Bearer verified-token" },
+      payload: {
+        method: "GET",
+        url: "https://api.example.com/health",
+        headers: [],
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ status: 200, durationMs: 18 });
+    await app.close();
+  });
+
   it("loads a visible request through the verified session", async () => {
     const app = buildApp({
       authenticate: async () => ({

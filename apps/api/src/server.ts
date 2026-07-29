@@ -3,6 +3,7 @@ import { buildApp } from "./app.js";
 import { readApiConfig } from "./config.js";
 import { SupabaseRequestRepository } from "./infrastructure/supabase-request-repository.js";
 import { SupabaseWorkspaceRepository } from "./infrastructure/supabase-workspace-repository.js";
+import { HttpRequestExecutor } from "./infrastructure/http-request-executor.js";
 
 const config = readApiConfig();
 const app = buildApp({
@@ -17,6 +18,10 @@ const app = buildApp({
   workspaces: new SupabaseWorkspaceRepository(
     config.SUPABASE_URL,
     config.SUPABASE_PUBLISHABLE_KEY,
+  ),
+  executor: new HttpRequestExecutor(
+    config.PROXY_INTERNAL_URL,
+    config.PROXY_INTERNAL_TOKEN,
   ),
 });
 

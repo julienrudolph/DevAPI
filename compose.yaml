@@ -10,6 +10,11 @@ services:
       API_PORT: 3001
       SUPABASE_URL: ${SUPABASE_INTERNAL_URL}
       SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+      PROXY_INTERNAL_URL: http://proxy:3002
+      PROXY_INTERNAL_TOKEN: ${PROXY_INTERNAL_TOKEN}
+    depends_on:
+      proxy:
+        condition: service_healthy
     healthcheck:
       test:
         [

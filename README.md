@@ -27,7 +27,8 @@ npm run dev:api
 npm run dev:proxy
 ```
 
-Für die API werden `SUPABASE_URL` und `SUPABASE_PUBLISHABLE_KEY` benötigt.
+Für die API werden `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`,
+`PROXY_INTERNAL_URL` und derselbe `PROXY_INTERNAL_TOKEN` benötigt.
 Die API verwendet bewusst keinen Service-Role-Schlüssel: Sie validiert den
 Supabase-Bearer-Token und führt Datenbankoperationen mit der jeweiligen
 Benutzersitzung aus, damit RLS durchgesetzt wird.

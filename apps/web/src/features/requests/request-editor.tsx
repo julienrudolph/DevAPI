@@ -9,7 +9,11 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { RequestConflictError } from "./request-api";
-import { useRequest, useUpdateRequest } from "./request-queries";
+import {
+  useExecuteRequest,
+  useRequest,
+  useUpdateRequest,
+} from "./request-queries";
 
 interface RequestEditorProps {
   requestId: string;
@@ -62,10 +66,10 @@ function LoadedRequestEditor({
   readOnly: boolean;
 }) {
   const [activeTab, setActiveTab] = useState("params");
-  const [responseVisible, setResponseVisible] = useState(false);
   const [conflict, setConflict] = useState<RequestConflict>();
   const [baseVersion, setBaseVersion] = useState(request.version);
   const mutation = useUpdateRequest(workspaceId, request.id);
+  const execution = useExecuteRequest();
   const {
     handleSubmit,
     register,
@@ -126,7 +130,7 @@ function LoadedRequestEditor({
             intent instanceof HTMLButtonElement &&
             intent.value === "execute"
           ) {
-            setResponseVisible(true);
+            await execution.mutateAsync(draft).catch(() => undefined);
             return;
           }
           await save(draft);
@@ -217,13 +221,42 @@ function LoadedRequestEditor({
         <section className="response-panel" aria-live="polite">
           <div className="response-heading">
             <h2>Response</h2>
-            {responseVisible ? <span className="status-ok">Bereit</span> : null}
+            {execution.data ? (
+              <div className="response-meta">
+                <span
+                  className={
+                    execution.data.status < 400 ? "status-ok" : "status-error"
+                  }
+                >
+                  {execution.data.status} {execution.data.statusText}
+                </span>
+                <span>{execution.data.durationMs} ms</span>
+              </div>
+            ) : null}
           </div>
-          <div className="response-empty">
-            {responseVisible
-              ? "Die Proxy-Ausführung wird als nächster Schritt mit dem Editor verbunden."
-              : "Sende den Request, um die Response hier zu sehen."}
-          </div>
+          {execution.isPending ? (
+            <div className="response-empty">Request wird ausgeführt …</div>
+          ) : execution.isError ? (
+            <div className="response-error" role="alert">
+              {execution.error.message}
+            </div>
+          ) : execution.data ? (
+            <div className="response-result">
+              <details>
+                <summary>Response-Header</summary>
+                <pre>
+                  {Object.entries(execution.data.headers)
+                    .map(([name, value]) => `${name}: ${value}`)
+                    .join("\n")}
+                </pre>
+              </details>
+              <pre>{formatResponseBody(execution.data.body)}</pre>
+            </div>
+          ) : (
+            <div className="response-empty">
+              Sende den Request, um die Response hier zu sehen.
+            </div>
+          )}
         </section>
       </form>
 
@@ -283,6 +316,14 @@ function LoadedRequestEditor({
       ) : null}
     </>
   );
+}
+
+function formatResponseBody(body: string): string {
+  try {
+    return JSON.stringify(JSON.parse(body), null, 2);
+  } catch {
+    return body;
+  }
 }
 
 function toDraft(request: ApiRequest): RequestDraft {

@@ -3,6 +3,7 @@ import {
   createFolderSchema,
   createRequestSummarySchema,
   createWorkspaceSchema,
+  executeRequestSchema,
   requestIdParamsSchema,
   updateRequestSchema,
   workspaceIdParamsSchema,
@@ -14,18 +15,63 @@ import type {
   Authenticator,
 } from "./auth/authenticator.js";
 import type { RequestRepository } from "./domain/request-repository.js";
+import {
+  RequestExecutionError,
+  type RequestExecutor,
+} from "./domain/request-executor.js";
 import type { WorkspaceRepository } from "./domain/workspace-repository.js";
 
 export interface ApiDependencies {
   authenticate: Authenticator;
   requests: RequestRepository;
   workspaces: WorkspaceRepository;
+  executor?: RequestExecutor;
 }
 
 export function buildApp(dependencies: ApiDependencies) {
   const app = Fastify({ logger: false });
 
   app.get("/health", async () => ({ status: "ok" }));
+
+  app.post("/v1/execute", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const input = executeRequestSchema.safeParse(request.body);
+    if (!input.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.executor) {
+      return reply.code(503).send({ code: "PROXY_UNAVAILABLE" });
+    }
+    try {
+      return reply.code(200).send(
+        await dependencies.executor.execute(input.data),
+      );
+    } catch (error) {
+      if (error instanceof RequestExecutionError) {
+        return reply.code(error.status).send({
+          code: error.code,
+          message: error.message,
+        });
+      }
+      return reply.code(502).send({
+        code: "PROXY_REQUEST_FAILED",
+        message: "Der Request konnte nicht sicher ausgeführt werden.",
+      });
+    }
+  });
 
   app.get("/v1/workspaces", async (request, reply) => {
     const user = await authenticateSafely(
