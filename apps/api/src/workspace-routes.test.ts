@@ -192,6 +192,7 @@ describe("workspace routes", () => {
         list: async () => [environment],
         create: async () => null,
         createVariable: async () => ({ kind: "forbidden" }),
+        updateVariable: async () => ({ kind: "forbidden" }),
       },
     });
     const response = await app.inject({
@@ -201,6 +202,43 @@ describe("workspace routes", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual([environment]);
+    await app.close();
+  });
+
+  it("maps stale environment variable writes to HTTP 409", async () => {
+    const variable = {
+      id: "8f48a4d0-05e0-4cd2-bdbc-35c0a19a8bd8",
+      environmentId: "a768f717-d11f-4ce0-a72b-8e1d439222b0",
+      key: "baseUrl",
+      value: "https://new.example.com",
+      scope: "shared" as const,
+      version: 2,
+    };
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: requestRepository,
+      workspaces: emptyWorkspaceRepository,
+      environments: {
+        list: async () => [],
+        create: async () => null,
+        createVariable: async () => ({ kind: "forbidden" }),
+        updateVariable: async () => ({
+          kind: "conflict",
+          current: variable,
+        }),
+      },
+    });
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/v1/environment-variables/${variable.id}`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { value: "https://local.example.com", expectedVersion: 1 },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      currentVersion: 2,
+      current: variable,
+    });
     await app.close();
   });
 });

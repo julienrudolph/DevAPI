@@ -10,6 +10,8 @@ import type {
   CreateEnvironmentVariableCommand,
   CreateVariableResult,
   EnvironmentRepository,
+  UpdateEnvironmentVariableCommand,
+  UpdateVariableResult,
   WorkspaceEnvironmentCommand,
 } from "../domain/environment-repository.js";
 import { createUserSupabaseClient } from "./supabase-user-client.js";
@@ -146,6 +148,47 @@ export class SupabaseEnvironmentRepository
     }
     if (!data) return { kind: "forbidden" };
     return { kind: "created", variable: variableRowSchema.parse(data) };
+  }
+
+  async updateVariable(
+    command: UpdateEnvironmentVariableCommand,
+  ): Promise<UpdateVariableResult> {
+    const client = this.client(command.accessToken);
+    const { data, error } = await client
+      .from("environment_variables")
+      .update({
+        value: command.value,
+        version: command.expectedVersion + 1,
+        updated_by: command.userId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", command.variableId)
+      .eq("version", command.expectedVersion)
+      .select("id, environment_id, key, value, scope, version")
+      .maybeSingle();
+    if (!error && data) {
+      return { kind: "updated", variable: variableRowSchema.parse(data) };
+    }
+    if (error && error.code !== "42501") {
+      throw new Error("ENVIRONMENT_VARIABLE_UPDATE_FAILED", {
+        cause: error,
+      });
+    }
+    const current = await client
+      .from("environment_variables")
+      .select("id, environment_id, key, value, scope, version")
+      .eq("id", command.variableId)
+      .maybeSingle();
+    if (current.error) {
+      throw new Error("ENVIRONMENT_VARIABLE_READ_FAILED", {
+        cause: current.error,
+      });
+    }
+    if (!current.data) return { kind: "not-found" };
+    const variable = variableRowSchema.parse(current.data);
+    return variable.version === command.expectedVersion
+      ? { kind: "forbidden" }
+      : { kind: "conflict", current: variable };
   }
 
   private client(accessToken: string) {

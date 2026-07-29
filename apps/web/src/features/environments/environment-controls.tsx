@@ -3,6 +3,8 @@ import {
   createEnvironmentSchema,
   upsertEnvironmentVariableSchema,
   type CreateEnvironment,
+  type Environment,
+  type EnvironmentVariable,
   type UpsertEnvironmentVariable,
 } from "@api-client/contracts";
 import { Plus, Settings2 } from "lucide-react";
@@ -10,9 +12,13 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import {
+  EnvironmentVariableConflictError,
+} from "./environment-api";
+import {
   useCreateEnvironment,
   useCreateEnvironmentVariable,
   useEnvironments,
+  useUpdateEnvironmentVariable,
 } from "./environment-queries";
 
 interface EnvironmentControlsProps {
@@ -85,7 +91,7 @@ export function EnvironmentControls({
       {mode === "variable" && selected ? (
         <VariableCreatePopover
           canEditShared={canEditShared}
-          environmentId={selected.id}
+          environment={selected}
           onClose={() => setMode(undefined)}
           workspaceId={workspaceId}
         />
@@ -140,18 +146,18 @@ function EnvironmentCreatePopover({
 
 function VariableCreatePopover({
   canEditShared,
-  environmentId,
+  environment,
   onClose,
   workspaceId,
 }: {
   canEditShared: boolean;
-  environmentId: string;
+  environment: Environment;
   onClose: () => void;
   workspaceId: string;
 }) {
   const mutation = useCreateEnvironmentVariable(
     workspaceId,
-    environmentId,
+    environment.id,
   );
   const { handleSubmit, register, watch, formState } =
     useForm<UpsertEnvironmentVariable>({
@@ -172,6 +178,16 @@ function VariableCreatePopover({
       })}
     >
       <strong>Variable hinzufügen</strong>
+      <div className="environment-variable-list">
+        {environment.variables.map((variable) => (
+          <EnvironmentVariableRow
+            canEdit={variable.scope === "personal" || canEditShared}
+            key={variable.id}
+            variable={variable}
+            workspaceId={workspaceId}
+          />
+        ))}
+      </div>
       <input
         aria-label="Variablenname"
         placeholder="baseUrl"
@@ -201,6 +217,109 @@ function VariableCreatePopover({
         </p>
       ) : null}
     </form>
+  );
+}
+
+export function EnvironmentVariableRow({
+  canEdit,
+  variable,
+  workspaceId,
+}: {
+  canEdit: boolean;
+  variable: EnvironmentVariable;
+  workspaceId: string;
+}) {
+  const mutation = useUpdateEnvironmentVariable(workspaceId, variable.id);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(variable.value);
+  const [baseVersion, setBaseVersion] = useState(variable.version);
+  const conflict =
+    mutation.error instanceof EnvironmentVariableConflictError
+      ? mutation.error.conflict
+      : undefined;
+
+  if (!editing) {
+    return (
+      <div className="environment-variable-row">
+        <span>
+          <strong>{variable.key}</strong>
+          <small>
+            {variable.scope === "personal" ? "Nur für mich" : "Teamwert"} ·
+            Version {variable.version}
+          </small>
+        </span>
+        <code>{variable.scope === "personal" ? "••••••••" : variable.value}</code>
+        {canEdit ? (
+          <button
+            className="button secondary"
+            onClick={() => setEditing(true)}
+            type="button"
+          >
+            Bearbeiten
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  const expectedVersion = conflict?.currentVersion ?? baseVersion;
+  return (
+    <div className="environment-variable-edit">
+      <strong>{variable.key}</strong>
+      <input
+        aria-label={`${variable.key} bearbeiten`}
+        autoFocus
+        onChange={(event) => setValue(event.target.value)}
+        type={variable.scope === "personal" ? "password" : "text"}
+        value={value}
+      />
+      {conflict ? (
+        <p className="field-error">
+          Die Variable ist inzwischen Version {conflict.currentVersion}. Dein
+          eingegebener Wert bleibt erhalten.
+        </p>
+      ) : null}
+      <div className="dialog-actions">
+        {conflict ? (
+          <button
+            className="button secondary"
+            onClick={() => {
+              setValue(conflict.current.value);
+              setBaseVersion(conflict.currentVersion);
+              mutation.reset();
+            }}
+            type="button"
+          >
+            Aktuellen Wert übernehmen
+          </button>
+        ) : null}
+        <button
+          className="button secondary"
+          onClick={() => {
+            setValue(variable.value);
+            setBaseVersion(variable.version);
+            mutation.reset();
+            setEditing(false);
+          }}
+          type="button"
+        >
+          Abbrechen
+        </button>
+        <button
+          className="button primary"
+          disabled={mutation.isPending}
+          onClick={async () => {
+            await mutation
+              .mutateAsync({ value, expectedVersion })
+              .then(() => setEditing(false))
+              .catch(() => undefined);
+          }}
+          type="button"
+        >
+          {conflict ? "Meinen Wert speichern" : "Speichern"}
+        </button>
+      </div>
+    </div>
   );
 }
 

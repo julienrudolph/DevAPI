@@ -686,8 +686,54 @@ h1 {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  width: 320px;
+  width: min(480px, calc(100vw - 32px));
   z-index: 20;
+}
+
+.environment-variable-list {
+  display: grid;
+  gap: 6px;
+  max-height: 230px;
+  overflow: auto;
+}
+
+.environment-variable-row {
+  align-items: center;
+  background: #f5f7f5;
+  border-radius: 7px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(100px, 1fr) minmax(100px, 1fr) auto;
+  padding: 8px;
+}
+
+.environment-variable-row span {
+  display: grid;
+  min-width: 0;
+}
+
+.environment-variable-row small {
+  color: #68736a;
+  font-size: 10px;
+}
+
+.environment-variable-row code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.environment-variable-row .button {
+  height: 30px;
+  padding: 0 8px;
+}
+
+.environment-variable-edit {
+  background: #f5f7f5;
+  border-radius: 7px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
 }
 
 .environment-popover input,

@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createEnvironmentVariable,
+  EnvironmentVariableConflictError,
   fetchEnvironments,
+  updateEnvironmentVariable,
 } from "./environment-api";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -66,5 +68,39 @@ describe("environment API client", () => {
         }),
       }),
     );
+  });
+
+  it("maps stale variable updates to a typed conflict", async () => {
+    const variableId = "8f48a4d0-05e0-4cd2-bdbc-35c0a19a8bd8";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            code: "ENVIRONMENT_VARIABLE_VERSION_CONFLICT",
+            message: "Die Variable wurde zwischenzeitlich geändert.",
+            expectedVersion: 1,
+            currentVersion: 2,
+            current: {
+              id: variableId,
+              environmentId: "a768f717-d11f-4ce0-a72b-8e1d439222b0",
+              key: "baseUrl",
+              value: "https://new.example.com",
+              scope: "shared",
+              version: 2,
+            },
+          }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        ),
+      ),
+    );
+
+    await expect(
+      updateEnvironmentVariable(
+        variableId,
+        { value: "https://local.example.com", expectedVersion: 1 },
+        "session-token",
+      ),
+    ).rejects.toBeInstanceOf(EnvironmentVariableConflictError);
   });
 });

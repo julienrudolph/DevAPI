@@ -5,6 +5,7 @@ import {
   createEnvironment,
   createEnvironmentVariable,
   fetchEnvironments,
+  updateEnvironmentVariable,
 } from "./environment-api";
 
 export const environmentKeys = {
@@ -44,6 +45,23 @@ export function useCreateEnvironmentVariable(
   return useMutation({
     mutationFn: (input: Parameters<typeof createEnvironmentVariable>[1]) =>
       createEnvironmentVariable(environmentId, input, accessToken!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: environmentKeys.list(workspaceId),
+      });
+    },
+  });
+}
+
+export function useUpdateEnvironmentVariable(
+  workspaceId: string,
+  variableId: string,
+) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Parameters<typeof updateEnvironmentVariable>[1]) =>
+      updateEnvironmentVariable(variableId, input, accessToken!),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: environmentKeys.list(workspaceId),

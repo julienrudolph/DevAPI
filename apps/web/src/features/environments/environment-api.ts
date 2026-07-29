@@ -1,14 +1,24 @@
 import {
   createEnvironmentSchema,
   environmentSchema,
+  environmentVariableConflictSchema,
   environmentVariableSchema,
+  updateEnvironmentVariableSchema,
   upsertEnvironmentVariableSchema,
   type CreateEnvironment,
   type Environment,
   type EnvironmentVariable,
+  type EnvironmentVariableConflict,
+  type UpdateEnvironmentVariable,
   type UpsertEnvironmentVariable,
 } from "@api-client/contracts";
 import { z } from "zod";
+
+export class EnvironmentVariableConflictError extends Error {
+  constructor(readonly conflict: EnvironmentVariableConflict) {
+    super("ENVIRONMENT_VARIABLE_VERSION_CONFLICT");
+  }
+}
 
 export async function fetchEnvironments(
   workspaceId: string,
@@ -60,6 +70,33 @@ export async function createEnvironmentVariable(
   );
   if (!response.ok) {
     throw new Error(`ENVIRONMENT_VARIABLE_CREATE_${response.status}`);
+  }
+  return environmentVariableSchema.parse(await response.json());
+}
+
+export async function updateEnvironmentVariable(
+  variableId: string,
+  input: UpdateEnvironmentVariable,
+  accessToken: string,
+): Promise<EnvironmentVariable> {
+  const response = await fetch(
+    `/api/v1/environment-variables/${variableId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updateEnvironmentVariableSchema.parse(input)),
+    },
+  );
+  if (response.status === 409) {
+    throw new EnvironmentVariableConflictError(
+      environmentVariableConflictSchema.parse(await response.json()),
+    );
+  }
+  if (!response.ok) {
+    throw new Error(`ENVIRONMENT_VARIABLE_UPDATE_${response.status}`);
   }
   return environmentVariableSchema.parse(await response.json());
 }

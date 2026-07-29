@@ -4,6 +4,10 @@ export const environmentIdParamsSchema = z.object({
   environmentId: z.string().uuid(),
 });
 
+export const environmentVariableIdParamsSchema = z.object({
+  variableId: z.string().uuid(),
+});
+
 export const createEnvironmentSchema = z.object({
   name: z.string().trim().min(1).max(160),
 });
@@ -26,6 +30,11 @@ export const upsertEnvironmentVariableSchema = z.object({
   scope: variableScopeSchema,
 });
 
+export const updateEnvironmentVariableSchema = z.object({
+  value: z.string().max(32_768),
+  expectedVersion: z.number().int().positive(),
+});
+
 export const environmentVariableSchema = z.object({
   id: z.string().uuid(),
   environmentId: z.string().uuid(),
@@ -43,11 +52,25 @@ export const environmentSchema = z.object({
   variables: z.array(environmentVariableSchema),
 });
 
+export const environmentVariableConflictSchema = z.object({
+  code: z.literal("ENVIRONMENT_VARIABLE_VERSION_CONFLICT"),
+  message: z.string(),
+  expectedVersion: z.number().int().positive(),
+  currentVersion: z.number().int().positive(),
+  current: environmentVariableSchema,
+});
+
 export type CreateEnvironment = z.infer<typeof createEnvironmentSchema>;
 export type Environment = z.infer<typeof environmentSchema>;
 export type EnvironmentVariable = z.infer<
   typeof environmentVariableSchema
 >;
+export type EnvironmentVariableConflict = z.infer<
+  typeof environmentVariableConflictSchema
+>;
 export type UpsertEnvironmentVariable = z.infer<
   typeof upsertEnvironmentVariableSchema
+>;
+export type UpdateEnvironmentVariable = z.infer<
+  typeof updateEnvironmentVariableSchema
 >;

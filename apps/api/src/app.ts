@@ -6,8 +6,10 @@ import {
   createWorkspaceSchema,
   executeRequestSchema,
   environmentIdParamsSchema,
+  environmentVariableIdParamsSchema,
   requestIdParamsSchema,
   updateRequestSchema,
+  updateEnvironmentVariableSchema,
   upsertEnvironmentVariableSchema,
   workspaceIdParamsSchema,
 } from "@api-client/contracts";
@@ -154,6 +156,64 @@ export function buildApp(dependencies: ApiDependencies) {
         return reply
           .code(500)
           .send({ code: "ENVIRONMENT_VARIABLE_CREATE_FAILED" });
+      }
+    },
+  );
+
+  app.patch(
+    "/v1/environment-variables/:variableId",
+    async (request, reply) => {
+      const user = await authenticateSafely(
+        dependencies.authenticate,
+        request.headers.authorization,
+      );
+      if (user.kind !== "authenticated") {
+        return reply
+          .code(user.kind === "unavailable" ? 503 : 401)
+          .send({
+            code:
+              user.kind === "unavailable"
+                ? "AUTHENTICATION_UNAVAILABLE"
+                : "UNAUTHORIZED",
+          });
+      }
+      const params = environmentVariableIdParamsSchema.safeParse(
+        request.params,
+      );
+      const body = updateEnvironmentVariableSchema.safeParse(request.body);
+      if (!params.success || !body.success) {
+        return reply.code(400).send({ code: "INVALID_REQUEST" });
+      }
+      if (!dependencies.environments) {
+        return reply.code(503).send({ code: "ENVIRONMENTS_UNAVAILABLE" });
+      }
+      try {
+        const result = await dependencies.environments.updateVariable({
+          variableId: params.data.variableId,
+          userId: user.user.id,
+          accessToken: user.user.accessToken,
+          ...body.data,
+        });
+        if (result.kind === "forbidden") {
+          return reply.code(403).send({ code: "FORBIDDEN" });
+        }
+        if (result.kind === "not-found") {
+          return reply.code(404).send({ code: "NOT_FOUND" });
+        }
+        if (result.kind === "conflict") {
+          return reply.code(409).send({
+            code: "ENVIRONMENT_VARIABLE_VERSION_CONFLICT",
+            message: "Die Variable wurde zwischenzeitlich geändert.",
+            expectedVersion: body.data.expectedVersion,
+            currentVersion: result.current.version,
+            current: result.current,
+          });
+        }
+        return reply.code(200).send(result.variable);
+      } catch {
+        return reply
+          .code(500)
+          .send({ code: "ENVIRONMENT_VARIABLE_UPDATE_FAILED" });
       }
     },
   );
