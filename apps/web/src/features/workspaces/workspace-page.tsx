@@ -11,11 +11,13 @@ import {
   Plus,
   Save,
   Send,
+  UserPlus,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { RequestEditor } from "../requests/request-editor";
+import { InvitationDialog } from "../invitations/invitation-dialog";
 import { EnvironmentControls } from "../environments/environment-controls";
 import { useEnvironments } from "../environments/environment-queries";
 import { CollectionCreateForm } from "./collection-create-form";
@@ -44,6 +46,7 @@ export function WorkspacePage() {
   const [editorDirty, setEditorDirty] = useState(false);
   const [selectedEnvironmentId, setSelectedEnvironmentId] =
     useState<string>();
+  const [inviting, setInviting] = useState(false);
   const [creatingCollection, setCreatingCollection] = useState(false);
   const [creatingChild, setCreatingChild] = useState<{
     collectionId: string;
@@ -307,6 +310,16 @@ export function WorkspacePage() {
                 <h1>{activeRequest.name}</h1>
               </div>
               <div className="toolbar-actions">
+                {activeWorkspace.role === "owner" ? (
+                  <button
+                    className="button secondary"
+                    onClick={() => setInviting(true)}
+                    type="button"
+                  >
+                    <UserPlus aria-hidden="true" size={16} />
+                    Einladen
+                  </button>
+                ) : null}
                 <EnvironmentControls
                   canEditShared={canEdit}
                   onSelect={setSelectedEnvironmentId}
@@ -357,6 +370,12 @@ export function WorkspacePage() {
           </div>
         )}
       </section>
+      {inviting ? (
+        <InvitationDialog
+          onClose={() => setInviting(false)}
+          teamId={activeWorkspace.teamId}
+        />
+      ) : null}
     </div>
   );
 }

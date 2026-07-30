@@ -1,15 +1,18 @@
 import {
   createCollectionSchema,
   createFolderSchema,
+  createTeamInvitationSchema,
   createEnvironmentSchema,
   createRequestSummarySchema,
   createWorkspaceSchema,
   executeRequestSchema,
   environmentIdParamsSchema,
   environmentVariableIdParamsSchema,
+  acceptTeamInvitationSchema,
   requestIdParamsSchema,
   updateRequestSchema,
   updateEnvironmentVariableSchema,
+  teamIdParamsSchema,
   upsertEnvironmentVariableSchema,
   workspaceIdParamsSchema,
 } from "@api-client/contracts";
@@ -20,6 +23,7 @@ import type {
   Authenticator,
 } from "./auth/authenticator.js";
 import type { EnvironmentRepository } from "./domain/environment-repository.js";
+import type { InvitationRepository } from "./domain/invitation-repository.js";
 import {
   RequestExecutionError,
   type RequestExecutor,
@@ -33,12 +37,87 @@ export interface ApiDependencies {
   workspaces: WorkspaceRepository;
   executor?: RequestExecutor;
   environments?: EnvironmentRepository;
+  invitations?: InvitationRepository;
 }
 
 export function buildApp(dependencies: ApiDependencies) {
   const app = Fastify({ logger: false });
 
   app.get("/health", async () => ({ status: "ok" }));
+
+  app.post("/v1/teams/:teamId/invitations", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const params = teamIdParamsSchema.safeParse(request.params);
+    const body = createTeamInvitationSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.invitations) {
+      return reply.code(503).send({ code: "INVITATIONS_UNAVAILABLE" });
+    }
+    try {
+      const invitation = await dependencies.invitations.create({
+        teamId: params.data.teamId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+        ...body.data,
+      });
+      return invitation
+        ? reply.code(201).send(invitation)
+        : reply.code(403).send({ code: "FORBIDDEN" });
+    } catch {
+      return reply.code(500).send({ code: "INVITATION_CREATE_FAILED" });
+    }
+  });
+
+  app.post("/v1/invitations/accept", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const body = acceptTeamInvitationSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.invitations) {
+      return reply.code(503).send({ code: "INVITATIONS_UNAVAILABLE" });
+    }
+    try {
+      const teamId = await dependencies.invitations.accept({
+        token: body.data.token,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return teamId
+        ? reply.code(200).send({ teamId })
+        : reply.code(404).send({ code: "INVITATION_NOT_FOUND" });
+    } catch {
+      return reply.code(500).send({ code: "INVITATION_ACCEPT_FAILED" });
+    }
+  });
 
   app.get("/v1/workspaces/:workspaceId/environments", async (request, reply) => {
     const user = await authenticateSafely(

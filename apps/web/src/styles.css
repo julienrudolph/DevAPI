@@ -972,3 +972,24 @@ a:focus-visible {
   margin: 18px 0 0 !important;
   padding: 11px 12px;
 }
+.invitation-role {
+  display: grid;
+  gap: 0.5rem;
+  margin-block: 1.25rem;
+}
+
+.invitation-role select,
+.invitation-link {
+  min-height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.55rem 0.75rem;
+}
+
+.invitation-link {
+  width: 100%;
+  margin-block: 1rem;
+  font-family: var(--font-mono);
+}

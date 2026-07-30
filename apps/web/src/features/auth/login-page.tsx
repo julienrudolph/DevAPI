@@ -21,15 +21,16 @@ export function LoginPage() {
   const { formState, handleSubmit, register } = useForm<EmailLogin>({
     resolver: zodResolver(emailLoginSchema),
   });
+  const from =
+    typeof location.state === "object" &&
+    location.state !== null &&
+    "from" in location.state &&
+    typeof location.state.from === "string"
+      ? location.state.from
+      : "/";
+  const redirectTo = new URL(from, window.location.origin).toString();
 
   if (user) {
-    const from =
-      typeof location.state === "object" &&
-      location.state !== null &&
-      "from" in location.state &&
-      typeof location.state.from === "string"
-        ? location.state.from
-        : "/";
     return <Navigate replace to={from} />;
   }
 
@@ -38,7 +39,7 @@ export function LoginPage() {
     setSubmitting(true);
     const { error } = await client.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: redirectTo },
     });
     setSubmitting(false);
     setMessage(
@@ -56,7 +57,7 @@ export function LoginPage() {
     const provider = env.VITE_OIDC_PROVIDER as Provider;
     const { error } = await client.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo },
     });
     if (error) {
       setSubmitting(false);
