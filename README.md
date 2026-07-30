@@ -79,12 +79,246 @@ npm run compose:env
 npm run compose:up
 ```
 
-Ausführliche Hinweise für lokale Tests, Hosted Supabase und einen späteren
-Rollout stehen in `docs/docker.md`.
+Ausführliche Hinweise für lokale Tests stehen in `docs/docker.md`.
 
-Eine produktionsnahe Einzelserver-Installation mit HTTPS, privaten
-Dienstports und zur Laufzeit geladener Clientkonfiguration ist in
-`docs/production-deployment.md` beschrieben.
+## Auf einem Server deployen
+
+Der derzeit unterstützte Produktionsaufbau verwendet:
+
+- einen Linux-Server mit Docker Compose
+- eine Domain für DevAPI
+- Caddy für HTTPS
+- Hosted Supabase für Datenbank, Auth und PostgREST
+
+Der lokale Supabase-Stack aus `compose.local.yaml` ist nicht für einen
+öffentlichen Server gedacht. Er enthält unter anderem einen lokalen
+Mail-Capture-Dienst.
+
+### 1. Server und DNS vorbereiten
+
+Empfohlene Mindestgröße:
+
+```text
+2 CPU-Kerne
+4 GB RAM
+20 GB freier Speicher
+```
+
+Auf dem Server werden benötigt:
+
+```text
+Docker Engine
+Docker Compose Plugin
+Git
+optional Node.js >= 22.22 und npm >= 11
+```
+
+Für die gewünschte Domain, beispielsweise `devapi.example.de`, einen
+DNS-A-Record auf die öffentliche IPv4-Adresse des Servers setzen. Bei
+vorhandenem IPv6 zusätzlich einen AAAA-Record setzen.
+
+In der Firewall nur diese öffentlichen Ports für DevAPI freigeben:
+
+```text
+80/tcp
+443/tcp
+443/udp optional für HTTP/3
+```
+
+Die Ports von API, Proxy und Datenbank dürfen nicht öffentlich freigegeben
+werden.
+
+### 2. Projekt auf den Server übertragen
+
+Repository klonen oder den freigegebenen Quellstand auf den Server kopieren:
+
+```bash
+git clone <REPOSITORY-URL> devapi
+cd devapi
+```
+
+Für spätere Updates sollte der Server auf einem bekannten Commit oder Release
+stehen, nicht auf einem beliebigen Zwischenstand.
+
+### 3. Supabase vorbereiten
+
+Ein produktives Supabase-Projekt erstellen und anschließend:
+
+1. Alle Dateien aus `supabase/migrations` in aufsteigender
+   Dateinamen-Reihenfolge anwenden.
+2. Unter den Auth-URL-Einstellungen
+   `https://devapi.example.de` als Site URL hinterlegen.
+3. `https://devapi.example.de/auth/confirm` als erlaubte Redirect-URL
+   hinterlegen.
+4. Produktives SMTP für Magic Links und Einladungen konfigurieren.
+5. Optional den Custom-OIDC-Provider einrichten.
+6. Den öffentlichen Publishable Key notieren.
+
+OIDC-Client-Secret, Datenbankpasswort und Service-Role-Key gehören niemals in
+die Web- oder Desktop-Konfiguration.
+
+### 4. Produktionskonfiguration anlegen
+
+Vorlage kopieren:
+
+```bash
+cp .env.production.example .env.production
+```
+
+Einen sicheren internen Proxy-Token erzeugen:
+
+```bash
+openssl rand -hex 32
+```
+
+Danach `.env.production` bearbeiten:
+
+```text
+PUBLIC_HOST=devapi.example.de
+ACME_EMAIL=admin@example.de
+SITE_URL=https://devapi.example.de
+
+SUPABASE_PUBLIC_URL=https://PROJECT.supabase.co
+SUPABASE_INTERNAL_URL=https://PROJECT.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+
+PROXY_INTERNAL_TOKEN=<Ausgabe von openssl rand -hex 32>
+
+OIDC_PROVIDER=
+OIDC_LABEL=Mit Firmenkonto anmelden
+```
+
+`PUBLIC_HOST` enthält nur den Hostnamen und kein `https://`. Die Site- und
+Supabase-URLs enthalten dagegen das Protokoll.
+
+`.env.production` ist nicht für Git vorgesehen. Die Datei muss auf dem Server
+nur für den Betriebsbenutzer lesbar sein:
+
+```bash
+chmod 600 .env.production
+```
+
+### 5. Konfiguration prüfen
+
+Mit installiertem npm:
+
+```bash
+npm run compose:production:config
+```
+
+Alternativ nur mit Docker Compose:
+
+```bash
+docker compose \
+  --env-file .env.production \
+  -f compose.yaml \
+  -f compose.production.yaml \
+  config --quiet
+```
+
+Der Befehl darf keine Warnung über fehlende Variablen ausgeben.
+
+### 6. Anwendung starten
+
+Mit npm:
+
+```bash
+npm run compose:production:up
+```
+
+Oder direkt:
+
+```bash
+docker compose \
+  --env-file .env.production \
+  -f compose.yaml \
+  -f compose.production.yaml \
+  up -d --build --wait
+```
+
+Caddy fordert automatisch ein TLS-Zertifikat an. Dafür müssen DNS sowie Port
+80 und 443 bereits korrekt konfiguriert sein.
+
+### 7. Deployment prüfen
+
+Diese Adressen müssen ohne Zertifikatswarnung erreichbar sein:
+
+```text
+https://devapi.example.de/healthz
+https://devapi.example.de/api/health
+https://devapi.example.de/api/v1/config
+```
+
+Der Konfigurationsendpunkt darf nur öffentliche Werte liefern. Insbesondere
+dürfen dort weder `PROXY_INTERNAL_TOKEN` noch Datenbank- oder OIDC-Secrets
+erscheinen.
+
+Containerstatus prüfen:
+
+```bash
+docker compose \
+  --env-file .env.production \
+  -f compose.yaml \
+  -f compose.production.yaml \
+  ps
+```
+
+Logs ansehen:
+
+```bash
+docker compose \
+  --env-file .env.production \
+  -f compose.yaml \
+  -f compose.production.yaml \
+  logs --tail=200
+```
+
+Anschließend mindestens manuell testen:
+
+1. Magic-Link- oder OIDC-Anmeldung
+2. Workspace öffnen
+3. Request speichern
+4. Request ausführen
+5. Einladungsmail versenden
+6. Zugriff mit einem Nutzer aus einem anderen Team ablehnen
+
+### 8. Anwendung aktualisieren
+
+Vor einem Update zuerst ein Supabase-Datenbankbackup erstellen. Danach:
+
+```bash
+git pull --ff-only
+npm run compose:production:config
+npm run compose:production:up
+```
+
+Neue Migrationen müssen vor dem Start der davon abhängigen Anwendung in
+Staging geprüft und anschließend auf das Produktionsprojekt angewendet werden.
+
+### 9. Anwendung stoppen
+
+```bash
+npm run compose:production:down
+```
+
+Das entfernt die laufenden App-Container und Netzwerke, aber nicht automatisch
+die Caddy-Volumes. Fachliche Workspace-Daten liegen im konfigurierten
+Supabase-Projekt.
+
+### 10. Backups und Betrieb
+
+Für Hosted Supabase sollten automatische Backups aktiviert werden. Zusätzlich
+empfohlen:
+
+- tägliche Sicherung
+- 14 bis 30 Tage Aufbewahrung
+- verschlüsselte Kopie außerhalb des App-Servers
+- regelmäßiger Restore-Test
+- Überwachung von HTTPS, Container-Healthchecks und freiem Speicher
+- Log-Rotation mit begrenzter Aufbewahrung
+
+Die ausführliche Betriebs-, Sicherheits- und Rollback-Anleitung steht in
+[`docs/production-deployment.md`](docs/production-deployment.md).
 
 Das sichere Electron-Grundgerüst und der geplante Windows-Build sind in
 `docs/desktop.md` dokumentiert.
