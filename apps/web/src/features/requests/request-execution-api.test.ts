@@ -220,4 +220,98 @@ describe("request execution API", () => {
       ],
     });
   });
+
+  it("adds application/json for a JSON body when no content type is configured", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 200,
+          statusText: "OK",
+          headers: {},
+          body: "",
+          durationMs: 10,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await executeRequest(
+      {
+        requestId,
+        request: {
+          name: "Create message",
+          method: "POST",
+          url: "https://api.example.com/messages",
+          queryParams: [],
+          headers: [],
+          body: { type: "json", content: '{"message":"Hallo"}' },
+        },
+        auth: { type: "none" },
+        variables: [],
+      },
+      "session-token",
+    );
+
+    const options = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(options.body))).toMatchObject({
+      headers: [
+        expect.objectContaining({
+          key: "Content-Type",
+          value: "application/json",
+        }),
+      ],
+    });
+  });
+
+  it("preserves an explicitly configured content type", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 200,
+          statusText: "OK",
+          headers: {},
+          body: "",
+          durationMs: 10,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await executeRequest(
+      {
+        requestId,
+        request: {
+          name: "Create message",
+          method: "POST",
+          url: "https://api.example.com/messages",
+          queryParams: [],
+          headers: [
+            {
+              id: "b1eab850-761b-4530-9c4c-ee22c42d39bb",
+              key: "content-type",
+              value: "application/vnd.api+json",
+              enabled: true,
+            },
+          ],
+          body: { type: "json", content: '{"message":"Hallo"}' },
+        },
+        auth: { type: "none" },
+        variables: [],
+      },
+      "session-token",
+    );
+
+    const options = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const payload = JSON.parse(String(options.body)) as {
+      headers: Array<{ key: string; value: string }>;
+    };
+    expect(payload.headers).toEqual([
+      expect.objectContaining({
+        key: "content-type",
+        value: "application/vnd.api+json",
+      }),
+    ]);
+  });
 });

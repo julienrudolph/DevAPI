@@ -58,6 +58,7 @@ export async function executeRequest(
             value: resolveVariables(header.value, input.variables),
           })),
           auth,
+          draft.body.type,
         ),
         body:
           draft.body.type === "none"
@@ -82,11 +83,28 @@ export async function executeRequest(
 function executionHeaders(
   headers: RequestDraft["headers"],
   auth: RequestAuth,
+  bodyType: RequestDraft["body"]["type"],
 ): RequestDraft["headers"] {
   const enabledHeaders = headers.filter((header) => header.enabled);
-  if (auth.type === "none") return enabledHeaders;
+  const withDefaultContentType =
+    bodyType === "json" &&
+    !enabledHeaders.some(
+      (header) => header.key.trim().toLowerCase() === "content-type",
+    )
+      ? [
+          ...enabledHeaders,
+          {
+            id: crypto.randomUUID(),
+            key: "Content-Type",
+            value: "application/json",
+            enabled: true,
+          },
+        ]
+      : enabledHeaders;
 
-  const withoutAuthorization = enabledHeaders.filter(
+  if (auth.type === "none") return withDefaultContentType;
+
+  const withoutAuthorization = withDefaultContentType.filter(
     (header) =>
       header.key.trim().toLowerCase() !== "authorization",
   );
