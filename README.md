@@ -86,4 +86,7 @@ Eine produktionsnahe Einzelserver-Installation mit HTTPS, privaten
 Dienstports und zur Laufzeit geladener Clientkonfiguration ist in
 `docs/production-deployment.md` beschrieben.
 
+Das sichere Electron-Grundgerüst und der geplante Windows-Build sind in
+`docs/desktop.md` dokumentiert.
+
 Die verbindlichen Produkt- und Entwicklungsregeln stehen in `AGENTS.md`.

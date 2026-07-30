@@ -1401,6 +1401,14 @@ a:focus-visible {
   width: 100%;
 }
 
+.desktop-server-card > input {
+  border: 1px solid #cfd7d0;
+  border-radius: 8px;
+  font-size: 14px;
+  height: 42px;
+  padding: 0 11px;
+}
+
 .login-card > h1 {
   font-size: 25px;
   margin-top: 18px;

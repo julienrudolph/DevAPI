@@ -7,6 +7,7 @@ import { Navigate, useLocation } from "react-router";
 import { z } from "zod";
 
 import { useAuth } from "./auth-context";
+import { DesktopServerSetup } from "./desktop-server-setup";
 
 const emailLoginSchema = z.object({
   email: z.string().trim().email("Bitte gib eine gültige E-Mail-Adresse ein."),
@@ -32,6 +33,9 @@ export function LoginPage() {
 
   if (user) {
     return <Navigate replace to={from} />;
+  }
+  if (configurationError) {
+    return <DesktopServerSetup />;
   }
 
   async function signInWithEmail({ email }: EmailLogin) {

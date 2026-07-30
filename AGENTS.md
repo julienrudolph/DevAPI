@@ -73,7 +73,7 @@ Folgende Funktionen gehören ausdrücklich nicht zum MVP:
 - Git-Synchronisierung
 - Plugin-System
 - CLI
-- Desktop-App oder lokaler Agent
+- lokaler Agent
 - Offline-Modus
 - vollständiges Vault- oder Secret-Management
 - SSO, SCIM und andere Enterprise-Identitätsfunktionen
@@ -81,6 +81,11 @@ Folgende Funktionen gehören ausdrücklich nicht zum MVP:
 - öffentliches Teilen ohne Authentifizierung
 
 Neue Funktionen aus dieser Liste benötigen eine bewusste Scope-Entscheidung und dürfen nicht nebenbei eingeführt werden.
+
+Die Electron-Desktop-App wurde als bewusste Scope-Erweiterung freigegeben. Ihre
+erste Stufe ist ausschließlich ein installierbarer Client für den zentralen
+DevAPI-Server. Eine lokale Request-Ausführung gegen `localhost` oder private
+Netze bleibt eine getrennte, sicherheitskritische Folgeentscheidung.
 
 ## 5. Verbindlicher Technologie-Stack
 

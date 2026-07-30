@@ -1,20 +1,14 @@
 import { Navigate, Outlet, useLocation } from "react-router";
 
 import { useAuth } from "./auth-context";
+import { DesktopServerSetup } from "./desktop-server-setup";
 
 export function ProtectedRoute() {
   const { configurationError, loading, user } = useAuth();
   const location = useLocation();
 
   if (configurationError) {
-    return (
-      <main className="centered-state">
-        <h1>Authentifizierung nicht konfiguriert</h1>
-        <p>
-          Hinterlege die öffentlichen Supabase-Werte aus <code>.env.example</code>.
-        </p>
-      </main>
-    );
+    return <DesktopServerSetup />;
   }
   if (loading) {
     return <main className="centered-state">Sitzung wird geprüft …</main>;
