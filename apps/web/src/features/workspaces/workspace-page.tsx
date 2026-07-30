@@ -9,6 +9,7 @@ import {
   FilePlus2,
   FolderClosed,
   FolderPlus,
+  MoreHorizontal,
   Plus,
   Save,
   Send,
@@ -16,7 +17,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { RequestEditor } from "../requests/request-editor";
@@ -36,6 +37,58 @@ import {
   useWorkspaceTree,
 } from "./workspace-queries";
 
+interface PersistedTabs {
+  activeRequestId?: string;
+  openRequestIds: string[];
+}
+
+function tabStorageKey(workspaceId: string): string {
+  return `devapi:workspace-tabs:${workspaceId}`;
+}
+
+function readPersistedTabs(
+  workspaceId: string,
+  availableRequestIds: Set<string>,
+): PersistedTabs | undefined {
+  try {
+    const stored = localStorage.getItem(tabStorageKey(workspaceId));
+    if (stored === null) return undefined;
+    const parsed: unknown = JSON.parse(stored);
+    if (!parsed || typeof parsed !== "object") return undefined;
+    const candidate = parsed as Record<string, unknown>;
+    if (!Array.isArray(candidate.openRequestIds)) return undefined;
+    const openRequestIds = Array.isArray(candidate.openRequestIds)
+      ? candidate.openRequestIds.filter(
+          (id): id is string =>
+            typeof id === "string" && availableRequestIds.has(id),
+        )
+      : [];
+    const activeRequestId =
+      typeof candidate.activeRequestId === "string" &&
+      openRequestIds.includes(candidate.activeRequestId)
+        ? candidate.activeRequestId
+        : openRequestIds[0];
+    return { activeRequestId, openRequestIds: [...new Set(openRequestIds)] };
+  } catch {
+    return undefined;
+  }
+}
+
+export function reorderRequestIds(
+  requestIds: string[],
+  draggedId: string,
+  targetId: string,
+): string[] {
+  if (draggedId === targetId) return requestIds;
+  const draggedIndex = requestIds.indexOf(draggedId);
+  const targetIndex = requestIds.indexOf(targetId);
+  if (draggedIndex < 0 || targetIndex < 0) return requestIds;
+  const next = [...requestIds];
+  const [dragged] = next.splice(draggedIndex, 1);
+  next.splice(targetIndex, 0, dragged!);
+  return next;
+}
+
 export function WorkspacePage() {
   const { workspaceId: routeWorkspaceId } = useParams();
   const navigate = useNavigate();
@@ -54,6 +107,10 @@ export function WorkspacePage() {
   );
   const [collapsedCollectionIds, setCollapsedCollectionIds] =
     useState<Set<string>>(() => new Set());
+  const [collapsedFolderIds, setCollapsedFolderIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [restoredWorkspaceId, setRestoredWorkspaceId] = useState<string>();
   const [selectedEnvironmentId, setSelectedEnvironmentId] =
     useState<string>();
   const [inviting, setInviting] = useState(false);
@@ -64,13 +121,13 @@ export function WorkspacePage() {
     collectionId: string;
     kind: "folder" | "request";
   }>();
-  const initializedWorkspaceId = useRef<string | undefined>(undefined);
-
   useEffect(() => {
     setActiveRequestId(undefined);
     setOpenRequestIds([]);
     setDirtyRequestIds(new Set());
     setCollapsedCollectionIds(new Set());
+    setCollapsedFolderIds(new Set());
+    setRestoredWorkspaceId(undefined);
     setSelectedEnvironmentId(undefined);
   }, [activeWorkspace?.id]);
 
@@ -82,28 +139,28 @@ export function WorkspacePage() {
   }
 
   function closeRequest(requestId: string) {
-    if (
-      dirtyRequestIds.has(requestId) &&
-      !window.confirm(
-        "Dieser Request enthält ungespeicherte Änderungen. Möchtest du den Tab wirklich schließen?",
-      )
-    ) {
-      return;
-    }
+    closeRequests(
+      [requestId],
+      "Dieser Request enthält ungespeicherte Änderungen. Möchtest du den Tab wirklich schließen?",
+    );
+  }
 
+  function closeRequests(requestIds: string[], dirtyConfirmation: string) {
+    const closingIds = new Set(requestIds);
+    const closesDirtyRequest = requestIds.some((id) =>
+      dirtyRequestIds.has(id),
+    );
+    if (closesDirtyRequest && !window.confirm(dirtyConfirmation)) return;
     setDirtyRequestIds((current) => {
-      if (!current.has(requestId)) return current;
+      if (![...closingIds].some((id) => current.has(id))) return current;
       const next = new Set(current);
-      next.delete(requestId);
+      for (const id of closingIds) next.delete(id);
       return next;
     });
     setOpenRequestIds((current) => {
-      const closingIndex = current.indexOf(requestId);
-      const next = current.filter((id) => id !== requestId);
-      if (activeRequestId === requestId) {
-        setActiveRequestId(
-          next[Math.min(Math.max(closingIndex, 0), next.length - 1)],
-        );
+      const next = current.filter((id) => !closingIds.has(id));
+      if (activeRequestId && closingIds.has(activeRequestId)) {
+        setActiveRequestId(next.at(-1));
       }
       return next;
     });
@@ -122,15 +179,41 @@ export function WorkspacePage() {
   useEffect(() => {
     if (
       activeWorkspace?.id &&
-      initializedWorkspaceId.current !== activeWorkspace.id &&
-      tree.data?.requests[0]
+      restoredWorkspaceId !== activeWorkspace.id &&
+      tree.data
     ) {
-      const firstRequestId = tree.data.requests[0].id;
-      initializedWorkspaceId.current = activeWorkspace.id;
-      setOpenRequestIds([firstRequestId]);
-      setActiveRequestId(firstRequestId);
+      const availableIds = new Set(
+        tree.data.requests.map((request) => request.id),
+      );
+      const persisted = readPersistedTabs(activeWorkspace.id, availableIds);
+      const initialIds =
+        persisted
+          ? persisted.openRequestIds
+          : tree.data.requests[0]
+            ? [tree.data.requests[0].id]
+            : [];
+      setOpenRequestIds(initialIds);
+      setActiveRequestId(persisted?.activeRequestId ?? initialIds[0]);
+      setRestoredWorkspaceId(activeWorkspace.id);
     }
-  }, [activeWorkspace?.id, tree.data]);
+  }, [activeWorkspace?.id, restoredWorkspaceId, tree.data]);
+
+  useEffect(() => {
+    if (
+      activeWorkspace?.id &&
+      restoredWorkspaceId === activeWorkspace.id
+    ) {
+      localStorage.setItem(
+        tabStorageKey(activeWorkspace.id),
+        JSON.stringify({ activeRequestId, openRequestIds }),
+      );
+    }
+  }, [
+    activeRequestId,
+    activeWorkspace?.id,
+    openRequestIds,
+    restoredWorkspaceId,
+  ]);
 
   const activeRequest = tree.data?.requests.find(
     ({ id }) => id === activeRequestId,
@@ -338,9 +421,18 @@ export function WorkspacePage() {
                     (folder) => (
                       <FolderTreeNode
                         activeRequestId={activeRequestId}
+                        collapsedFolderIds={collapsedFolderIds}
                         folder={folder}
                         foldersByParent={foldersByParent}
                         key={folder.id}
+                        onToggleFolder={(folderId) =>
+                          setCollapsedFolderIds((current) => {
+                            const next = new Set(current);
+                            if (next.has(folderId)) next.delete(folderId);
+                            else next.add(folderId);
+                            return next;
+                          })
+                        }
                         onSelectRequest={selectRequest}
                         requestsByFolder={requestsByFolder}
                       />
@@ -388,48 +480,113 @@ export function WorkspacePage() {
       <section className="request-workbench">
         {activeRequest ? (
           <>
-            <div
-              aria-label="Geöffnete Requests"
-              className="request-tabs"
-              role="tablist"
-            >
-              {openRequests.map((request) => (
-                <div
-                  className={`request-tab ${
-                    request.id === activeRequestId ? "active" : ""
-                  }`}
-                  key={request.id}
-                >
+            <div className="request-tabs-bar">
+              <div
+                aria-label="Geöffnete Requests"
+                className="request-tabs"
+                role="tablist"
+              >
+                {openRequests.map((request) => (
+                  <div
+                    className={`request-tab ${
+                      request.id === activeRequestId ? "active" : ""
+                    }`}
+                    draggable
+                    key={request.id}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", request.id);
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const draggedId =
+                        event.dataTransfer.getData("text/plain");
+                      setOpenRequestIds((current) =>
+                        reorderRequestIds(current, draggedId, request.id),
+                      );
+                    }}
+                  >
+                    <button
+                      aria-selected={request.id === activeRequestId}
+                      className="request-tab-select"
+                      onClick={() => setActiveRequestId(request.id)}
+                      onKeyDown={(event) => {
+                        if (!event.altKey) return;
+                        const currentIndex = openRequestIds.indexOf(request.id);
+                        const targetIndex =
+                          event.key === "ArrowLeft"
+                            ? currentIndex - 1
+                            : event.key === "ArrowRight"
+                              ? currentIndex + 1
+                              : currentIndex;
+                        const targetId = openRequestIds[targetIndex];
+                        if (!targetId || targetId === request.id) return;
+                        event.preventDefault();
+                        setOpenRequestIds((current) =>
+                          reorderRequestIds(current, request.id, targetId),
+                        );
+                      }}
+                      role="tab"
+                      title="Zum Sortieren ziehen oder Alt + Pfeiltaste verwenden"
+                      type="button"
+                    >
+                      <span
+                        className={`method method-${request.method.toLowerCase()}`}
+                      >
+                        {request.method}
+                      </span>
+                      <span>{request.name}</span>
+                      {dirtyRequestIds.has(request.id) ? (
+                        <span
+                          aria-label="Ungespeicherte Änderungen"
+                          className="dirty-indicator"
+                        />
+                      ) : null}
+                    </button>
+                    <button
+                      aria-label={`${request.name} schließen`}
+                      className="request-tab-close"
+                      onClick={() => closeRequest(request.id)}
+                      type="button"
+                    >
+                      <X aria-hidden="true" size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <details className="request-tab-menu">
+                <summary aria-label="Tab-Aktionen">
+                  <MoreHorizontal aria-hidden="true" size={16} />
+                </summary>
+                <div className="request-tab-menu-popover">
                   <button
-                    aria-selected={request.id === activeRequestId}
-                    className="request-tab-select"
-                    onClick={() => setActiveRequestId(request.id)}
-                    role="tab"
+                    disabled={openRequestIds.length <= 1}
+                    onClick={() =>
+                      closeRequests(
+                        openRequestIds.filter(
+                          (requestId) => requestId !== activeRequestId,
+                        ),
+                        "Andere Tabs enthalten ungespeicherte Änderungen. Möchtest du sie wirklich schließen?",
+                      )
+                    }
                     type="button"
                   >
-                    <span
-                      className={`method method-${request.method.toLowerCase()}`}
-                    >
-                      {request.method}
-                    </span>
-                    <span>{request.name}</span>
-                    {dirtyRequestIds.has(request.id) ? (
-                      <span
-                        aria-label="Ungespeicherte Änderungen"
-                        className="dirty-indicator"
-                      />
-                    ) : null}
+                    Andere Tabs schließen
                   </button>
                   <button
-                    aria-label={`${request.name} schließen`}
-                    className="request-tab-close"
-                    onClick={() => closeRequest(request.id)}
+                    onClick={() =>
+                      closeRequests(
+                        openRequestIds,
+                        "Offene Tabs enthalten ungespeicherte Änderungen. Möchtest du wirklich alle schließen?",
+                      )
+                    }
                     type="button"
                   >
-                    <X aria-hidden="true" size={13} />
+                    Alle Tabs schließen
                   </button>
                 </div>
-              ))}
+              </details>
             </div>
             <div className="request-toolbar">
               <div>
@@ -557,33 +714,52 @@ export function WorkspacePage() {
 
 interface FolderTreeNodeProps {
   activeRequestId: string | undefined;
+  collapsedFolderIds: Set<string>;
   folder: FolderSummary;
   foldersByParent: Map<string, FolderSummary[]>;
   requestsByFolder: Map<string, RequestSummary[]>;
   onSelectRequest: (requestId: string) => void;
+  onToggleFolder: (folderId: string) => void;
 }
 
 function FolderTreeNode({
   activeRequestId,
+  collapsedFolderIds,
   folder,
   foldersByParent,
   requestsByFolder,
   onSelectRequest,
+  onToggleFolder,
 }: FolderTreeNodeProps) {
+  const collapsed = collapsedFolderIds.has(folder.id);
   return (
     <div>
       <div className="tree-row nested-folder">
-        <FolderClosed aria-hidden="true" size={14} />
-        <span>{folder.name}</span>
+        <button
+          aria-expanded={!collapsed}
+          className="tree-toggle"
+          onClick={() => onToggleFolder(folder.id)}
+          type="button"
+        >
+          {collapsed ? (
+            <ChevronRight aria-hidden="true" size={14} />
+          ) : (
+            <ChevronDown aria-hidden="true" size={14} />
+          )}
+          <FolderClosed aria-hidden="true" size={14} />
+          <span>{folder.name}</span>
+        </button>
       </div>
-      <div className="tree-children">
+      <div className="tree-children" hidden={collapsed}>
         {(foldersByParent.get(folder.id) ?? []).map((child) => (
           <FolderTreeNode
             activeRequestId={activeRequestId}
+            collapsedFolderIds={collapsedFolderIds}
             folder={child}
             foldersByParent={foldersByParent}
             key={child.id}
             onSelectRequest={onSelectRequest}
+            onToggleFolder={onToggleFolder}
             requestsByFolder={requestsByFolder}
           />
         ))}

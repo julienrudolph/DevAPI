@@ -1,9 +1,17 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router";
 
-import { WorkspacePage } from "./workspace-page";
+import {
+  reorderRequestIds,
+  WorkspacePage,
+} from "./workspace-page";
 import {
   useWorkspaces,
   useWorkspaceTree,
@@ -56,10 +64,12 @@ vi.mock("./workspace-create-form", () => ({
 
 const workspaceId = "85e52968-22cc-483d-b6a6-bdc169e46ede";
 const collectionId = "95da6097-0742-4164-9c9a-75dc64d2cd8f";
+const folderId = "e8f8b5cb-9d47-4265-b34a-599ed8ea8b21";
 const firstRequestId = "fa7596b3-0041-4fe8-9ddf-956e7a107014";
 const secondRequestId = "a5acefdb-0b49-43d7-83dc-f3ec414aa501";
 
 beforeEach(() => {
+  localStorage.clear();
   vi.mocked(useWorkspaces).mockReturnValue({
     data: [
       {
@@ -84,7 +94,16 @@ beforeEach(() => {
           version: 1,
         },
       ],
-      folders: [],
+      folders: [
+        {
+          id: folderId,
+          workspaceId,
+          collectionId,
+          parentFolderId: null,
+          name: "Mutations",
+          position: 0,
+        },
+      ],
       requests: [
         {
           id: firstRequestId,
@@ -99,7 +118,7 @@ beforeEach(() => {
           id: secondRequestId,
           workspaceId,
           collectionId,
-          folderId: null,
+          folderId,
           name: "Create customer",
           method: "POST",
           version: 1,
@@ -145,6 +164,24 @@ describe("WorkspacePage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("collapses and expands nested folders", async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+
+    const toggle = screen.getByRole("button", { name: "Mutations" });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("button", { name: "POST Create customer" }),
+    ).toBeVisible();
+
+    await user.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByRole("button", { name: "POST Create customer" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps unsaved drafts mounted while switching request tabs", async () => {
     const user = userEvent.setup();
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
@@ -177,5 +214,73 @@ describe("WorkspacePage", () => {
     expect(
       screen.getByRole("tab", { name: /List customers/ }),
     ).toBeInTheDocument();
+  });
+
+  it("restores open tabs, their order and the active tab after reload", async () => {
+    const user = userEvent.setup();
+    const firstRender = renderWorkspace();
+
+    await user.click(
+      screen.getByRole("button", { name: "POST Create customer" }),
+    );
+    await waitFor(() =>
+      expect(localStorage.getItem(`devapi:workspace-tabs:${workspaceId}`))
+        .toContain(secondRequestId),
+    );
+    firstRender.unmount();
+
+    renderWorkspace();
+
+    expect(
+      await screen.findByRole("tab", { name: /Create customer/ }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
+  });
+
+  it("closes other tabs and all tabs through the tab actions", async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+
+    await user.click(
+      screen.getByRole("button", { name: "POST Create customer" }),
+    );
+    await user.click(screen.getByLabelText("Tab-Aktionen"));
+    await user.click(
+      screen.getByRole("button", { name: "Andere Tabs schließen" }),
+    );
+
+    expect(screen.getAllByRole("tab")).toHaveLength(1);
+    expect(
+      screen.getByRole("tab", { name: /Create customer/ }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Tab-Aktionen"));
+    await user.click(
+      screen.getByRole("button", { name: "Alle Tabs schließen" }),
+    );
+
+    expect(
+      screen.getByText("Kein Request ausgewählt"),
+    ).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(localStorage.getItem(`devapi:workspace-tabs:${workspaceId}`))
+        .toContain('"openRequestIds":[]'),
+    );
+    cleanup();
+    renderWorkspace();
+    expect(
+      await screen.findByText("Kein Request ausgewählt"),
+    ).toBeInTheDocument();
+  });
+
+  it("reorders request ids without dropping tabs", () => {
+    expect(
+      reorderRequestIds(
+        [firstRequestId, secondRequestId],
+        secondRequestId,
+        firstRequestId,
+      ),
+    ).toEqual([secondRequestId, firstRequestId]);
   });
 });
