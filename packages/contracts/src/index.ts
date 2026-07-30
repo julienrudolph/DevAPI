@@ -1,6 +1,7 @@
 export * from "./conflict.js";
 export * from "./environment.js";
 export * from "./invitation.js";
+export * from "./team-member.js";
 export * from "./proxy.js";
 export * from "./request.js";
 export * from "./role.js";

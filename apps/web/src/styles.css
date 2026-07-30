@@ -988,6 +988,86 @@ a:focus-visible {
   padding: 0.55rem 0.75rem;
 }
 
+.team-members-dialog {
+  width: min(38rem, calc(100vw - 2rem));
+}
+
+.team-members-heading,
+.team-member-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.team-members-heading p {
+  margin: 0.25rem 0 0;
+}
+
+.team-member-list {
+  display: grid;
+  gap: 0.4rem;
+  margin-block: 1.25rem;
+}
+
+.team-member-row {
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.65rem;
+}
+
+.member-avatar {
+  display: inline-grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #e6f1e9;
+  color: #286044;
+  font-weight: 700;
+}
+
+.member-identity {
+  display: grid;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.member-identity small {
+  overflow: hidden;
+  color: #69746c;
+  text-overflow: ellipsis;
+}
+
+.team-member-row select {
+  min-height: 2.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: var(--surface);
+  padding-inline: 0.55rem;
+}
+
+.role-badge {
+  border-radius: 999px;
+  background: #edf4ef;
+  color: #286044;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.3rem 0.6rem;
+}
+
+.icon-button.danger {
+  color: #a53b35;
+}
+
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+
 .invitation-link {
   width: 100%;
   margin-block: 1rem;

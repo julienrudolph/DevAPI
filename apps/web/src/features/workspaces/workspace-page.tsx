@@ -12,12 +12,14 @@ import {
   Save,
   Send,
   UserPlus,
+  Users,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { RequestEditor } from "../requests/request-editor";
 import { InvitationDialog } from "../invitations/invitation-dialog";
+import { TeamMembersDialog } from "../teams/team-members-dialog";
 import { EnvironmentControls } from "../environments/environment-controls";
 import { useEnvironments } from "../environments/environment-queries";
 import { CollectionCreateForm } from "./collection-create-form";
@@ -47,6 +49,7 @@ export function WorkspacePage() {
   const [selectedEnvironmentId, setSelectedEnvironmentId] =
     useState<string>();
   const [inviting, setInviting] = useState(false);
+  const [managingTeam, setManagingTeam] = useState(false);
   const [creatingCollection, setCreatingCollection] = useState(false);
   const [creatingChild, setCreatingChild] = useState<{
     collectionId: string;
@@ -311,14 +314,24 @@ export function WorkspacePage() {
               </div>
               <div className="toolbar-actions">
                 {activeWorkspace.role === "owner" ? (
-                  <button
-                    className="button secondary"
-                    onClick={() => setInviting(true)}
-                    type="button"
-                  >
-                    <UserPlus aria-hidden="true" size={16} />
-                    Einladen
-                  </button>
+                  <>
+                    <button
+                      className="button secondary"
+                      onClick={() => setManagingTeam(true)}
+                      type="button"
+                    >
+                      <Users aria-hidden="true" size={16} />
+                      Team
+                    </button>
+                    <button
+                      className="button secondary"
+                      onClick={() => setInviting(true)}
+                      type="button"
+                    >
+                      <UserPlus aria-hidden="true" size={16} />
+                      Einladen
+                    </button>
+                  </>
                 ) : null}
                 <EnvironmentControls
                   canEditShared={canEdit}
@@ -367,12 +380,38 @@ export function WorkspacePage() {
           <div className="centered-state workbench-empty">
             <h1>Kein Request ausgewählt</h1>
             <p>Wähle einen Request oder erstelle einen neuen.</p>
+            {activeWorkspace.role === "owner" ? (
+              <div className="empty-actions">
+                <button
+                  className="button secondary"
+                  onClick={() => setManagingTeam(true)}
+                  type="button"
+                >
+                  <Users aria-hidden="true" size={16} />
+                  Team verwalten
+                </button>
+                <button
+                  className="button secondary"
+                  onClick={() => setInviting(true)}
+                  type="button"
+                >
+                  <UserPlus aria-hidden="true" size={16} />
+                  Mitglied einladen
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
       </section>
       {inviting ? (
         <InvitationDialog
           onClose={() => setInviting(false)}
+          teamId={activeWorkspace.teamId}
+        />
+      ) : null}
+      {managingTeam ? (
+        <TeamMembersDialog
+          onClose={() => setManagingTeam(false)}
           teamId={activeWorkspace.teamId}
         />
       ) : null}

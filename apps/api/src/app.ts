@@ -1,18 +1,20 @@
 import {
+  acceptTeamInvitationSchema,
   createCollectionSchema,
-  createFolderSchema,
-  createTeamInvitationSchema,
   createEnvironmentSchema,
+  createFolderSchema,
   createRequestSummarySchema,
+  createTeamInvitationSchema,
   createWorkspaceSchema,
   executeRequestSchema,
   environmentIdParamsSchema,
   environmentVariableIdParamsSchema,
-  acceptTeamInvitationSchema,
   requestIdParamsSchema,
-  updateRequestSchema,
-  updateEnvironmentVariableSchema,
   teamIdParamsSchema,
+  teamMemberParamsSchema,
+  updateEnvironmentVariableSchema,
+  updateRequestSchema,
+  updateTeamMemberSchema,
   upsertEnvironmentVariableSchema,
   workspaceIdParamsSchema,
 } from "@api-client/contracts";
@@ -24,6 +26,7 @@ import type {
 } from "./auth/authenticator.js";
 import type { EnvironmentRepository } from "./domain/environment-repository.js";
 import type { InvitationRepository } from "./domain/invitation-repository.js";
+import type { TeamMemberRepository } from "./domain/team-member-repository.js";
 import {
   RequestExecutionError,
   type RequestExecutor,
@@ -38,6 +41,7 @@ export interface ApiDependencies {
   executor?: RequestExecutor;
   environments?: EnvironmentRepository;
   invitations?: InvitationRepository;
+  teamMembers?: TeamMemberRepository;
 }
 
 export function buildApp(dependencies: ApiDependencies) {
@@ -116,6 +120,114 @@ export function buildApp(dependencies: ApiDependencies) {
         : reply.code(404).send({ code: "INVITATION_NOT_FOUND" });
     } catch {
       return reply.code(500).send({ code: "INVITATION_ACCEPT_FAILED" });
+    }
+  });
+
+  app.get("/v1/teams/:teamId/members", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply.code(user.kind === "unavailable" ? 503 : 401).send({
+        code:
+          user.kind === "unavailable"
+            ? "AUTHENTICATION_UNAVAILABLE"
+            : "UNAUTHORIZED",
+      });
+    }
+    const params = teamIdParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.teamMembers) {
+      return reply.code(503).send({ code: "TEAM_MEMBERS_UNAVAILABLE" });
+    }
+    try {
+      const members = await dependencies.teamMembers.list({
+        teamId: params.data.teamId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return members
+        ? reply.code(200).send(members)
+        : reply.code(403).send({ code: "FORBIDDEN" });
+    } catch {
+      return reply.code(500).send({ code: "TEAM_MEMBERS_LIST_FAILED" });
+    }
+  });
+
+  app.patch("/v1/teams/:teamId/members/:userId", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply.code(user.kind === "unavailable" ? 503 : 401).send({
+        code:
+          user.kind === "unavailable"
+            ? "AUTHENTICATION_UNAVAILABLE"
+            : "UNAUTHORIZED",
+      });
+    }
+    const params = teamMemberParamsSchema.safeParse(request.params);
+    const body = updateTeamMemberSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.teamMembers) {
+      return reply.code(503).send({ code: "TEAM_MEMBERS_UNAVAILABLE" });
+    }
+    try {
+      const updated = await dependencies.teamMembers.update({
+        teamId: params.data.teamId,
+        targetUserId: params.data.userId,
+        role: body.data.role,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      if (updated === null) return reply.code(403).send({ code: "FORBIDDEN" });
+      return updated
+        ? reply.code(204).send()
+        : reply.code(404).send({ code: "TEAM_MEMBER_NOT_FOUND" });
+    } catch {
+      return reply.code(500).send({ code: "TEAM_MEMBER_UPDATE_FAILED" });
+    }
+  });
+
+  app.delete("/v1/teams/:teamId/members/:userId", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply.code(user.kind === "unavailable" ? 503 : 401).send({
+        code:
+          user.kind === "unavailable"
+            ? "AUTHENTICATION_UNAVAILABLE"
+            : "UNAUTHORIZED",
+      });
+    }
+    const params = teamMemberParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.teamMembers) {
+      return reply.code(503).send({ code: "TEAM_MEMBERS_UNAVAILABLE" });
+    }
+    try {
+      const removed = await dependencies.teamMembers.remove({
+        teamId: params.data.teamId,
+        targetUserId: params.data.userId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      if (removed === null) return reply.code(403).send({ code: "FORBIDDEN" });
+      return removed
+        ? reply.code(204).send()
+        : reply.code(404).send({ code: "TEAM_MEMBER_NOT_FOUND" });
+    } catch {
+      return reply.code(500).send({ code: "TEAM_MEMBER_REMOVE_FAILED" });
     }
   });
 
