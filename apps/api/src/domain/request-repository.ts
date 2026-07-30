@@ -1,6 +1,8 @@
 import type {
   ApiRequest,
+  RequestRevision,
   RequestDraft,
+  RestoreRequestRevision,
 } from "@api-client/contracts";
 
 import type { UpdateResult } from "./request-store.js";
@@ -21,5 +23,12 @@ export interface FindPersistedRequestCommand {
 
 export interface RequestRepository {
   find(command: FindPersistedRequestCommand): Promise<ApiRequest | null>;
+  listRevisions?(
+    command: FindPersistedRequestCommand,
+  ): Promise<RequestRevision[] | null>;
+  restore?(
+    command: FindPersistedRequestCommand &
+      RestoreRequestRevision & { userId: string },
+  ): Promise<UpdateResult>;
   update(command: UpdatePersistedRequestCommand): Promise<UpdateResult>;
 }

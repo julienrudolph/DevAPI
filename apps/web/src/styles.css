@@ -325,9 +325,62 @@ button {
 }
 
 .editor-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   color: #68736a;
   font-size: 12px;
   min-height: 20px;
+}
+
+.revision-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 0;
+  background: transparent;
+  color: #286044;
+  cursor: pointer;
+  font: inherit;
+}
+
+.revision-dialog {
+  width: min(44rem, calc(100vw - 2rem));
+}
+
+.revision-list {
+  display: grid;
+  gap: 0.4rem;
+  max-height: min(28rem, 55vh);
+  margin-block: 1.25rem;
+  overflow-y: auto;
+}
+
+.revision-row {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.revision-identity {
+  display: grid;
+  min-width: 0;
+}
+
+.revision-identity strong,
+.revision-identity small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.revision-identity small {
+  color: #69746c;
+  font-size: 0.75rem;
 }
 
 .modal-backdrop {

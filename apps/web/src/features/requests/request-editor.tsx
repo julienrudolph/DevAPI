@@ -7,7 +7,7 @@ import {
   type RequestDraft,
   requestDraftSchema,
 } from "@api-client/contracts";
-import { Minus, Plus } from "lucide-react";
+import { History, Minus, Plus } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Controller,
@@ -23,6 +23,7 @@ import {
   useRequest,
   useUpdateRequest,
 } from "./request-queries";
+import { RevisionDialog } from "../revisions/revision-dialog";
 
 const MonacoEditor = lazy(
   () => import("../../components/editors/monaco-editor"),
@@ -87,6 +88,7 @@ function LoadedRequestEditor({
   const [auth, setAuth] = useState<RequestAuth>({ type: "none" });
   const [conflict, setConflict] = useState<RequestConflict>();
   const [baseVersion, setBaseVersion] = useState(request.version);
+  const [showingRevisions, setShowingRevisions] = useState(false);
   const mutation = useUpdateRequest(workspaceId, request.id);
   const execution = useExecuteRequest(workspaceId);
   const {
@@ -166,14 +168,24 @@ function LoadedRequestEditor({
           await save(draft);
         })}
       >
-        <div className="editor-state" aria-live="polite">
-          {mutation.isPending
-            ? "Wird gespeichert …"
-            : conflict
-              ? "Konflikt erkannt"
-              : isDirty
-                ? "Ungespeicherte Änderungen"
-                : `Version ${baseVersion} gespeichert`}
+        <div className="editor-state">
+          <span aria-live="polite">
+            {mutation.isPending
+              ? "Wird gespeichert …"
+              : conflict
+                ? "Konflikt erkannt"
+                : isDirty
+                  ? "Ungespeicherte Änderungen"
+                  : `Version ${baseVersion} gespeichert`}
+          </span>
+          <button
+            className="revision-link"
+            onClick={() => setShowingRevisions(true)}
+            type="button"
+          >
+            <History aria-hidden="true" size={13} />
+            Versionen
+          </button>
         </div>
         <div className="url-bar">
           <select
@@ -477,6 +489,21 @@ function LoadedRequestEditor({
             </div>
           </section>
         </div>
+      ) : null}
+      {showingRevisions ? (
+        <RevisionDialog
+          canRestore={!readOnly}
+          currentVersion={baseVersion}
+          onClose={() => setShowingRevisions(false)}
+          onRestored={(restored) => {
+            reset(toDraft(restored));
+            setBaseVersion(restored.version);
+            setConflict(undefined);
+            setShowingRevisions(false);
+          }}
+          requestId={request.id}
+          workspaceId={workspaceId}
+        />
       ) : null}
     </>
   );

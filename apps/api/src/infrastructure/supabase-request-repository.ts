@@ -1,6 +1,8 @@
 import {
   apiRequestSchema,
   type ApiRequest,
+  requestRevisionsSchema,
+  type RequestRevision,
 } from "@api-client/contracts";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -50,6 +52,37 @@ const databaseRequestSchema = z
   }))
   .pipe(apiRequestSchema);
 
+const revisionRowsSchema = z
+  .array(
+    z.object({
+      id: z.string().uuid(),
+      request_id: z.string().uuid(),
+      version: z.number(),
+      name: z.string(),
+      method: z.string(),
+      change_type: z.string(),
+      created_by: z.string().uuid(),
+      created_by_name: z.string(),
+      created_at: z.string(),
+    }),
+  )
+  .transform((rows) =>
+    rows.map((row) => ({
+      id: row.id,
+      requestId: row.request_id,
+      version: row.version,
+      name: row.name,
+      method: row.method,
+      changeType: row.change_type,
+      createdBy: {
+        id: row.created_by,
+        displayName: row.created_by_name,
+      },
+      createdAt: row.created_at,
+    })),
+  )
+  .pipe(requestRevisionsSchema);
+
 export class SupabaseRequestRepository implements RequestRepository {
   constructor(
     private readonly supabaseUrl: string,
@@ -58,6 +91,55 @@ export class SupabaseRequestRepository implements RequestRepository {
 
   async find(command: FindPersistedRequestCommand): Promise<ApiRequest | null> {
     return this.findVisibleRequest(command.requestId, command.accessToken);
+  }
+
+  async listRevisions(
+    command: FindPersistedRequestCommand,
+  ): Promise<RequestRevision[] | null> {
+    const client = createUserSupabaseClient(
+      this.supabaseUrl,
+      this.publishableKey,
+      command.accessToken,
+    );
+    const { data, error } = await client.rpc("list_request_revisions", {
+      p_request_id: command.requestId,
+    });
+    if (error) {
+      if (isPermissionDenied(error)) return null;
+      throw new Error("REQUEST_REVISIONS_READ_FAILED", { cause: error });
+    }
+    const revisions = revisionRowsSchema.parse(data);
+    if (revisions.length === 0) {
+      const request = await this.findVisibleRequest(
+        command.requestId,
+        command.accessToken,
+      );
+      if (!request) return null;
+    }
+    return revisions;
+  }
+
+  async restore(
+    command: FindPersistedRequestCommand & {
+      revisionId: string;
+      expectedVersion: number;
+      userId: string;
+    },
+  ): Promise<UpdateResult> {
+    const client = createUserSupabaseClient(
+      this.supabaseUrl,
+      this.publishableKey,
+      command.accessToken,
+    );
+    const { data, error } = await client.rpc("restore_request_revision", {
+      p_request_id: command.requestId,
+      p_revision_id: command.revisionId,
+      p_expected_version: command.expectedVersion,
+    });
+    if (!error) {
+      return { kind: "updated", request: parseDatabaseRequest(data) };
+    }
+    return this.mapWriteError(error, command);
   }
 
   async update(
@@ -81,6 +163,13 @@ export class SupabaseRequestRepository implements RequestRepository {
         request: parseDatabaseRequest(data),
       };
     }
+    return this.mapWriteError(error, command);
+  }
+
+  private async mapWriteError(
+    error: PostgrestError,
+    command: FindPersistedRequestCommand & { expectedVersion: number },
+  ): Promise<UpdateResult> {
     if (isConflict(error)) {
       const current = await this.findVisibleRequest(
         command.requestId,

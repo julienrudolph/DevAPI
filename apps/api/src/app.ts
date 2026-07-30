@@ -11,6 +11,7 @@ import {
   environmentIdParamsSchema,
   environmentVariableIdParamsSchema,
   requestIdParamsSchema,
+  restoreRequestRevisionSchema,
   teamIdParamsSchema,
   teamMemberParamsSchema,
   updateEnvironmentVariableSchema,
@@ -703,6 +704,82 @@ export function buildApp(dependencies: ApiDependencies) {
         : reply.code(404).send({ code: "NOT_FOUND" });
     } catch {
       return reply.code(500).send({ code: "WORKSPACE_TREE_FAILED" });
+    }
+  });
+
+  app.get("/v1/requests/:requestId/revisions", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply.code(user.kind === "unavailable" ? 503 : 401).send({
+        code:
+          user.kind === "unavailable"
+            ? "AUTHENTICATION_UNAVAILABLE"
+            : "UNAUTHORIZED",
+      });
+    }
+    const params = requestIdParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.requests.listRevisions) {
+      return reply.code(503).send({ code: "REVISIONS_UNAVAILABLE" });
+    }
+    try {
+      const revisions = await dependencies.requests.listRevisions({
+        requestId: params.data.requestId,
+        accessToken: user.user.accessToken,
+      });
+      return revisions
+        ? reply.code(200).send(revisions)
+        : reply.code(404).send({ code: "NOT_FOUND" });
+    } catch {
+      return reply.code(500).send({ code: "REVISION_LIST_FAILED" });
+    }
+  });
+
+  app.post("/v1/requests/:requestId/restore", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply.code(user.kind === "unavailable" ? 503 : 401).send({
+        code:
+          user.kind === "unavailable"
+            ? "AUTHENTICATION_UNAVAILABLE"
+            : "UNAUTHORIZED",
+      });
+    }
+    const params = requestIdParamsSchema.safeParse(request.params);
+    const body = restoreRequestRevisionSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.requests.restore) {
+      return reply.code(503).send({ code: "REVISIONS_UNAVAILABLE" });
+    }
+    try {
+      const result = await dependencies.requests.restore({
+        requestId: params.data.requestId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+        ...body.data,
+      });
+      if (result.kind === "forbidden") {
+        return reply.code(403).send({ code: "FORBIDDEN" });
+      }
+      if (result.kind === "not-found") {
+        return reply.code(404).send({ code: "NOT_FOUND" });
+      }
+      if (result.kind === "conflict") {
+        return reply.code(409).send(result.conflict);
+      }
+      return reply.code(200).send(result.request);
+    } catch {
+      return reply.code(500).send({ code: "REVISION_RESTORE_FAILED" });
     }
   });
 
