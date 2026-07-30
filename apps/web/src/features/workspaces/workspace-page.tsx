@@ -4,6 +4,7 @@ import {
 } from "@api-client/contracts";
 import {
   ChevronDown,
+  ChevronRight,
   Clock3,
   FilePlus2,
   FolderClosed,
@@ -13,8 +14,9 @@ import {
   Send,
   UserPlus,
   Users,
+  X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { RequestEditor } from "../requests/request-editor";
@@ -46,7 +48,12 @@ export function WorkspacePage() {
   const canEdit =
     activeWorkspace?.role === "owner" || activeWorkspace?.role === "editor";
   const [activeRequestId, setActiveRequestId] = useState<string>();
-  const [editorDirty, setEditorDirty] = useState(false);
+  const [openRequestIds, setOpenRequestIds] = useState<string[]>([]);
+  const [dirtyRequestIds, setDirtyRequestIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [collapsedCollectionIds, setCollapsedCollectionIds] =
+    useState<Set<string>>(() => new Set());
   const [selectedEnvironmentId, setSelectedEnvironmentId] =
     useState<string>();
   const [inviting, setInviting] = useState(false);
@@ -57,35 +64,82 @@ export function WorkspacePage() {
     collectionId: string;
     kind: "folder" | "request";
   }>();
+  const initializedWorkspaceId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     setActiveRequestId(undefined);
-    setEditorDirty(false);
+    setOpenRequestIds([]);
+    setDirtyRequestIds(new Set());
+    setCollapsedCollectionIds(new Set());
     setSelectedEnvironmentId(undefined);
   }, [activeWorkspace?.id]);
 
   function selectRequest(requestId: string) {
+    setOpenRequestIds((current) =>
+      current.includes(requestId) ? current : [...current, requestId],
+    );
+    setActiveRequestId(requestId);
+  }
+
+  function closeRequest(requestId: string) {
     if (
-      editorDirty &&
+      dirtyRequestIds.has(requestId) &&
       !window.confirm(
-        "Du hast ungespeicherte Änderungen. Möchtest du sie verwerfen?",
+        "Dieser Request enthält ungespeicherte Änderungen. Möchtest du den Tab wirklich schließen?",
       )
     ) {
       return;
     }
-    setEditorDirty(false);
-    setActiveRequestId(requestId);
+
+    setDirtyRequestIds((current) => {
+      if (!current.has(requestId)) return current;
+      const next = new Set(current);
+      next.delete(requestId);
+      return next;
+    });
+    setOpenRequestIds((current) => {
+      const closingIndex = current.indexOf(requestId);
+      const next = current.filter((id) => id !== requestId);
+      if (activeRequestId === requestId) {
+        setActiveRequestId(
+          next[Math.min(Math.max(closingIndex, 0), next.length - 1)],
+        );
+      }
+      return next;
+    });
+  }
+
+  function setRequestDirty(requestId: string, dirty: boolean) {
+    setDirtyRequestIds((current) => {
+      if (current.has(requestId) === dirty) return current;
+      const next = new Set(current);
+      if (dirty) next.add(requestId);
+      else next.delete(requestId);
+      return next;
+    });
   }
 
   useEffect(() => {
-    if (!activeRequestId && tree.data?.requests[0]) {
-      setActiveRequestId(tree.data.requests[0].id);
+    if (
+      activeWorkspace?.id &&
+      initializedWorkspaceId.current !== activeWorkspace.id &&
+      tree.data?.requests[0]
+    ) {
+      const firstRequestId = tree.data.requests[0].id;
+      initializedWorkspaceId.current = activeWorkspace.id;
+      setOpenRequestIds([firstRequestId]);
+      setActiveRequestId(firstRequestId);
     }
-  }, [activeRequestId, tree.data]);
+  }, [activeWorkspace?.id, tree.data]);
 
   const activeRequest = tree.data?.requests.find(
     ({ id }) => id === activeRequestId,
   );
+  const openRequests = openRequestIds.flatMap((requestId) => {
+    const request = tree.data?.requests.find(({ id }) => id === requestId);
+    return request ? [request] : [];
+  });
+  const hasDirtyRequests = dirtyRequestIds.size > 0;
   const requestsByCollection = useMemo(() => {
     const result = new Map<string, NonNullable<typeof tree.data>["requests"]>();
     for (const request of tree.data?.requests ?? []) {
@@ -142,31 +196,31 @@ export function WorkspacePage() {
     <div className="workspace-layout">
       <aside className="sidebar" aria-label="Workspace-Navigation">
         <label className="workspace-select">
-          <span>
+          <span className="workspace-select-control">
             <span className="eyebrow">Workspace</span>
             <span className="sr-only">Workspace auswählen</span>
+            <select
+              value={activeWorkspace.id}
+              onChange={(event) => {
+                if (
+                  hasDirtyRequests &&
+                  !window.confirm(
+                    "In offenen Tabs gibt es ungespeicherte Änderungen. Möchtest du den Workspace wirklich wechseln?",
+                  )
+                ) {
+                  event.target.value = activeWorkspace.id;
+                  return;
+                }
+                navigate(`/workspaces/${event.target.value}`);
+              }}
+            >
+              {workspaces.data?.map((workspace) => (
+                <option key={workspace.id} value={workspace.id}>
+                  {workspace.name}
+                </option>
+              ))}
+            </select>
           </span>
-          <select
-            value={activeWorkspace.id}
-            onChange={(event) => {
-              if (
-                editorDirty &&
-                !window.confirm(
-                  "Du hast ungespeicherte Änderungen. Möchtest du sie verwerfen?",
-                )
-              ) {
-                event.target.value = activeWorkspace.id;
-                return;
-              }
-              navigate(`/workspaces/${event.target.value}`);
-            }}
-          >
-            {workspaces.data?.map((workspace) => (
-              <option key={workspace.id} value={workspace.id}>
-                {workspace.name}
-              </option>
-            ))}
-          </select>
           <ChevronDown aria-hidden="true" size={16} />
         </label>
 
@@ -205,9 +259,27 @@ export function WorkspacePage() {
             {tree.data?.collections.map((collection) => (
               <div key={collection.id}>
                 <div className="tree-row tree-parent">
-                  <ChevronDown aria-hidden="true" size={15} />
-                  <FolderClosed aria-hidden="true" size={16} />
-                  <span>{collection.name}</span>
+                  <button
+                    aria-expanded={!collapsedCollectionIds.has(collection.id)}
+                    className="tree-toggle"
+                    onClick={() =>
+                      setCollapsedCollectionIds((current) => {
+                        const next = new Set(current);
+                        if (next.has(collection.id)) next.delete(collection.id);
+                        else next.add(collection.id);
+                        return next;
+                      })
+                    }
+                    type="button"
+                  >
+                    {collapsedCollectionIds.has(collection.id) ? (
+                      <ChevronRight aria-hidden="true" size={15} />
+                    ) : (
+                      <ChevronDown aria-hidden="true" size={15} />
+                    )}
+                    <FolderClosed aria-hidden="true" size={16} />
+                    <span>{collection.name}</span>
+                  </button>
                   {canEdit ? (
                     <span className="tree-actions">
                       <button
@@ -241,7 +313,10 @@ export function WorkspacePage() {
                     </span>
                   ) : null}
                 </div>
-                <div className="tree-children">
+                <div
+                  className="tree-children"
+                  hidden={collapsedCollectionIds.has(collection.id)}
+                >
                   {creatingChild?.collectionId === collection.id &&
                   creatingChild.kind === "folder" ? (
                     <FolderCreateForm
@@ -313,6 +388,49 @@ export function WorkspacePage() {
       <section className="request-workbench">
         {activeRequest ? (
           <>
+            <div
+              aria-label="Geöffnete Requests"
+              className="request-tabs"
+              role="tablist"
+            >
+              {openRequests.map((request) => (
+                <div
+                  className={`request-tab ${
+                    request.id === activeRequestId ? "active" : ""
+                  }`}
+                  key={request.id}
+                >
+                  <button
+                    aria-selected={request.id === activeRequestId}
+                    className="request-tab-select"
+                    onClick={() => setActiveRequestId(request.id)}
+                    role="tab"
+                    type="button"
+                  >
+                    <span
+                      className={`method method-${request.method.toLowerCase()}`}
+                    >
+                      {request.method}
+                    </span>
+                    <span>{request.name}</span>
+                    {dirtyRequestIds.has(request.id) ? (
+                      <span
+                        aria-label="Ungespeicherte Änderungen"
+                        className="dirty-indicator"
+                      />
+                    ) : null}
+                  </button>
+                  <button
+                    aria-label={`${request.name} schließen`}
+                    className="request-tab-close"
+                    onClick={() => closeRequest(request.id)}
+                    type="button"
+                  >
+                    <X aria-hidden="true" size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
             <div className="request-toolbar">
               <div>
                 <span className="breadcrumb">{activeWorkspace.name} /</span>
@@ -348,7 +466,7 @@ export function WorkspacePage() {
                 {canEdit ? (
                   <button
                     className="button secondary"
-                    form="request-form"
+                    form={`request-form-${activeRequest.id}`}
                     name="intent"
                     type="submit"
                     value="save"
@@ -359,7 +477,7 @@ export function WorkspacePage() {
                 ) : null}
                 <button
                   className="button primary"
-                  form="request-form"
+                  form={`request-form-${activeRequest.id}`}
                   name="intent"
                   type="submit"
                   value="execute"
@@ -369,18 +487,24 @@ export function WorkspacePage() {
                 </button>
               </div>
             </div>
-            <RequestEditor
-              key={activeRequest.id}
-              requestId={activeRequest.id}
-              workspaceId={activeWorkspace.id}
-              onDirtyChange={setEditorDirty}
-              readOnly={!canEdit}
-              variables={
-                environments.data?.find(
-                  ({ id }) => id === selectedEnvironmentId,
-                )?.variables ?? []
-              }
-            />
+            {openRequests.map((request) => (
+              <div hidden={request.id !== activeRequestId} key={request.id}>
+                <RequestEditor
+                  formId={`request-form-${request.id}`}
+                  requestId={request.id}
+                  workspaceId={activeWorkspace.id}
+                  onDirtyChange={(dirty) =>
+                    setRequestDirty(request.id, dirty)
+                  }
+                  readOnly={!canEdit}
+                  variables={
+                    environments.data?.find(
+                      ({ id }) => id === selectedEnvironmentId,
+                    )?.variables ?? []
+                  }
+                />
+              </div>
+            ))}
           </>
         ) : (
           <div className="centered-state workbench-empty">

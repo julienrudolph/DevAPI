@@ -53,6 +53,7 @@ const HEADER_NAME_SUGGESTIONS = [
 ] as const;
 
 interface RequestEditorProps {
+  formId?: string;
   requestId: string;
   workspaceId: string;
   onDirtyChange?: (dirty: boolean) => void;
@@ -61,6 +62,7 @@ interface RequestEditorProps {
 }
 
 export function RequestEditor({
+  formId = "request-form",
   requestId,
   workspaceId,
   onDirtyChange,
@@ -85,6 +87,7 @@ export function RequestEditor({
   return (
     <LoadedRequestEditor
       key={request.data.id}
+      formId={formId}
       request={request.data}
       workspaceId={workspaceId}
       onDirtyChange={onDirtyChange}
@@ -95,12 +98,14 @@ export function RequestEditor({
 }
 
 function LoadedRequestEditor({
+  formId,
   request,
   workspaceId,
   onDirtyChange,
   readOnly,
   variables,
 }: {
+  formId: string;
   request: ApiRequest;
   workspaceId: string;
   onDirtyChange?: (dirty: boolean) => void;
@@ -170,7 +175,7 @@ function LoadedRequestEditor({
     <>
       <form
         className="editor"
-        id="request-form"
+        id={formId}
         onSubmit={handleSubmit(async (draft, event) => {
           const intent = (event?.nativeEvent as SubmitEvent | undefined)
             ?.submitter;
