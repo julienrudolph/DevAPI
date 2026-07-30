@@ -305,4 +305,33 @@ describe("RequestEditor", () => {
     );
     expect(mutateAsync).not.toHaveBeenCalled();
   });
+
+  it("imports a cURL command into the local draft", async () => {
+    const user = userEvent.setup();
+    render(
+      <RequestEditor
+        requestId={request.id}
+        workspaceId={request.workspaceId}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "cURL importieren" }));
+    fireEvent.change(screen.getByLabelText("cURL-Kommando"), {
+      target: {
+        value:
+          "curl -X PATCH 'https://api.example.com/customers/42' -H 'Content-Type: application/json' --data-raw '{\"name\":\"Ada\"}'",
+      },
+    });
+    await user.click(
+      screen.getByRole("button", { name: "Als Entwurf übernehmen" }),
+    );
+
+    expect(screen.getByLabelText("Request-URL")).toHaveValue(
+      "https://api.example.com/customers/42",
+    );
+    expect(screen.getByLabelText("HTTP-Methode")).toHaveValue("PATCH");
+    expect(
+      screen.getByText("cURL wurde als Entwurf übernommen"),
+    ).toBeInTheDocument();
+  });
 });

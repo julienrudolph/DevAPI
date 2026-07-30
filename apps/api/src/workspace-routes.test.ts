@@ -151,6 +151,7 @@ describe("workspace routes", () => {
       folderId: null,
       name: "List customers",
       method: "GET" as const,
+      url: "https://",
       version: 1,
     };
     const app = buildApp({

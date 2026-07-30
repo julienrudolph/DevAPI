@@ -39,6 +39,16 @@ vi.mock("../requests/request-editor", () => ({
     />
   ),
 }));
+vi.mock("../requests/request-queries", () => ({
+  useDuplicateRequest: vi.fn(() => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  })),
+  useMoveRequest: vi.fn(() => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  })),
+}));
 vi.mock("../environments/environment-controls", () => ({
   EnvironmentControls: () => null,
 }));
@@ -112,6 +122,7 @@ beforeEach(() => {
           folderId: null,
           name: "List customers",
           method: "GET",
+          url: "https://api.example.com/customers",
           version: 1,
         },
         {
@@ -121,6 +132,7 @@ beforeEach(() => {
           folderId,
           name: "Create customer",
           method: "POST",
+          url: "https://api.example.com/customers",
           version: 1,
         },
       ],
@@ -282,5 +294,20 @@ describe("WorkspacePage", () => {
         firstRequestId,
       ),
     ).toEqual([secondRequestId, firstRequestId]);
+  });
+
+  it("searches requests by URL and focuses search with the shortcut", async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+
+    await user.keyboard("{Control>}p{/Control}");
+    const search = screen.getByLabelText("Workspace durchsuchen");
+    expect(search).toHaveFocus();
+    await user.type(search, "customers");
+
+    expect(screen.getAllByText("List customers")).not.toHaveLength(0);
+    expect(
+      screen.getAllByText("https://api.example.com/customers"),
+    ).toHaveLength(2);
   });
 });

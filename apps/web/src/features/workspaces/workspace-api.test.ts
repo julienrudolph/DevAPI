@@ -169,6 +169,9 @@ describe("workspace API client", () => {
         name: "List customers",
         method: "GET",
         url: "https://",
+        queryParams: [],
+        headers: [],
+        body: { type: "none" },
       },
       "session-token",
     );

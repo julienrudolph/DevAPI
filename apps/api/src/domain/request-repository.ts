@@ -3,6 +3,7 @@ import type {
   RequestRevision,
   RequestDraft,
   RestoreRequestRevision,
+  UpdateRequest,
 } from "@api-client/contracts";
 
 import type { UpdateResult } from "./request-store.js";
@@ -12,7 +13,8 @@ export interface UpdatePersistedRequestCommand {
   userId: string;
   accessToken: string;
   expectedVersion: number;
-  draft: RequestDraft;
+  draft: RequestDraft &
+    Pick<UpdateRequest, "collectionId" | "folderId">;
   changeType?: "update" | "overwrite";
 }
 

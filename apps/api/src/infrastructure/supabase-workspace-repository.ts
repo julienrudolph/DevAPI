@@ -81,6 +81,7 @@ const requestRowSchema = z
     folder_id: z.string().uuid().nullable(),
     name: z.string(),
     method: z.string(),
+    url: z.string(),
     version: z.number().int(),
   })
   .transform((row) => ({
@@ -90,6 +91,7 @@ const requestRowSchema = z
     folderId: row.folder_id,
     name: row.name,
     method: row.method,
+    url: row.url,
     version: row.version,
   }))
   .pipe(requestSummarySchema);
@@ -141,7 +143,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       client
         .from("requests")
         .select(
-          "id, workspace_id, collection_id, folder_id, name, method, version",
+          "id, workspace_id, collection_id, folder_id, name, method, url, version",
         )
         .eq("workspace_id", command.workspaceId)
         .order("name"),
@@ -240,11 +242,14 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
         name: command.name,
         method: command.method,
         url: command.url,
+        query_params: command.queryParams,
+        headers: command.headers,
+        body: command.body,
         created_by: command.userId,
         updated_by: command.userId,
       })
       .select(
-        "id, workspace_id, collection_id, folder_id, name, method, version",
+        "id, workspace_id, collection_id, folder_id, name, method, url, version",
       )
       .maybeSingle();
     if (error) {

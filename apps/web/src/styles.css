@@ -168,6 +168,85 @@ button {
   text-transform: uppercase;
 }
 
+.workspace-search {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dfe5df;
+  border-radius: 7px;
+  color: #758078;
+  display: flex;
+  gap: 6px;
+  margin: 2px 0 10px;
+  padding: 0 8px;
+}
+
+.workspace-search:focus-within {
+  border-color: #2b7653;
+  box-shadow: 0 0 0 2px rgb(34 108 73 / 9%);
+}
+
+.workspace-search input {
+  background: transparent;
+  border: 0;
+  height: 34px;
+  min-width: 0;
+  outline: 0;
+  width: 100%;
+}
+
+.workspace-search kbd {
+  background: #f2f4f1;
+  border: 1px solid #dfe4df;
+  border-radius: 4px;
+  font-size: 9px;
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+
+.workspace-search-results {
+  display: grid;
+  gap: 3px;
+}
+
+.workspace-search-results > button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: #344139;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 8px;
+  text-align: left;
+}
+
+.workspace-search-results > button:hover {
+  background: #e9efea;
+}
+
+.workspace-search-results > button > span:last-child {
+  display: grid;
+  min-width: 0;
+}
+
+.workspace-search-results strong,
+.workspace-search-results small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-search-results strong {
+  font-size: 12px;
+}
+
+.workspace-search-results small {
+  color: #778179;
+  font-size: 10px;
+  margin-top: 2px;
+}
+
 .compact {
   min-height: 28px;
   width: 28px;
@@ -373,6 +452,29 @@ button {
   font: inherit;
 }
 
+.editor-tools {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.curl-import-dialog textarea {
+  border: 1px solid #cfd7d0;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 12px;
+  margin: 8px 0;
+  padding: 10px;
+  resize: vertical;
+  width: 100%;
+}
+
+.curl-import-dialog textarea:focus {
+  border-color: #2b7653;
+  box-shadow: 0 0 0 3px rgb(34 108 73 / 10%);
+  outline: 0;
+}
+
 .revision-dialog {
   width: min(44rem, calc(100vw - 2rem));
 }
@@ -466,6 +568,28 @@ button {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.move-request-fields {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  margin: 18px 0;
+}
+
+.move-request-fields label {
+  display: grid;
+  font-size: 12px;
+  font-weight: 650;
+  gap: 6px;
+}
+
+.move-request-fields select {
+  background: #ffffff;
+  border: 1px solid #cfd7d0;
+  border-radius: 7px;
+  height: 38px;
+  padding: 0 9px;
 }
 
 .status-error,

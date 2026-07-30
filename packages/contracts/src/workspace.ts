@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { httpMethodSchema } from "./request.js";
+import {
+  httpMethodSchema,
+  keyValueEntrySchema,
+  requestBodySchema,
+} from "./request.js";
 import { workspaceRoleSchema } from "./role.js";
 
 export const workspaceIdParamsSchema = z.object({
@@ -28,6 +32,9 @@ export const createRequestSummarySchema = z.object({
   name: z.string().trim().min(1).max(160),
   method: httpMethodSchema.default("GET"),
   url: z.string().trim().min(1).max(8_192).default("https://"),
+  queryParams: z.array(keyValueEntrySchema).max(200).default([]),
+  headers: z.array(keyValueEntrySchema).max(200).default([]),
+  body: requestBodySchema.default({ type: "none" }),
 });
 
 export const workspaceSummarySchema = z.object({
@@ -61,6 +68,7 @@ export const requestSummarySchema = z.object({
   folderId: z.string().uuid().nullable(),
   name: z.string().min(1).max(160),
   method: httpMethodSchema,
+  url: z.string().max(8_192).default(""),
   version: z.number().int().positive(),
 });
 

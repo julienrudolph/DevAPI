@@ -7,7 +7,13 @@ import {
   type RequestDraft,
   requestDraftSchema,
 } from "@api-client/contracts";
-import { History, Minus, Plus } from "lucide-react";
+import {
+  ClipboardCopy,
+  History,
+  Import,
+  Minus,
+  Plus,
+} from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Controller,
@@ -18,6 +24,7 @@ import {
 } from "react-hook-form";
 
 import { RequestConflictError } from "./request-api";
+import { formatCurl, parseCurl } from "./curl";
 import {
   useExecuteRequest,
   useRequest,
@@ -117,6 +124,10 @@ function LoadedRequestEditor({
   const [conflict, setConflict] = useState<RequestConflict>();
   const [baseVersion, setBaseVersion] = useState(request.version);
   const [showingRevisions, setShowingRevisions] = useState(false);
+  const [showingCurlImport, setShowingCurlImport] = useState(false);
+  const [curlInput, setCurlInput] = useState("");
+  const [curlError, setCurlError] = useState<string>();
+  const [curlNotice, setCurlNotice] = useState<string>();
   const mutation = useUpdateRequest(workspaceId, request.id);
   const execution = useExecuteRequest(workspaceId);
   const {
@@ -198,22 +209,56 @@ function LoadedRequestEditor({
       >
         <div className="editor-state">
           <span aria-live="polite">
-            {mutation.isPending
+            {curlNotice ??
+            (mutation.isPending
               ? "Wird gespeichert …"
               : conflict
                 ? "Konflikt erkannt"
                 : isDirty
                   ? "Ungespeicherte Änderungen"
-                  : `Version ${baseVersion} gespeichert`}
+                  : `Version ${baseVersion} gespeichert`)}
           </span>
-          <button
-            className="revision-link"
-            onClick={() => setShowingRevisions(true)}
-            type="button"
-          >
-            <History aria-hidden="true" size={13} />
-            Versionen
-          </button>
+          <div className="editor-tools">
+            {!readOnly ? (
+              <button
+                className="revision-link"
+                onClick={() => {
+                  setCurlError(undefined);
+                  setShowingCurlImport(true);
+                }}
+                type="button"
+              >
+                <Import aria-hidden="true" size={13} />
+                cURL importieren
+              </button>
+            ) : null}
+            <button
+              className="revision-link"
+              onClick={() => {
+                void navigator.clipboard
+                  .writeText(formatCurl(getValues()))
+                  .then(() => {
+                    setCurlNotice("cURL wurde kopiert");
+                    window.setTimeout(() => setCurlNotice(undefined), 2_000);
+                  })
+                  .catch(() =>
+                    setCurlNotice("cURL konnte nicht kopiert werden"),
+                  );
+              }}
+              type="button"
+            >
+              <ClipboardCopy aria-hidden="true" size={13} />
+              Als cURL kopieren
+            </button>
+            <button
+              className="revision-link"
+              onClick={() => setShowingRevisions(true)}
+              type="button"
+            >
+              <History aria-hidden="true" size={13} />
+              Versionen
+            </button>
+          </div>
         </div>
         <div className="url-bar">
           <select
@@ -532,6 +577,89 @@ function LoadedRequestEditor({
           requestId={request.id}
           workspaceId={workspaceId}
         />
+      ) : null}
+      {showingCurlImport ? (
+        <div className="modal-backdrop" role="presentation">
+          <section
+            aria-labelledby="curl-import-title"
+            aria-modal="true"
+            className="conflict-dialog curl-import-dialog"
+            role="dialog"
+          >
+            <h2 id="curl-import-title">cURL importieren</h2>
+            <p>
+              Das Kommando wird nur lokal ausgewertet und nicht ausgeführt.
+              Vorhandene Request-Felder werden erst nach deiner Bestätigung
+              ersetzt.
+            </p>
+            <textarea
+              aria-label="cURL-Kommando"
+              autoFocus
+              onChange={(event) => {
+                setCurlInput(event.target.value);
+                setCurlError(undefined);
+              }}
+              placeholder="curl -X POST 'https://api.example.com/…'"
+              rows={9}
+              value={curlInput}
+            />
+            {curlError ? (
+              <p className="field-error" role="alert">
+                {curlError}
+              </p>
+            ) : null}
+            <div className="dialog-actions">
+              <button
+                className="button secondary"
+                onClick={() => setShowingCurlImport(false)}
+                type="button"
+              >
+                Abbrechen
+              </button>
+              <button
+                className="button primary"
+                onClick={() => {
+                  try {
+                    const imported = parseCurl(curlInput);
+                    setValue("method", imported.method, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                    setValue("url", imported.url, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                    setValue("queryParams", imported.queryParams, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                    setValue("headers", imported.headers, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                    setValue("body", imported.body, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                    setShowingCurlImport(false);
+                    setCurlInput("");
+                    setCurlError(undefined);
+                    setCurlNotice("cURL wurde als Entwurf übernommen");
+                  } catch (error) {
+                    setCurlError(
+                      error instanceof Error
+                        ? error.message
+                        : "Das cURL-Kommando ist ungültig.",
+                    );
+                  }
+                }}
+                type="button"
+              >
+                Als Entwurf übernehmen
+              </button>
+            </div>
+          </section>
+        </div>
       ) : null}
     </>
   );

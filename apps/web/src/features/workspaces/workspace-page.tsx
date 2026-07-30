@@ -6,21 +6,28 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
+  Copy,
   FilePlus2,
   FolderClosed,
+  FolderInput,
   FolderPlus,
   MoreHorizontal,
   Plus,
   Save,
+  Search,
   Send,
   UserPlus,
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { RequestEditor } from "../requests/request-editor";
+import {
+  useDuplicateRequest,
+  useMoveRequest,
+} from "../requests/request-queries";
 import { InvitationDialog } from "../invitations/invitation-dialog";
 import { TeamMembersDialog } from "../teams/team-members-dialog";
 import { EnvironmentControls } from "../environments/environment-controls";
@@ -98,6 +105,8 @@ export function WorkspacePage() {
     workspaces.data?.[0];
   const tree = useWorkspaceTree(activeWorkspace?.id);
   const environments = useEnvironments(activeWorkspace?.id);
+  const duplicateRequest = useDuplicateRequest(activeWorkspace?.id ?? "");
+  const moveRequest = useMoveRequest(activeWorkspace?.id ?? "");
   const canEdit =
     activeWorkspace?.role === "owner" || activeWorkspace?.role === "editor";
   const [activeRequestId, setActiveRequestId] = useState<string>();
@@ -117,10 +126,17 @@ export function WorkspacePage() {
   const [showingHistory, setShowingHistory] = useState(false);
   const [managingTeam, setManagingTeam] = useState(false);
   const [creatingCollection, setCreatingCollection] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [movingRequest, setMovingRequest] = useState(false);
+  const [destinationCollectionId, setDestinationCollectionId] =
+    useState<string>();
+  const [destinationFolderId, setDestinationFolderId] = useState<string>("");
+  const [managementError, setManagementError] = useState<string>();
   const [creatingChild, setCreatingChild] = useState<{
     collectionId: string;
     kind: "folder" | "request";
   }>();
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     setActiveRequestId(undefined);
     setOpenRequestIds([]);
@@ -129,7 +145,26 @@ export function WorkspacePage() {
     setCollapsedFolderIds(new Set());
     setRestoredWorkspaceId(undefined);
     setSelectedEnvironmentId(undefined);
+    setSearchQuery("");
+    setMovingRequest(false);
+    setDestinationCollectionId(undefined);
+    setDestinationFolderId("");
+    setManagementError(undefined);
   }, [activeWorkspace?.id]);
+
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      if (
+        event.key.toLowerCase() === "p" &&
+        (event.metaKey || event.ctrlKey)
+      ) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, []);
 
   function selectRequest(requestId: string) {
     setOpenRequestIds((current) =>
@@ -223,6 +258,27 @@ export function WorkspacePage() {
     return request ? [request] : [];
   });
   const hasDirtyRequests = dirtyRequestIds.size > 0;
+  const normalizedSearch = searchQuery.trim().toLocaleLowerCase();
+  const matchingRequests = useMemo(
+    () =>
+      normalizedSearch
+        ? (tree.data?.requests ?? []).filter((request) =>
+            [request.name, request.method, request.url].some((value) =>
+              value.toLocaleLowerCase().includes(normalizedSearch),
+            ),
+          )
+        : [],
+    [normalizedSearch, tree.data?.requests],
+  );
+  const matchingCollections = useMemo(
+    () =>
+      normalizedSearch
+        ? (tree.data?.collections ?? []).filter((collection) =>
+            collection.name.toLocaleLowerCase().includes(normalizedSearch),
+          )
+        : [],
+    [normalizedSearch, tree.data?.collections],
+  );
   const requestsByCollection = useMemo(() => {
     const result = new Map<string, NonNullable<typeof tree.data>["requests"]>();
     for (const request of tree.data?.requests ?? []) {
@@ -328,6 +384,20 @@ export function WorkspacePage() {
           />
         ) : null}
 
+        <label className="workspace-search">
+          <Search aria-hidden="true" size={14} />
+          <span className="sr-only">Workspace durchsuchen</span>
+          <input
+            aria-label="Workspace durchsuchen"
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Requests durchsuchen"
+            ref={searchInputRef}
+            type="search"
+            value={searchQuery}
+          />
+          <kbd>⌘/Ctrl P</kbd>
+        </label>
+
         {tree.isPending ? (
           <p className="sidebar-state">Navigation wird geladen …</p>
         ) : tree.isError ? (
@@ -337,6 +407,53 @@ export function WorkspacePage() {
           >
             Laden erneut versuchen
           </button>
+        ) : normalizedSearch ? (
+          <div className="workspace-search-results">
+            {matchingCollections.map((collection) => (
+              <button
+                key={collection.id}
+                onClick={() => {
+                  setCollapsedCollectionIds((current) => {
+                    const next = new Set(current);
+                    next.delete(collection.id);
+                    return next;
+                  });
+                  setSearchQuery("");
+                }}
+                type="button"
+              >
+                <FolderClosed aria-hidden="true" size={14} />
+                <span>
+                  <strong>{collection.name}</strong>
+                  <small>Collection</small>
+                </span>
+              </button>
+            ))}
+            {matchingRequests.map((request) => (
+              <button
+                key={request.id}
+                onClick={() => {
+                  selectRequest(request.id);
+                  setSearchQuery("");
+                }}
+                type="button"
+              >
+                <span
+                  className={`method method-${request.method.toLowerCase()}`}
+                >
+                  {request.method}
+                </span>
+                <span>
+                  <strong>{request.name}</strong>
+                  <small>{request.url}</small>
+                </span>
+              </button>
+            ))}
+            {matchingCollections.length === 0 &&
+            matchingRequests.length === 0 ? (
+              <p className="sidebar-state">Keine Treffer gefunden.</p>
+            ) : null}
+          </div>
         ) : (
           <nav className="collection-tree">
             {tree.data?.collections.map((collection) => (
@@ -620,6 +737,53 @@ export function WorkspacePage() {
                   selectedId={selectedEnvironmentId}
                   workspaceId={activeWorkspace.id}
                 />
+                {canEdit && activeRequest.collectionId ? (
+                  <>
+                    <button
+                      className="button secondary"
+                      disabled={duplicateRequest.isPending}
+                      onClick={() => {
+                        setManagementError(undefined);
+                        void duplicateRequest
+                          .mutateAsync({
+                            requestId: activeRequest.id,
+                            collectionId: activeRequest.collectionId!,
+                            folderId: activeRequest.folderId,
+                          })
+                          .then((duplicated) => selectRequest(duplicated.id))
+                          .catch(() =>
+                            setManagementError(
+                              "Der Request konnte nicht dupliziert werden.",
+                            ),
+                          );
+                      }}
+                      title="Dupliziert die zuletzt gespeicherte Version"
+                      type="button"
+                    >
+                      <Copy aria-hidden="true" size={16} />
+                      Duplizieren
+                    </button>
+                    <button
+                      className="button secondary"
+                      disabled={dirtyRequestIds.has(activeRequest.id)}
+                      onClick={() => {
+                        setDestinationCollectionId(activeRequest.collectionId!);
+                        setDestinationFolderId(activeRequest.folderId ?? "");
+                        setManagementError(undefined);
+                        setMovingRequest(true);
+                      }}
+                      title={
+                        dirtyRequestIds.has(activeRequest.id)
+                          ? "Speichere den Request vor dem Verschieben"
+                          : undefined
+                      }
+                      type="button"
+                    >
+                      <FolderInput aria-hidden="true" size={16} />
+                      Verschieben
+                    </button>
+                  </>
+                ) : null}
                 {canEdit ? (
                   <button
                     className="button secondary"
@@ -707,6 +871,97 @@ export function WorkspacePage() {
           onClose={() => setShowingHistory(false)}
           workspaceId={activeWorkspace.id}
         />
+      ) : null}
+      {movingRequest && activeRequest ? (
+        <div className="modal-backdrop" role="presentation">
+          <section
+            aria-labelledby="move-request-title"
+            aria-modal="true"
+            className="conflict-dialog"
+            role="dialog"
+          >
+            <h2 id="move-request-title">Request verschieben</h2>
+            <p>
+              Wähle die neue Collection und optional einen zugehörigen Ordner.
+            </p>
+            <div className="move-request-fields">
+              <label>
+                Collection
+                <select
+                  onChange={(event) => {
+                    setDestinationCollectionId(event.target.value);
+                    setDestinationFolderId("");
+                  }}
+                  value={destinationCollectionId}
+                >
+                  {tree.data?.collections.map((collection) => (
+                    <option key={collection.id} value={collection.id}>
+                      {collection.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Ordner
+                <select
+                  onChange={(event) =>
+                    setDestinationFolderId(event.target.value)
+                  }
+                  value={destinationFolderId}
+                >
+                  <option value="">Kein Ordner</option>
+                  {tree.data?.folders
+                    .filter(
+                      (folder) =>
+                        folder.collectionId === destinationCollectionId,
+                    )
+                    .map((folder) => (
+                      <option key={folder.id} value={folder.id}>
+                        {folder.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </div>
+            {managementError ? (
+              <p className="field-error" role="alert">
+                {managementError}
+              </p>
+            ) : null}
+            <div className="dialog-actions">
+              <button
+                className="button secondary"
+                onClick={() => setMovingRequest(false)}
+                type="button"
+              >
+                Abbrechen
+              </button>
+              <button
+                className="button primary"
+                disabled={!destinationCollectionId || moveRequest.isPending}
+                onClick={() => {
+                  if (!destinationCollectionId) return;
+                  setManagementError(undefined);
+                  void moveRequest
+                    .mutateAsync({
+                      requestId: activeRequest.id,
+                      collectionId: destinationCollectionId,
+                      folderId: destinationFolderId || null,
+                    })
+                    .then(() => setMovingRequest(false))
+                    .catch(() =>
+                      setManagementError(
+                        "Der Request konnte nicht verschoben werden. Lade bei einem Konflikt die aktuelle Version.",
+                      ),
+                    );
+                }}
+                type="button"
+              >
+                Verschieben
+              </button>
+            </div>
+          </section>
+        </div>
       ) : null}
     </div>
   );

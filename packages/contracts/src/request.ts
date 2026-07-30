@@ -78,6 +78,8 @@ export const apiRequestSchema = requestDraftSchema.extend({
 export const updateRequestSchema = requestDraftSchema.extend({
   expectedVersion: z.number().int().positive(),
   overwrite: z.boolean().optional(),
+  collectionId: z.string().uuid().optional(),
+  folderId: z.string().uuid().nullable().optional(),
 });
 
 export const requestIdParamsSchema = z.object({
