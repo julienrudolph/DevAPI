@@ -14,12 +14,15 @@
     "dev:proxy": "npm run dev --workspace @api-client/proxy",
     "compose:env": "node scripts/generate-compose-env.mjs",
     "compose:config": "docker compose --env-file .env.compose -f compose.yaml -f compose.local.yaml config --quiet",
+    "compose:config:ci": "docker compose --env-file .env.compose.example -f compose.yaml -f compose.local.yaml config --quiet",
     "compose:up": "docker compose --env-file .env.compose -f compose.yaml -f compose.local.yaml up -d --build --wait",
     "compose:down": "docker compose --env-file .env.compose -f compose.yaml -f compose.local.yaml down",
     "build": "npm run build --workspace @api-client/contracts && npm run build --workspace @api-client/api && npm run build --workspace @api-client/proxy && npm run build --workspace @api-client/web",
     "typecheck": "npm run build --workspace @api-client/contracts && npm run typecheck --workspaces --if-present",
     "test": "npm run build --workspace @api-client/contracts && npm run test --workspaces --if-present",
-    "check": "npm run typecheck && npm run test && npm run build"
+    "check": "npm run typecheck && npm run test && npm run build",
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "verify": "npm run check && npm run compose:config:ci"
   },
   "engines": {
     "node": ">=22.22.0"

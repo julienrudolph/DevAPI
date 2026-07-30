@@ -4,9 +4,10 @@ Ein schlanker, kollaborativer REST-API-Client für gemeinsame Team-Workspaces.
 
 ## Projektstatus
 
-Das Projekt befindet sich im Aufbau. Der erste Meilenstein stellt das technische
-Fundament bereit: React/Vite-Weboberfläche, getrennte API- und Proxy-Dienste sowie
-gemeinsame, validierte Verträge.
+Das Projekt befindet sich im Aufbau. Der interne MVP umfasst inzwischen
+gemeinsame Team-Workspaces, Rollen und Einladungen, den REST-Request-Editor,
+Umgebungsvariablen, die abgesicherte Proxy-Ausführung, Konflikterkennung,
+Revisionen und eine datensparsame Ausführungshistorie.
 
 ## Voraussetzungen
 
@@ -54,6 +55,18 @@ Alle Prüfungen:
 ```bash
 npm run check
 ```
+
+Die vollständige lokale CI-Prüfung einschließlich der
+Docker-Compose-Konfiguration:
+
+```bash
+npm run verify
+```
+
+Bei Pushes auf `main` und in Pull Requests führt GitHub Actions dieselben
+Prüfungen mit der in `.nvmrc` festgelegten Node.js-Version aus. Zusätzlich
+werden Produktionsabhängigkeiten auf bekannte Schwachstellen hoher oder
+kritischer Schwere geprüft.
 
 ## Docker
 
