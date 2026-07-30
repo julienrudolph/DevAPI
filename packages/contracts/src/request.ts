@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isoDateTimeSchema } from "./date-time.js";
+
 export const httpMethodSchema = z.enum([
   "GET",
   "POST",
@@ -69,8 +71,8 @@ export const apiRequestSchema = requestDraftSchema.extend({
   version: z.number().int().positive(),
   createdBy: z.string().uuid(),
   updatedBy: z.string().uuid(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: isoDateTimeSchema,
+  updatedAt: isoDateTimeSchema,
 });
 
 export const updateRequestSchema = requestDraftSchema.extend({

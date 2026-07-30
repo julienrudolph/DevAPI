@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isoDateTimeSchema } from "./date-time.js";
 import { apiRequestSchema } from "./request.js";
 
 export const requestConflictSchema = z.object({
@@ -12,8 +13,7 @@ export const requestConflictSchema = z.object({
     id: z.string().uuid(),
     displayName: z.string().min(1),
   }),
-  updatedAt: z.string().datetime(),
+  updatedAt: isoDateTimeSchema,
 });
 
 export type RequestConflict = z.infer<typeof requestConflictSchema>;
-

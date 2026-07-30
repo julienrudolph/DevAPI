@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isoDateTimeSchema } from "./date-time.js";
 import { executeRequestSchema } from "./proxy.js";
 import { httpMethodSchema } from "./request.js";
 
@@ -19,7 +20,7 @@ export const requestExecutionSchema = z.object({
     id: z.string().uuid(),
     displayName: z.string().min(1),
   }),
-  executedAt: z.string().datetime(),
+  executedAt: isoDateTimeSchema,
 });
 
 export const requestExecutionsSchema = z.array(requestExecutionSchema);

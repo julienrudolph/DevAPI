@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isoDateTimeSchema } from "./date-time.js";
+
 export const teamIdParamsSchema = z.object({
   teamId: z.string().uuid(),
 });
@@ -19,7 +21,7 @@ export const teamInvitationSchema = z.object({
   teamId: z.string().uuid(),
   role: invitationRoleSchema,
   token: z.string().min(43),
-  expiresAt: z.string().datetime(),
+  expiresAt: isoDateTimeSchema,
 });
 
 export const acceptedTeamInvitationSchema = z.object({

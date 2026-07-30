@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isoDateTimeSchema } from "./date-time.js";
 import { invitationRoleSchema } from "./invitation.js";
 import { workspaceRoleSchema } from "./role.js";
 
@@ -17,7 +18,7 @@ export const teamMemberSchema = z.object({
   email: z.string().email(),
   displayName: z.string().min(1),
   role: workspaceRoleSchema,
-  joinedAt: z.string().datetime(),
+  joinedAt: isoDateTimeSchema,
 });
 
 export const teamMembersSchema = z.array(teamMemberSchema);

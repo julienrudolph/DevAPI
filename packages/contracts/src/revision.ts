@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isoDateTimeSchema } from "./date-time.js";
 import { httpMethodSchema } from "./request.js";
 
 export const requestRevisionSchema = z.object({
@@ -13,7 +14,7 @@ export const requestRevisionSchema = z.object({
     id: z.string().uuid(),
     displayName: z.string().min(1),
   }),
-  createdAt: z.string().datetime(),
+  createdAt: isoDateTimeSchema,
 });
 
 export const requestRevisionsSchema = z.array(requestRevisionSchema);
