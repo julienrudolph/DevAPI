@@ -19,6 +19,7 @@ import {
   updateTeamMemberSchema,
   upsertEnvironmentVariableSchema,
   workspaceIdParamsSchema,
+  type PublicClientConfig,
 } from "@api-client/contracts";
 import Fastify from "fastify";
 
@@ -49,12 +50,22 @@ export interface ApiDependencies {
   invitations?: InvitationRepository;
   teamMembers?: TeamMemberRepository;
   executionHistory?: ExecutionHistoryRepository;
+  publicConfig?: PublicClientConfig;
 }
 
 export function buildApp(dependencies: ApiDependencies) {
   const app = Fastify({ logger: false });
 
   app.get("/health", async () => ({ status: "ok" }));
+
+  app.get("/v1/config", async (_request, reply) => {
+    if (!dependencies.publicConfig) {
+      return reply.code(503).send({ code: "CLIENT_CONFIG_UNAVAILABLE" });
+    }
+    return reply
+      .header("Cache-Control", "no-store")
+      .send(dependencies.publicConfig);
+  });
 
   app.post("/v1/teams/:teamId/invitations", async (request, reply) => {
     const user = await authenticateSafely(

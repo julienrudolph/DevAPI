@@ -8,12 +8,14 @@ import {
   useState,
 } from "react";
 
-import { readPublicEnv, type PublicEnv } from "../../lib/env";
+import type { PublicClientConfig } from "@api-client/contracts";
+
+import { loadPublicConfig } from "../../lib/env";
 import { getSupabaseClient } from "../../lib/supabase";
 
 interface AuthContextValue {
   client: SupabaseClient | null;
-  env: PublicEnv | null;
+  env: PublicClientConfig | null;
   user: User | null;
   accessToken: string | null;
   loading: boolean;
@@ -23,24 +25,35 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [env] = useState(() => readPublicEnv());
+  const [env, setEnv] = useState<PublicClientConfig | null>();
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(env !== null);
+  const [sessionLoading, setSessionLoading] = useState(false);
   const client = useMemo(() => (env ? getSupabaseClient(env) : null), [env]);
+
+  useEffect(() => {
+    let active = true;
+    void loadPublicConfig().then((config) => {
+      if (active) setEnv(config);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!client) return;
     let active = true;
+    setSessionLoading(true);
 
     void client.auth.getSession().then(({ data }) => {
       if (active) {
         setSession(data.session);
-        setLoading(false);
+        setSessionLoading(false);
       }
     });
     const { data } = client.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
-      setLoading(false);
+      setSessionLoading(false);
     });
 
     return () => {
@@ -52,13 +65,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthContextValue>(
     () => ({
       client,
-      env,
+      env: env ?? null,
       user: session?.user ?? null,
       accessToken: session?.access_token ?? null,
-      loading,
+      loading: env === undefined || sessionLoading,
       configurationError: env === null,
     }),
-    [client, env, loading, session],
+    [client, env, session, sessionLoading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

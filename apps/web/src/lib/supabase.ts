@@ -1,13 +1,13 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import type { PublicEnv } from "./env";
+import type { PublicClientConfig } from "@api-client/contracts";
 
 let client: SupabaseClient | undefined;
 
-export function getSupabaseClient(env: PublicEnv): SupabaseClient {
+export function getSupabaseClient(config: PublicClientConfig): SupabaseClient {
   client ??= createClient(
-    env.VITE_SUPABASE_URL,
-    env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    config.supabaseUrl,
+    config.supabasePublishableKey,
     {
       auth: {
         detectSessionInUrl: true,

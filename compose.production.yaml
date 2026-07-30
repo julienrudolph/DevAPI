@@ -1,0 +1,37 @@
+services:
+  edge:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_started
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST}
+      ACME_EMAIL: ${ACME_EMAIL}
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./infra/production/Caddyfile:/etc/caddy/Caddyfile:ro
+      - devapi-caddy-data:/data
+      - devapi-caddy-config:/config
+    networks:
+      - backend
+
+  web:
+    expose:
+      - "8080"
+
+  api:
+    expose:
+      - "3001"
+
+  proxy:
+    expose:
+      - "3002"
+
+volumes:
+  devapi-caddy-data:
+  devapi-caddy-config:

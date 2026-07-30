@@ -50,11 +50,11 @@ export function LoginPage() {
   }
 
   async function signInWithOidc() {
-    if (!client || !env?.VITE_OIDC_PROVIDER) return;
+    if (!client || !env?.oidcProvider) return;
     setSubmitting(true);
     // Supabase unterstützt `custom:*` zur Laufzeit; der veröffentlichte
     // Provider-Union-Type enthält die neue Custom-OIDC-Form noch nicht.
-    const provider = env.VITE_OIDC_PROVIDER as Provider;
+    const provider = env.oidcProvider as Provider;
     const { error } = await client.auth.signInWithOAuth({
       provider,
       options: { redirectTo },
@@ -72,7 +72,7 @@ export function LoginPage() {
         <h1>Bei Relay anmelden</h1>
         <p>Öffne die gemeinsamen API-Workspaces deines Teams.</p>
 
-        {env?.VITE_OIDC_PROVIDER ? (
+        {env?.oidcProvider ? (
           <>
             <button
               className="button oidc-button"
@@ -81,7 +81,7 @@ export function LoginPage() {
               type="button"
             >
               <Building2 aria-hidden="true" size={17} />
-              {env.VITE_OIDC_LABEL ?? "Mit Firmenkonto anmelden"}
+              {env.oidcLabel ?? "Mit Firmenkonto anmelden"}
             </button>
             <div className="login-divider">
               <span>oder</span>

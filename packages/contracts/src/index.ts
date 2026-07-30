@@ -1,4 +1,5 @@
 export * from "./conflict.js";
+export * from "./client-config.js";
 export * from "./date-time.js";
 export * from "./environment.js";
 export * from "./execution-history.js";

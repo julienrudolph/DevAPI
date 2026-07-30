@@ -1,27 +1,42 @@
-import { z } from "zod";
+import {
+  publicClientConfigSchema,
+  type PublicClientConfig,
+} from "@api-client/contracts";
 
-const publicEnvSchema = z.object({
-  VITE_SUPABASE_URL: z.string().url(),
-  VITE_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
-  VITE_OIDC_PROVIDER: z.preprocess(
-    emptyStringToUndefined,
-    z
-      .string()
-      .regex(/^custom:[a-z0-9][a-z0-9:-]{0,42}[a-z0-9]$/)
-      .optional(),
-  ),
-  VITE_OIDC_LABEL: z.preprocess(
-    emptyStringToUndefined,
-    z.string().trim().min(1).max(80).optional(),
-  ),
-});
+const legacyBuildConfigSchema = publicClientConfigSchema.transform(
+  (config) => config,
+);
 
-export type PublicEnv = z.infer<typeof publicEnvSchema>;
+export async function loadPublicConfig(
+  fetchConfig: typeof fetch = fetch,
+  buildEnv: Record<string, unknown> = import.meta.env,
+): Promise<PublicClientConfig | null> {
+  try {
+    const response = await fetchConfig("/api/v1/config", {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (response.ok) {
+      const parsed = publicClientConfigSchema.safeParse(await response.json());
+      if (parsed.success) return parsed.data;
+    }
+  } catch {
+    // Der lokale Vite-Betrieb darf auf seine öffentlichen Build-Werte
+    // zurückfallen. Produktionscontainer liefern die Konfiguration per API.
+  }
+  return readLegacyBuildConfig(buildEnv);
+}
 
-export function readPublicEnv(
+export function readLegacyBuildConfig(
   source: Record<string, unknown> = import.meta.env,
-): PublicEnv | null {
-  const result = publicEnvSchema.safeParse(source);
+): PublicClientConfig | null {
+  const result = legacyBuildConfigSchema.safeParse({
+    apiBaseUrl: "/api",
+    supabaseUrl: source.VITE_SUPABASE_URL,
+    supabasePublishableKey: source.VITE_SUPABASE_PUBLISHABLE_KEY,
+    oidcProvider: emptyStringToUndefined(source.VITE_OIDC_PROVIDER),
+    oidcLabel: emptyStringToUndefined(source.VITE_OIDC_LABEL),
+  });
   return result.success ? result.data : null;
 }
 

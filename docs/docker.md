@@ -8,6 +8,8 @@ Das Repository enthält zwei kombinierbare Compose-Dateien:
 - `compose.local.yaml` ergänzt PostgreSQL, Supabase Auth, PostgREST, einen
   lokalen API-Gateway, Mail-Capture, Auth-E-Mail-Vorlagen und den
   Migration-Runner.
+- `compose.production.yaml` ergänzt Caddy mit automatischem TLS und
+  veröffentlicht ausschließlich die HTTP-/HTTPS-Eingänge.
 
 Die lokale Supabase-Ergänzung ist für Entwicklung und Integrationstests
 gedacht. Für ein öffentliches Self-Hosting soll die vollständige, von Supabase
@@ -117,6 +119,9 @@ vollständige offizielle Self-hosted-Distribution der bevorzugte Weg. Der
 schlanke lokale Stack aktiviert standardmäßig nur E-Mail-Authentifizierung.
 
 ## Produktion
+
+Der konkrete Ablauf für eine Einzelserver-Installation mit Hosted Supabase
+steht in [production-deployment.md](production-deployment.md).
 
 Vor einem öffentlichen Rollout:
 

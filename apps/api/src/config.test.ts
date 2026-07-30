@@ -7,15 +7,19 @@ describe("API configuration", () => {
     expect(
       readApiConfig({
         SUPABASE_URL: "https://project.supabase.co",
+        PUBLIC_SUPABASE_URL: "https://devapi.example.test",
         SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
         PROXY_INTERNAL_URL: "http://proxy:3002",
         PROXY_INTERNAL_TOKEN: "a".repeat(32),
       }),
     ).toEqual({
       SUPABASE_URL: "https://project.supabase.co",
+      PUBLIC_SUPABASE_URL: "https://devapi.example.test",
       SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
       PROXY_INTERNAL_URL: "http://proxy:3002",
       PROXY_INTERNAL_TOKEN: "a".repeat(32),
+      OIDC_PROVIDER: undefined,
+      OIDC_LABEL: undefined,
       API_HOST: "127.0.0.1",
       API_PORT: 3001,
     });

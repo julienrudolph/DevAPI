@@ -28,7 +28,8 @@ npm run dev:api
 npm run dev:proxy
 ```
 
-Für die API werden `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`,
+Für die API werden `SUPABASE_URL`, `PUBLIC_SUPABASE_URL`,
+`SUPABASE_PUBLISHABLE_KEY`,
 `PROXY_INTERNAL_URL` und derselbe `PROXY_INTERNAL_TOKEN` benötigt.
 Die API verwendet bewusst keinen Service-Role-Schlüssel: Sie validiert den
 Supabase-Bearer-Token und führt Datenbankoperationen mit der jeweiligen
@@ -80,5 +81,9 @@ npm run compose:up
 
 Ausführliche Hinweise für lokale Tests, Hosted Supabase und einen späteren
 Rollout stehen in `docs/docker.md`.
+
+Eine produktionsnahe Einzelserver-Installation mit HTTPS, privaten
+Dienstports und zur Laufzeit geladener Clientkonfiguration ist in
+`docs/production-deployment.md` beschrieben.
 
 Die verbindlichen Produkt- und Entwicklungsregeln stehen in `AGENTS.md`.

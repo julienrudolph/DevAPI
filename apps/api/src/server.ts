@@ -11,6 +11,13 @@ import { SupabaseTeamMemberRepository } from "./infrastructure/supabase-team-mem
 
 const config = readApiConfig();
 const app = buildApp({
+  publicConfig: {
+    apiBaseUrl: "/api",
+    supabaseUrl: config.PUBLIC_SUPABASE_URL,
+    supabasePublishableKey: config.SUPABASE_PUBLISHABLE_KEY,
+    oidcProvider: config.OIDC_PROVIDER,
+    oidcLabel: config.OIDC_LABEL,
+  },
   authenticate: createSupabaseAuthenticator(
     config.SUPABASE_URL,
     config.SUPABASE_PUBLISHABLE_KEY,

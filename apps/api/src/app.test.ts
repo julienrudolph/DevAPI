@@ -44,6 +44,31 @@ const workspaceRepository: WorkspaceRepository = {
 };
 
 describe("request API authentication", () => {
+  it("serves only validated public client configuration", async () => {
+    const app = buildApp({
+      authenticate: async () => null,
+      requests: repository,
+      workspaces: workspaceRepository,
+      publicConfig: {
+        apiBaseUrl: "/api",
+        supabaseUrl: "https://project.supabase.co",
+        supabasePublishableKey: "sb_publishable_test",
+      },
+    });
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/config",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.json()).toEqual({
+      apiBaseUrl: "/api",
+      supabaseUrl: "https://project.supabase.co",
+      supabasePublishableKey: "sb_publishable_test",
+    });
+    await app.close();
+  });
+
   it("executes requests only after validating the user session", async () => {
     const app = buildApp({
       authenticate: async () => ({
