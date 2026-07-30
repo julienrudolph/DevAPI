@@ -214,6 +214,33 @@ describe("RequestEditor", () => {
     );
   });
 
+  it("offers standard header names while typing", async () => {
+    const user = userEvent.setup();
+    render(
+      <RequestEditor
+        requestId={request.id}
+        workspaceId={request.workspaceId}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Header" }));
+    await user.click(screen.getByText("Header hinzufügen"));
+
+    const keyInput = screen.getByLabelText("Schlüssel");
+    expect(keyInput).toHaveAttribute(
+      "list",
+      "request-header-name-suggestions",
+    );
+    expect(
+      document.querySelector(
+        '#request-header-name-suggestions option[value="Content-Type"]',
+      ),
+    ).toBeInTheDocument();
+
+    await user.type(keyInput, "cont");
+    expect(keyInput).toHaveValue("cont");
+  });
+
   it("blocks malformed JSON before it reaches persistence", async () => {
     const user = userEvent.setup();
     render(

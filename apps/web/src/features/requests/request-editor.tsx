@@ -29,6 +29,29 @@ const MonacoEditor = lazy(
   () => import("../../components/editors/monaco-editor"),
 );
 
+const HEADER_NAME_SUGGESTIONS = [
+  "Accept",
+  "Accept-Encoding",
+  "Accept-Language",
+  "Authorization",
+  "Cache-Control",
+  "Content-Encoding",
+  "Content-Language",
+  "Content-Type",
+  "ETag",
+  "If-Match",
+  "If-Modified-Since",
+  "If-None-Match",
+  "Origin",
+  "Prefer",
+  "Range",
+  "Referer",
+  "User-Agent",
+  "X-API-Key",
+  "X-Correlation-ID",
+  "X-Request-ID",
+] as const;
+
 interface RequestEditorProps {
   requestId: string;
   workspaceId: string;
@@ -549,6 +572,13 @@ function KeyValueTable({
 
   return (
     <div className="key-value-table">
+      {field === "headers" ? (
+        <datalist id="request-header-name-suggestions">
+          {HEADER_NAME_SUGGESTIONS.map((header) => (
+            <option key={header} value={header} />
+          ))}
+        </datalist>
+      ) : null}
       <div className="table-head">
         <span />
         <span>Schlüssel</span>
@@ -565,7 +595,13 @@ function KeyValueTable({
           />
           <input
             aria-label="Schlüssel"
+            autoComplete="off"
             disabled={readOnly}
+            list={
+              field === "headers"
+                ? "request-header-name-suggestions"
+                : undefined
+            }
             placeholder="key"
             {...register(`${field}.${index}.key`)}
           />

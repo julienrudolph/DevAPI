@@ -48,6 +48,72 @@ describe("executeHttpRequest", () => {
     expect(response.body).toBe('{"ok":true}');
   });
 
+  it.each(["POST", "PUT", "PATCH", "DELETE"] as const)(
+    "forwards method, body and enabled headers for %s",
+    async (method) => {
+      const requests: Parameters<Transport>[0][] = [];
+      const transport: Transport = async (request) => {
+        requests.push(request);
+        return {
+          status: 204,
+          statusText: "No Content",
+          headers: {},
+          body: stream(),
+        };
+      };
+
+      await executeHttpRequest(
+        {
+          method,
+          url: "https://public.example/resource",
+          headers: [
+            {
+              id: "172075c3-83a8-4696-a7a6-e993f1f4a325",
+              key: "Content-Type",
+              value: "application/json",
+              enabled: true,
+            },
+            {
+              id: "f48c8753-c539-48b8-8ca9-553c72476dbc",
+              key: "X-Disabled",
+              value: "not-sent",
+              enabled: false,
+            },
+          ],
+          body: '{"ok":true}',
+        },
+        { resolver, transport },
+      );
+
+      expect(requests[0]).toMatchObject({
+        method,
+        body: '{"ok":true}',
+        headers: { "content-type": "application/json" },
+      });
+      expect(requests[0]?.headers).not.toHaveProperty("x-disabled");
+    },
+  );
+
+  it("never forwards a body with GET", async () => {
+    const requests: Parameters<Transport>[0][] = [];
+    const transport: Transport = async (request) => {
+      requests.push(request);
+      return {
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        body: stream(),
+      };
+    };
+
+    await executeHttpRequest(
+      { ...input, body: '{"ignored":true}' },
+      { resolver, transport },
+    );
+
+    expect(requests[0]?.body).toBeUndefined();
+  });
+
   it("revalidates and blocks an internal redirect", async () => {
     const transport: Transport = async () => ({
       status: 302,

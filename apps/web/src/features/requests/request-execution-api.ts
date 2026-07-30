@@ -85,7 +85,9 @@ function executionHeaders(
   auth: RequestAuth,
   bodyType: RequestDraft["body"]["type"],
 ): RequestDraft["headers"] {
-  const enabledHeaders = headers.filter((header) => header.enabled);
+  const enabledHeaders = headers.filter(
+    (header) => header.enabled && header.key.trim().length > 0,
+  );
   const withDefaultContentType =
     bodyType === "json" &&
     !enabledHeaders.some(

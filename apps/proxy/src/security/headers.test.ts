@@ -28,4 +28,13 @@ describe("header safety", () => {
       }),
     ).toEqual({ "content-type": "application/json" });
   });
+
+  it("normalizes enabled request headers and omits disabled entries", () => {
+    expect(
+      sanitizeRequestHeaders([
+        { key: " Content-Type ", value: "application/json", enabled: true },
+        { key: "X-Disabled", value: "secret", enabled: false },
+      ]),
+    ).toEqual({ "content-type": "application/json" });
+  });
 });

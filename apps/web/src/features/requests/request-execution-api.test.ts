@@ -314,4 +314,66 @@ describe("request execution API", () => {
       }),
     ]);
   });
+
+  it("ignores disabled and unfinished header rows", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 200,
+          statusText: "OK",
+          headers: {},
+          body: "",
+          durationMs: 10,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await executeRequest(
+      {
+        requestId,
+        request: {
+          name: "Headers",
+          method: "GET",
+          url: "https://api.example.com/headers",
+          queryParams: [],
+          headers: [
+            {
+              id: "172075c3-83a8-4696-a7a6-e993f1f4a325",
+              key: "X-Enabled",
+              value: "yes",
+              enabled: true,
+            },
+            {
+              id: "f48c8753-c539-48b8-8ca9-553c72476dbc",
+              key: "X-Disabled",
+              value: "no",
+              enabled: false,
+            },
+            {
+              id: "1fe9ec0d-963d-488c-a555-447478dd7b5f",
+              key: " ",
+              value: "",
+              enabled: true,
+            },
+          ],
+          body: { type: "none" },
+        },
+        auth: { type: "none" },
+        variables: [],
+      },
+      "session-token",
+    );
+
+    const options = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(options.body))).toMatchObject({
+      headers: [
+        expect.objectContaining({
+          key: "X-Enabled",
+          value: "yes",
+        }),
+      ],
+    });
+  });
 });
