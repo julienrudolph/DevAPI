@@ -1,4 +1,5 @@
 import { Agent, request } from "undici";
+import type { LookupFunction } from "node:net";
 
 import type {
   Transport,
@@ -16,9 +17,7 @@ export const undiciTransport: Transport = async ({
   const family = address.includes(":") ? 6 : 4;
   const agent = new Agent({
     connect: {
-      lookup(_hostname, _options, callback) {
-        callback(null, address, family);
-      },
+      lookup: createPinnedLookup(address, family),
     },
   });
 
@@ -44,6 +43,19 @@ export const undiciTransport: Transport = async ({
     throw error;
   }
 };
+
+export function createPinnedLookup(
+  address: string,
+  family: 4 | 6,
+): LookupFunction {
+  return (_hostname, options, callback) => {
+    if (options.all) {
+      callback(null, [{ address, family }]);
+      return;
+    }
+    callback(null, address, family);
+  };
+}
 
 async function* closeAfter(
   body: AsyncIterable<Uint8Array>,

@@ -83,11 +83,13 @@ function executionHeaders(
   headers: RequestDraft["headers"],
   auth: RequestAuth,
 ): RequestDraft["headers"] {
-  const withoutAuthorization = headers.filter(
+  const enabledHeaders = headers.filter((header) => header.enabled);
+  if (auth.type === "none") return enabledHeaders;
+
+  const withoutAuthorization = enabledHeaders.filter(
     (header) =>
-      header.enabled && header.key.toLowerCase() !== "authorization",
+      header.key.trim().toLowerCase() !== "authorization",
   );
-  if (auth.type === "none") return withoutAuthorization;
   const value =
     auth.type === "bearer"
       ? `Bearer ${auth.token}`

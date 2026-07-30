@@ -170,4 +170,54 @@ describe("request execution API", () => {
       ],
     });
   });
+
+  it("preserves a manually configured Authorization header", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 200,
+          statusText: "OK",
+          headers: {},
+          body: "",
+          durationMs: 10,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await executeRequest(
+      {
+        requestId,
+        request: {
+          name: "Private",
+          method: "GET",
+          url: "https://api.example.com/private",
+          queryParams: [],
+          headers: [
+            {
+              id: "b1eab850-761b-4530-9c4c-ee22c42d39bb",
+              key: "Authorization",
+              value: "Bearer manual-token",
+              enabled: true,
+            },
+          ],
+          body: { type: "none" },
+        },
+        auth: { type: "none" },
+        variables: [],
+      },
+      "session-token",
+    );
+
+    const options = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(options.body))).toMatchObject({
+      headers: [
+        expect.objectContaining({
+          key: "Authorization",
+          value: "Bearer manual-token",
+        }),
+      ],
+    });
+  });
 });
