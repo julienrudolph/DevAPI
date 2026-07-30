@@ -45,4 +45,4 @@ const app = buildApp({
   ),
 });
 
-await app.listen({ host: "127.0.0.1", port: config.API_PORT });
+await app.listen({ host: config.API_HOST, port: config.API_PORT });

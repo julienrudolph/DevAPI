@@ -16,6 +16,7 @@ describe("API configuration", () => {
       SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
       PROXY_INTERNAL_URL: "http://proxy:3002",
       PROXY_INTERNAL_TOKEN: "a".repeat(32),
+      API_HOST: "127.0.0.1",
       API_PORT: 3001,
     });
   });
