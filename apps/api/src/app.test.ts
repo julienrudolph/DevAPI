@@ -53,6 +53,9 @@ describe("request API authentication", () => {
         apiBaseUrl: "/api",
         supabaseUrl: "https://project.supabase.co",
         supabasePublishableKey: "sb_publishable_test",
+        passwordAuthEnabled: true,
+        passwordSignupEnabled: true,
+        magicLinkAuthEnabled: false,
       },
     });
     const response = await app.inject({
@@ -65,6 +68,9 @@ describe("request API authentication", () => {
       apiBaseUrl: "/api",
       supabaseUrl: "https://project.supabase.co",
       supabasePublishableKey: "sb_publishable_test",
+      passwordAuthEnabled: true,
+      passwordSignupEnabled: true,
+      magicLinkAuthEnabled: false,
     });
     await app.close();
   });

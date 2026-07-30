@@ -6,6 +6,9 @@ COPY packages ./packages
 COPY apps ./apps
 
 RUN npm ci --ignore-scripts \
+      --workspace @api-client/contracts \
+      --workspace @api-client/api \
+      --include-workspace-root=false \
   && npm run build --workspace @api-client/contracts \
   && npm run build --workspace @api-client/api \
   && npm prune --omit=dev

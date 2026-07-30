@@ -48,9 +48,12 @@ Erreichbare Dienste:
 | Mail-Capture | `http://localhost:9000` |
 | PostgreSQL | `localhost:54322` |
 
-Anmeldelinks aus der lokalen E-Mail-Anmeldung erscheinen im Mail-Capture. Die
-Links verwenden die lokalen Vorlagen und führen über `/auth/confirm` zurück zur
-Web-App.
+Standardmäßig verwendet der lokale Stack Passwort-Anmeldung,
+Selbstregistrierung und automatische Bestätigung. Dadurch ist für den Einstieg
+keine Mail erforderlich. Wenn `MAGIC_LINK_AUTH_ENABLED=true` und
+`AUTH_AUTOCONFIRM=false` gesetzt werden, erscheinen Anmeldelinks im
+Mail-Capture. Die Links verwenden die lokalen Vorlagen und führen über
+`/auth/confirm` zurück zur Web-App.
 
 Stack stoppen:
 
@@ -103,7 +106,7 @@ zeigen.
 
 ## OIDC
 
-Die Anwendung baut den optionalen Provider aus diesen Variablen ein:
+Die API liefert den optionalen Provider zur Laufzeit aus diesen Variablen:
 
 ```text
 OIDC_PROVIDER=custom:company-oidc
@@ -112,11 +115,11 @@ OIDC_LABEL=Mit Firmenkonto anmelden
 
 Der Provider selbst wird in Supabase Auth konfiguriert. Client-Secret, Issuer
 und andere vertrauliche Providerdaten gehören niemals in Docker-Build-Args oder
-`VITE_*`-Variablen.
+die öffentliche Laufzeitkonfiguration.
 
 Für lokale Tests mit einem externen OIDC-System ist Hosted Supabase oder die
 vollständige offizielle Self-hosted-Distribution der bevorzugte Weg. Der
-schlanke lokale Stack aktiviert standardmäßig nur E-Mail-Authentifizierung.
+schlanke lokale Stack aktiviert standardmäßig Passwort-Authentifizierung.
 
 ## Produktion
 

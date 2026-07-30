@@ -34,10 +34,29 @@ export function readLegacyBuildConfig(
     apiBaseUrl: "/api",
     supabaseUrl: source.VITE_SUPABASE_URL,
     supabasePublishableKey: source.VITE_SUPABASE_PUBLISHABLE_KEY,
+    passwordAuthEnabled: booleanBuildValue(
+      source.VITE_PASSWORD_AUTH_ENABLED,
+      true,
+    ),
+    passwordSignupEnabled: booleanBuildValue(
+      source.VITE_PASSWORD_SIGNUP_ENABLED,
+      true,
+    ),
+    magicLinkAuthEnabled: booleanBuildValue(
+      source.VITE_MAGIC_LINK_AUTH_ENABLED,
+      false,
+    ),
     oidcProvider: emptyStringToUndefined(source.VITE_OIDC_PROVIDER),
     oidcLabel: emptyStringToUndefined(source.VITE_OIDC_LABEL),
   });
   return result.success ? result.data : null;
+}
+
+function booleanBuildValue(value: unknown, fallback: boolean): unknown {
+  if (value === undefined || value === "") return fallback;
+  if (value === true || value === "true") return true;
+  if (value === false || value === "false") return false;
+  return value;
 }
 
 function emptyStringToUndefined(value: unknown): unknown {

@@ -14,6 +14,9 @@ describe("publicClientConfigSchema", () => {
       apiBaseUrl: "/api",
       supabaseUrl: "https://project.supabase.co",
       supabasePublishableKey: "sb_publishable_test",
+      passwordAuthEnabled: true,
+      passwordSignupEnabled: true,
+      magicLinkAuthEnabled: false,
       oidcProvider: "custom:company-oidc",
     });
   });

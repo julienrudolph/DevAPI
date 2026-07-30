@@ -20,6 +20,9 @@ describe("API configuration", () => {
       PROXY_INTERNAL_TOKEN: "a".repeat(32),
       OIDC_PROVIDER: undefined,
       OIDC_LABEL: undefined,
+      PASSWORD_AUTH_ENABLED: true,
+      PASSWORD_SIGNUP_ENABLED: true,
+      MAGIC_LINK_AUTH_ENABLED: false,
       API_HOST: "127.0.0.1",
       API_PORT: 3001,
     });

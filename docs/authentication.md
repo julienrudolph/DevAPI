@@ -1,11 +1,37 @@
 # Authentifizierung
 
+## Verfügbare Verfahren
+
+Die Oberfläche kann drei Verfahren unabhängig anzeigen:
+
+```text
+PASSWORD_AUTH_ENABLED=true
+PASSWORD_SIGNUP_ENABLED=true
+MAGIC_LINK_AUTH_ENABLED=false
+```
+
+Die Standardwerte sind für einen einfachen internen Testbetrieb ohne SMTP:
+
+- Anmeldung mit E-Mail und Passwort
+- Selbstregistrierung
+- keine Magic-Link-E-Mail
+- optional zusätzlich OIDC
+
+Neue Passwörter müssen in der DevAPI-Oberfläche mindestens zwölf Zeichen
+enthalten. Fehlermeldungen bei der Anmeldung unterscheiden absichtlich nicht
+zwischen einem unbekannten Konto und einem falschen Passwort.
+
+Ohne SMTP sind keine Passwort-Wiederherstellung, E-Mail-Bestätigung,
+Einladungsmails oder Sicherheitsbenachrichtigungen möglich. Dieser Zustand ist
+nicht als endgültige öffentliche Produktionskonfiguration vorgesehen.
+
 ## Unterstützte Verfahren
 
 Die Anwendung verwendet Supabase Auth als gemeinsame Sitzungs- und
 Identitätsgrenze. Vorgesehen sind:
 
-- E-Mail-Anmeldelink
+- E-Mail und Passwort
+- optional E-Mail-Anmeldelink
 - optional ein benutzerdefinierter OpenID-Connect-Provider
 
 OIDC ist keine parallele lokale Benutzerverwaltung. Supabase Auth führt den
@@ -42,15 +68,17 @@ verwendete Links führen kontrolliert zurück zur Anmeldung.
 4. Client-ID, Client-Secret und Issuer-URL hinterlegen.
 5. Die von Supabase angezeigte Callback-URL beim Identity Provider erlauben.
 6. PKCE und Nonce-Prüfung aktiviert lassen.
-7. Den Bezeichner im Web-Frontend konfigurieren:
+7. Den Bezeichner in der Serverkonfiguration hinterlegen:
 
 ```text
-VITE_OIDC_PROVIDER=custom:company-oidc
-VITE_OIDC_LABEL=Mit Firmenkonto anmelden
+OIDC_PROVIDER=custom:company-oidc
+OIDC_LABEL=Mit Firmenkonto anmelden
 ```
 
 Der Client-Secret des OIDC-Providers gehört ausschließlich in die
-serverseitige Supabase-Konfiguration und niemals in eine `VITE_*`-Variable.
+serverseitige Supabase-Konfiguration. `VITE_*`-Werte existieren nur als
+Fallback für den direkten lokalen Vite-Entwicklungsserver; Docker- und
+Desktop-Clients laden die öffentliche Konfiguration zur Laufzeit.
 
 ## Identitäten und Mitgliedschaften
 

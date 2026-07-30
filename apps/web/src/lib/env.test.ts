@@ -40,6 +40,9 @@ describe("public client configuration", () => {
       apiBaseUrl: "/api",
       supabaseUrl: "http://localhost:8000",
       supabasePublishableKey: "local-anon-jwt",
+      passwordAuthEnabled: true,
+      passwordSignupEnabled: true,
+      magicLinkAuthEnabled: false,
       oidcProvider: undefined,
       oidcLabel: undefined,
     });

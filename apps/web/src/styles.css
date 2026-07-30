@@ -1409,6 +1409,41 @@ a:focus-visible {
   padding: 0 11px;
 }
 
+.auth-mode-switch {
+  background: #eef2ef;
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  grid-template-columns: 1fr 1fr;
+  margin: 18px 0;
+  padding: 3px;
+}
+
+.auth-mode-switch button {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: #68736b;
+  cursor: pointer;
+  font-weight: 650;
+  padding: 8px;
+}
+
+.auth-mode-switch button.active {
+  background: #ffffff;
+  color: #174f37;
+  box-shadow: 0 1px 3px rgb(20 55 38 / 12%);
+}
+
+.login-password {
+  border: 1px solid #cfd7d0;
+  border-radius: 8px;
+  font-size: 14px;
+  height: 42px;
+  padding: 0 11px;
+  width: 100%;
+}
+
 .login-card > h1 {
   font-size: 25px;
   margin-top: 18px;

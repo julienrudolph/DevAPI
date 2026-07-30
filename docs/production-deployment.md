@@ -19,7 +19,7 @@ vollständige, gehärtete Supabase-Installation.
 - DNS-A- und gegebenenfalls AAAA-Record auf den Server
 - eingehend freigegebene Ports `80/tcp`, `443/tcp` und optional `443/udp`
 - ein produktives Supabase-Projekt mit angewendeten Migrationen
-- ein SMTP- und Auth-Setup im Supabase-Projekt
+- ein Auth-Setup im Supabase-Projekt
 
 API, Proxy und Datenbank dürfen nicht über die Server-Firewall veröffentlicht
 werden.
@@ -67,6 +67,34 @@ Vor dem Rollout:
 6. Row Level Security und Cross-Tenant-Negativtests gegen Staging ausführen.
 
 Provider-Secrets gehören nur in Supabase beziehungsweise dessen Secret Store.
+
+### Einfacher Testbetrieb ohne SMTP
+
+Die Standardkonfiguration zeigt Passwort-Anmeldung und Selbstregistrierung und
+blendet Magic Link aus:
+
+```text
+PASSWORD_AUTH_ENABLED=true
+PASSWORD_SIGNUP_ENABLED=true
+MAGIC_LINK_AUTH_ENABLED=false
+```
+
+Im Hosted-Supabase-Projekt muss dazu `Confirm Email` deaktiviert werden. Bei
+einer selbst gehosteten GoTrue-Instanz entspricht dies:
+
+```text
+GOTRUE_EXTERNAL_EMAIL_ENABLED=true
+GOTRUE_DISABLE_SIGNUP=false
+GOTRUE_MAILER_AUTOCONFIRM=true
+```
+
+Ohne SMTP funktionieren Passwort-Reset, E-Mail-Verifikation, Magic Links,
+Einladungsmails und Sicherheitsbenachrichtigungen nicht. Vergessene Passwörter
+müssen administrativ zurückgesetzt werden.
+
+Dieser Modus ist für einen internen Testserver gedacht. Für einen öffentlich
+erreichbaren Produktivbetrieb müssen E-Mail-Bestätigung und SMTP eingerichtet
+oder Selbstregistrierung deaktiviert und OIDC verwendet werden.
 
 ## Erstes Deployment
 

@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+const booleanStringSchema = z.preprocess((value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return value;
+  if (value.toLocaleLowerCase() === "true") return true;
+  if (value.toLocaleLowerCase() === "false") return false;
+  return value;
+}, z.boolean());
+
 const apiConfigSchema = z.object({
   SUPABASE_URL: z.string().url(),
   SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
@@ -17,6 +25,9 @@ const apiConfigSchema = z.object({
     emptyStringToUndefined,
     z.string().trim().min(1).max(80).optional(),
   ),
+  PASSWORD_AUTH_ENABLED: booleanStringSchema.default(true),
+  PASSWORD_SIGNUP_ENABLED: booleanStringSchema.default(true),
+  MAGIC_LINK_AUTH_ENABLED: booleanStringSchema.default(false),
   API_HOST: z.string().min(1).default("127.0.0.1"),
   API_PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
 });

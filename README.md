@@ -46,10 +46,26 @@ Supabase-Nutzer und ruft den isolierten Proxy anschließend serverseitig auf.
 
 ## Authentifizierung
 
-Die Web-App unterstützt Supabase-E-Mail-Login und optional einen über Supabase
-konfigurierten Custom-OIDC-Provider. Die benötigten öffentlichen Variablen
-stehen in `.env.example`; Provider-Secrets gehören niemals ins Frontend.
-Details enthält `docs/authentication.md`.
+Die Standardkonfiguration verwendet E-Mail-Adresse und Passwort:
+
+- Passwort-Anmeldung ist aktiviert.
+- Selbstregistrierung ist aktiviert.
+- neue Passwörter benötigen in der Oberfläche mindestens 12 Zeichen.
+- Magic Link ist deaktiviert.
+- OIDC kann zusätzlich aktiviert werden.
+
+Damit kann ein interner Testserver ohne eigenen Mailserver verwendet werden.
+Ohne SMTP stehen allerdings keine Passwort-Wiederherstellung,
+E-Mail-Verifikation, Magic Links oder Einladungsmails zur Verfügung.
+
+```text
+PASSWORD_AUTH_ENABLED=true
+PASSWORD_SIGNUP_ENABLED=true
+MAGIC_LINK_AUTH_ENABLED=false
+```
+
+Provider-Secrets gehören niemals ins Frontend. Details enthält
+`docs/authentication.md`.
 
 Alle Prüfungen:
 
@@ -150,9 +166,14 @@ Ein produktives Supabase-Projekt erstellen und anschließend:
    `https://devapi.example.de` als Site URL hinterlegen.
 3. `https://devapi.example.de/auth/confirm` als erlaubte Redirect-URL
    hinterlegen.
-4. Produktives SMTP für Magic Links und Einladungen konfigurieren.
-5. Optional den Custom-OIDC-Provider einrichten.
-6. Den öffentlichen Publishable Key notieren.
+4. Unter Auth → Providers → Email die Passwort-Anmeldung aktivieren.
+5. Für einen Testserver ohne SMTP `Confirm Email` deaktivieren.
+6. Optional den Custom-OIDC-Provider einrichten.
+7. Den öffentlichen Publishable Key notieren.
+
+Für einen öffentlichen Produktivbetrieb sollte `Confirm Email` aktiviert und
+ein SMTP-Dienst eingerichtet werden. Ohne Bestätigung behandelt Supabase die
+angegebene E-Mail-Adresse ungeprüft als bestätigt.
 
 OIDC-Client-Secret, Datenbankpasswort und Service-Role-Key gehören niemals in
 die Web- oder Desktop-Konfiguration.
@@ -186,10 +207,31 @@ PROXY_INTERNAL_TOKEN=<Ausgabe von openssl rand -hex 32>
 
 OIDC_PROVIDER=
 OIDC_LABEL=Mit Firmenkonto anmelden
+
+PASSWORD_AUTH_ENABLED=true
+PASSWORD_SIGNUP_ENABLED=true
+MAGIC_LINK_AUTH_ENABLED=false
 ```
 
 `PUBLIC_HOST` enthält nur den Hostnamen und kein `https://`. Die Site- und
 Supabase-URLs enthalten dagegen das Protokoll.
+
+Die Auth-Schalter steuern die sichtbaren Optionen:
+
+| Einstellung | Bedeutung |
+|---|---|
+| `PASSWORD_AUTH_ENABLED=true` | Anmeldung mit E-Mail und Passwort |
+| `PASSWORD_SIGNUP_ENABLED=true` | Nutzer dürfen selbst Konten erstellen |
+| `MAGIC_LINK_AUTH_ENABLED=false` | keine Anmeldemails erforderlich |
+
+Für einen späteren geschlossenen Produktivbetrieb ist beispielsweise möglich:
+
+```text
+PASSWORD_AUTH_ENABLED=true
+PASSWORD_SIGNUP_ENABLED=false
+MAGIC_LINK_AUTH_ENABLED=false
+OIDC_PROVIDER=custom:company-oidc
+```
 
 `.env.production` ist nicht für Git vorgesehen. Die Datei muss auf dem Server
 nur für den Betriebsbenutzer lesbar sein:
@@ -275,12 +317,17 @@ docker compose \
 
 Anschließend mindestens manuell testen:
 
-1. Magic-Link- oder OIDC-Anmeldung
-2. Workspace öffnen
-3. Request speichern
-4. Request ausführen
-5. Einladungsmail versenden
-6. Zugriff mit einem Nutzer aus einem anderen Team ablehnen
+1. Registrierung mit E-Mail und Passwort
+2. Abmelden und erneut mit Passwort anmelden
+3. optional OIDC-Anmeldung
+4. Workspace öffnen
+5. Request speichern
+6. Request ausführen
+7. Zugriff mit einem Nutzer aus einem anderen Team ablehnen
+
+Ohne SMTP kann eine Einladungsmail nicht zugestellt werden. Zusätzliche Konten
+müssen für den Testbetrieb deshalb zunächst über Selbstregistrierung angelegt
+werden.
 
 ### 8. Anwendung aktualisieren
 
