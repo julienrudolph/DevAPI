@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Clock3,
   Copy,
+  FileUp,
   FilePlus2,
   FolderClosed,
   FolderInput,
@@ -32,6 +33,7 @@ import { InvitationDialog } from "../invitations/invitation-dialog";
 import { TeamMembersDialog } from "../teams/team-members-dialog";
 import { EnvironmentControls } from "../environments/environment-controls";
 import { ExecutionHistoryDialog } from "../history/execution-history-dialog";
+import { OpenApiImportDialog } from "../import/openapi-import-dialog";
 import { useEnvironments } from "../environments/environment-queries";
 import { CollectionCreateForm } from "./collection-create-form";
 import {
@@ -124,6 +126,7 @@ export function WorkspacePage() {
     useState<string>();
   const [inviting, setInviting] = useState(false);
   const [showingHistory, setShowingHistory] = useState(false);
+  const [showingOpenApiImport, setShowingOpenApiImport] = useState(false);
   const [managingTeam, setManagingTeam] = useState(false);
   const [creatingCollection, setCreatingCollection] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -604,14 +607,26 @@ export function WorkspacePage() {
           </nav>
         )}
 
-        <button
-          className="history-link"
-          onClick={() => setShowingHistory(true)}
-          type="button"
-        >
-          <Clock3 aria-hidden="true" size={16} />
-          Verlauf
-        </button>
+        <div className="sidebar-footer-actions">
+          {canEdit && (tree.data?.collections.length ?? 0) > 0 ? (
+            <button
+              className="history-link"
+              onClick={() => setShowingOpenApiImport(true)}
+              type="button"
+            >
+              <FileUp aria-hidden="true" size={16} />
+              OpenAPI importieren
+            </button>
+          ) : null}
+          <button
+            className="history-link"
+            onClick={() => setShowingHistory(true)}
+            type="button"
+          >
+            <Clock3 aria-hidden="true" size={16} />
+            Verlauf
+          </button>
+        </div>
       </aside>
 
       <section className="request-workbench">
@@ -890,6 +905,18 @@ export function WorkspacePage() {
         <ExecutionHistoryDialog
           onClose={() => setShowingHistory(false)}
           onOpenRequest={selectRequest}
+          workspaceId={activeWorkspace.id}
+        />
+      ) : null}
+      {showingOpenApiImport && tree.data ? (
+        <OpenApiImportDialog
+          collections={tree.data.collections}
+          onClose={() => setShowingOpenApiImport(false)}
+          onImported={(requests) => {
+            setShowingOpenApiImport(false);
+            const last = requests.at(-1);
+            if (last) selectRequest(last.id);
+          }}
           workspaceId={activeWorkspace.id}
         />
       ) : null}

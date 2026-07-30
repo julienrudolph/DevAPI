@@ -1243,6 +1243,73 @@ h1 {
   padding: 0 9px;
 }
 
+.sidebar-footer-actions {
+  border-top: 1px solid #dfe5df;
+  display: grid;
+}
+
+.sidebar-footer-actions .history-link {
+  border-top: 0;
+}
+
+.openapi-import-dialog {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.openapi-source {
+  display: grid;
+  font-size: 12px;
+  font-weight: 650;
+  gap: 6px;
+  margin: 18px 0 10px;
+}
+
+.openapi-source textarea {
+  border: 1px solid #cfd7d0;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.openapi-import-summary {
+  display: flex;
+  justify-content: space-between;
+  margin: 18px 0 12px;
+}
+
+.openapi-operation-list {
+  border: 1px solid #dfe5df;
+  border-radius: 8px;
+  display: grid;
+  margin: 12px 0;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.openapi-operation-list label {
+  align-items: center;
+  border-bottom: 1px solid #edf0ed;
+  display: grid;
+  gap: 9px;
+  grid-template-columns: auto 50px 1fr;
+  padding: 9px 10px;
+}
+
+.openapi-operation-list label:last-child {
+  border-bottom: 0;
+}
+
+.openapi-operation-list label > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.openapi-operation-list small {
+  color: #778179;
+}
+
 .response-empty {
   align-items: center;
   color: #7c867f;
