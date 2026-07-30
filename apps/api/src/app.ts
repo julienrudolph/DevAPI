@@ -7,6 +7,7 @@ import {
   createTeamInvitationSchema,
   createWorkspaceSchema,
   executeRequestSchema,
+  executeSavedRequestSchema,
   environmentIdParamsSchema,
   environmentVariableIdParamsSchema,
   requestIdParamsSchema,
@@ -25,6 +26,10 @@ import type {
   Authenticator,
 } from "./auth/authenticator.js";
 import type { EnvironmentRepository } from "./domain/environment-repository.js";
+import type {
+  ExecutionHistoryRepository,
+  RecordExecutionCommand,
+} from "./domain/execution-history-repository.js";
 import type { InvitationRepository } from "./domain/invitation-repository.js";
 import type { TeamMemberRepository } from "./domain/team-member-repository.js";
 import {
@@ -42,6 +47,7 @@ export interface ApiDependencies {
   environments?: EnvironmentRepository;
   invitations?: InvitationRepository;
   teamMembers?: TeamMemberRepository;
+  executionHistory?: ExecutionHistoryRepository;
 }
 
 export function buildApp(dependencies: ApiDependencies) {
@@ -424,30 +430,104 @@ export function buildApp(dependencies: ApiDependencies) {
               : "UNAUTHORIZED",
         });
     }
-    const input = executeRequestSchema.safeParse(request.body);
+    const input = executeSavedRequestSchema.safeParse(request.body);
     if (!input.success) {
       return reply.code(400).send({ code: "INVALID_REQUEST" });
     }
     if (!dependencies.executor) {
       return reply.code(503).send({ code: "PROXY_UNAVAILABLE" });
     }
+    const visibleRequest = await dependencies.requests.find({
+      requestId: input.data.requestId,
+      accessToken: user.user.accessToken,
+    });
+    if (!visibleRequest) {
+      return reply.code(404).send({ code: "REQUEST_NOT_FOUND" });
+    }
+    const { requestId, ...executionInput } = input.data;
+    const startedAt = Date.now();
     try {
-      return reply.code(200).send(
-        await dependencies.executor.execute(input.data),
+      const result = await dependencies.executor.execute(
+        executeRequestSchema.parse(executionInput),
       );
+      await recordExecutionSafely(dependencies.executionHistory, {
+        requestId,
+        method: executionInput.method,
+        statusCode: result.status,
+        durationMs: result.durationMs,
+        successful: result.status < 400,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return reply.code(200).send(result);
     } catch (error) {
       if (error instanceof RequestExecutionError) {
+        await recordExecutionSafely(dependencies.executionHistory, {
+          requestId,
+          method: executionInput.method,
+          statusCode: error.status,
+          durationMs: Date.now() - startedAt,
+          successful: false,
+          userId: user.user.id,
+          accessToken: user.user.accessToken,
+        });
         return reply.code(error.status).send({
           code: error.code,
           message: error.message,
         });
       }
+      await recordExecutionSafely(dependencies.executionHistory, {
+        requestId,
+        method: executionInput.method,
+        statusCode: 502,
+        durationMs: Date.now() - startedAt,
+        successful: false,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
       return reply.code(502).send({
         code: "PROXY_REQUEST_FAILED",
         message: "Der Request konnte nicht sicher ausgeführt werden.",
       });
     }
   });
+
+  app.get(
+    "/v1/workspaces/:workspaceId/executions",
+    async (request, reply) => {
+      const user = await authenticateSafely(
+        dependencies.authenticate,
+        request.headers.authorization,
+      );
+      if (user.kind !== "authenticated") {
+        return reply.code(user.kind === "unavailable" ? 503 : 401).send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+      }
+      const params = workspaceIdParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return reply.code(400).send({ code: "INVALID_REQUEST" });
+      }
+      if (!dependencies.executionHistory) {
+        return reply.code(503).send({ code: "EXECUTION_HISTORY_UNAVAILABLE" });
+      }
+      try {
+        const executions = await dependencies.executionHistory.list({
+          workspaceId: params.data.workspaceId,
+          userId: user.user.id,
+          accessToken: user.user.accessToken,
+        });
+        return executions
+          ? reply.code(200).send(executions)
+          : reply.code(404).send({ code: "WORKSPACE_NOT_FOUND" });
+      } catch {
+        return reply.code(500).send({ code: "EXECUTION_HISTORY_LIST_FAILED" });
+      }
+    },
+  );
 
   app.get("/v1/workspaces", async (request, reply) => {
     const user = await authenticateSafely(
@@ -733,5 +813,18 @@ async function authenticateSafely(
       : { kind: "unauthorized" };
   } catch {
     return { kind: "unavailable" };
+  }
+}
+
+async function recordExecutionSafely(
+  repository: ExecutionHistoryRepository | undefined,
+  command: RecordExecutionCommand,
+): Promise<void> {
+  if (!repository) return;
+  try {
+    await repository.record(command);
+  } catch {
+    // Die Historie enthält nur Diagnosemetadaten und darf eine ansonsten
+    // erfolgreiche Request-Ausführung nicht fehlschlagen lassen.
   }
 }

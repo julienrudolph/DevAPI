@@ -21,6 +21,7 @@ import { RequestEditor } from "../requests/request-editor";
 import { InvitationDialog } from "../invitations/invitation-dialog";
 import { TeamMembersDialog } from "../teams/team-members-dialog";
 import { EnvironmentControls } from "../environments/environment-controls";
+import { ExecutionHistoryDialog } from "../history/execution-history-dialog";
 import { useEnvironments } from "../environments/environment-queries";
 import { CollectionCreateForm } from "./collection-create-form";
 import {
@@ -49,6 +50,7 @@ export function WorkspacePage() {
   const [selectedEnvironmentId, setSelectedEnvironmentId] =
     useState<string>();
   const [inviting, setInviting] = useState(false);
+  const [showingHistory, setShowingHistory] = useState(false);
   const [managingTeam, setManagingTeam] = useState(false);
   const [creatingCollection, setCreatingCollection] = useState(false);
   const [creatingChild, setCreatingChild] = useState<{
@@ -298,7 +300,11 @@ export function WorkspacePage() {
           </nav>
         )}
 
-        <button className="history-link" type="button">
+        <button
+          className="history-link"
+          onClick={() => setShowingHistory(true)}
+          type="button"
+        >
           <Clock3 aria-hidden="true" size={16} />
           Verlauf
         </button>
@@ -413,6 +419,12 @@ export function WorkspacePage() {
         <TeamMembersDialog
           onClose={() => setManagingTeam(false)}
           teamId={activeWorkspace.teamId}
+        />
+      ) : null}
+      {showingHistory ? (
+        <ExecutionHistoryDialog
+          onClose={() => setShowingHistory(false)}
+          workspaceId={activeWorkspace.id}
         />
       ) : null}
     </div>

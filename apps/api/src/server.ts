@@ -5,6 +5,7 @@ import { SupabaseRequestRepository } from "./infrastructure/supabase-request-rep
 import { SupabaseWorkspaceRepository } from "./infrastructure/supabase-workspace-repository.js";
 import { HttpRequestExecutor } from "./infrastructure/http-request-executor.js";
 import { SupabaseEnvironmentRepository } from "./infrastructure/supabase-environment-repository.js";
+import { SupabaseExecutionHistoryRepository } from "./infrastructure/supabase-execution-history-repository.js";
 import { SupabaseInvitationRepository } from "./infrastructure/supabase-invitation-repository.js";
 import { SupabaseTeamMemberRepository } from "./infrastructure/supabase-team-member-repository.js";
 
@@ -27,6 +28,10 @@ const app = buildApp({
     config.PROXY_INTERNAL_TOKEN,
   ),
   environments: new SupabaseEnvironmentRepository(
+    config.SUPABASE_URL,
+    config.SUPABASE_PUBLISHABLE_KEY,
+  ),
+  executionHistory: new SupabaseExecutionHistoryRepository(
     config.SUPABASE_URL,
     config.SUPABASE_PUBLISHABLE_KEY,
   ),

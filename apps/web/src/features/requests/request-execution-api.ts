@@ -1,5 +1,5 @@
 import {
-  executeRequestSchema,
+  executeSavedRequestSchema,
   proxyResponseSchema,
   requestAuthSchema,
   type ProxyResponse,
@@ -24,6 +24,7 @@ export class RequestExecutionError extends Error {
 
 export async function executeRequest(
   input: {
+    requestId: string;
     request: RequestDraft;
     auth: RequestAuth;
     variables: EnvironmentVariable[];
@@ -39,7 +40,8 @@ export async function executeRequest(
       "Content-Type": "application/json",
     },
     body: JSON.stringify(
-      executeRequestSchema.parse({
+      executeSavedRequestSchema.parse({
+        requestId: input.requestId,
         method: draft.method,
         url: withQueryParams(
           resolveVariables(draft.url, input.variables),

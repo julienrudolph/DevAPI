@@ -67,6 +67,7 @@ describe("request API authentication", () => {
       url: "/v1/execute",
       headers: { authorization: "Bearer verified-token" },
       payload: {
+        requestId,
         method: "GET",
         url: "https://api.example.com/health",
         headers: [],

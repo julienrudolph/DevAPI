@@ -1,5 +1,6 @@
 export * from "./conflict.js";
 export * from "./environment.js";
+export * from "./execution-history.js";
 export * from "./invitation.js";
 export * from "./team-member.js";
 export * from "./proxy.js";

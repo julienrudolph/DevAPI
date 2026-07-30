@@ -8,6 +8,8 @@ import {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("request execution API", () => {
+  const requestId = "fa7596b3-0041-4fe8-9ddf-956e7a107014";
+
   it("sends enabled parameters and headers through the authenticated API", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -25,6 +27,7 @@ describe("request execution API", () => {
 
     const result = await executeRequest(
       {
+        requestId,
         request: {
           name: "Health",
           method: "GET",
@@ -91,6 +94,7 @@ describe("request execution API", () => {
     await expect(
       executeRequest(
         {
+          requestId,
           request: {
             name: "Internal",
             method: "GET",
@@ -141,6 +145,7 @@ describe("request execution API", () => {
 
     await executeRequest(
       {
+        requestId,
         request: {
           name: "Private",
           method: "GET",

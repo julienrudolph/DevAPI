@@ -1068,6 +1068,50 @@ a:focus-visible {
   margin-top: 0.5rem;
 }
 
+.execution-history-dialog {
+  width: min(44rem, calc(100vw - 2rem));
+}
+
+.execution-history-list {
+  display: grid;
+  gap: 0.4rem;
+  max-height: min(28rem, 55vh);
+  margin-block: 1.25rem;
+  overflow-y: auto;
+}
+
+.execution-history-row {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto 5rem;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.execution-identity {
+  display: grid;
+  min-width: 0;
+}
+
+.execution-identity strong,
+.execution-identity small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.execution-identity small,
+.execution-duration {
+  color: #69746c;
+  font-size: 0.75rem;
+}
+
+.execution-duration {
+  text-align: right;
+}
+
 .invitation-link {
   width: 100%;
   margin-block: 1rem;

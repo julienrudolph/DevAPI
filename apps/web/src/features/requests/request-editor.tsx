@@ -88,7 +88,7 @@ function LoadedRequestEditor({
   const [conflict, setConflict] = useState<RequestConflict>();
   const [baseVersion, setBaseVersion] = useState(request.version);
   const mutation = useUpdateRequest(workspaceId, request.id);
-  const execution = useExecuteRequest();
+  const execution = useExecuteRequest(workspaceId);
   const {
     handleSubmit,
     register,
@@ -154,7 +154,12 @@ function LoadedRequestEditor({
             intent.value === "execute"
           ) {
             await execution
-              .mutateAsync({ request: draft, auth, variables })
+              .mutateAsync({
+                requestId: request.id,
+                request: draft,
+                auth,
+                variables,
+              })
               .catch(() => undefined);
             return;
           }

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UpdateRequest } from "@api-client/contracts";
 
 import { useAuth } from "../auth/auth-context";
+import { executionHistoryKeys } from "../history/execution-history-queries";
 import { workspaceKeys } from "../workspaces/workspace-queries";
 import { fetchRequest, updateRequest } from "./request-api";
 import { executeRequest } from "./request-execution-api";
@@ -34,10 +35,18 @@ export function useUpdateRequest(workspaceId: string, requestId: string) {
   });
 }
 
-export function useExecuteRequest() {
+export function useExecuteRequest(workspaceId?: string) {
   const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: Parameters<typeof executeRequest>[0]) =>
       executeRequest(input, accessToken!),
+    onSuccess: () => {
+      if (workspaceId) {
+        void queryClient.invalidateQueries({
+          queryKey: executionHistoryKeys.list(workspaceId),
+        });
+      }
+    },
   });
 }
