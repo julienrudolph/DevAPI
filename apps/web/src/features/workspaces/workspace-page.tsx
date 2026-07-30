@@ -889,6 +889,7 @@ export function WorkspacePage() {
       {showingHistory ? (
         <ExecutionHistoryDialog
           onClose={() => setShowingHistory(false)}
+          onOpenRequest={selectRequest}
           workspaceId={activeWorkspace.id}
         />
       ) : null}

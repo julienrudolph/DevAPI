@@ -33,3 +33,23 @@ export function resolveVariables(
   }
   return resolved;
 }
+
+export function listVariableReferences(value: string): string[] {
+  return [
+    ...new Set(
+      [...value.matchAll(placeholderPattern)].map((match) => match[1]!),
+    ),
+  ].sort();
+}
+
+export function findUnresolvedVariables(
+  values: string[],
+  variables: EnvironmentVariable[],
+): string[] {
+  const available = new Set(variables.map(({ key }) => key));
+  return [
+    ...new Set(
+      values.flatMap(listVariableReferences).filter((key) => !available.has(key)),
+    ),
+  ].sort();
+}

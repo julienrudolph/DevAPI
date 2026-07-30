@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  findUnresolvedVariables,
+  listVariableReferences,
   resolveVariables,
   UnresolvedVariableError,
 } from "./resolve-variables";
@@ -43,5 +45,23 @@ describe("resolveVariables", () => {
     expect(() => resolveVariables("{{missing}}", [])).toThrow(
       UnresolvedVariableError,
     );
+  });
+
+  it("lists references once and identifies missing values", () => {
+    expect(
+      listVariableReferences("{{baseUrl}}/{{resource}}?again={{resource}}"),
+    ).toEqual(["baseUrl", "resource"]);
+    expect(
+      findUnresolvedVariables(["{{baseUrl}}/{{missing}}"], [
+        {
+          id: "e5c539a4-3fa9-4bc4-b6dc-acba97f1c9a3",
+          environmentId,
+          key: "baseUrl",
+          value: "https://api.example.com",
+          scope: "shared",
+          version: 1,
+        },
+      ]),
+    ).toEqual(["missing"]);
   });
 });

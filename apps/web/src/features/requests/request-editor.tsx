@@ -33,6 +33,11 @@ import {
   useUpdateRequest,
 } from "./request-queries";
 import { RevisionDialog } from "../revisions/revision-dialog";
+import {
+  findUnresolvedVariables,
+  listVariableReferences,
+  resolveVariables,
+} from "../environments/resolve-variables";
 
 const MonacoEditor = lazy(
   () => import("../../components/editors/monaco-editor"),
@@ -148,6 +153,27 @@ function LoadedRequestEditor({
     defaultValues: toDraft(request),
   });
   const bodyType = watch("body.type");
+  const draftUrl = watch("url");
+  const draftBody = watch("body.content") ?? "";
+  const draftHeaders = watch("headers");
+  const draftQueryParams = watch("queryParams");
+  const referencedVariables = listVariableReferences(
+    [
+      draftUrl,
+      draftBody,
+      ...draftHeaders.flatMap(({ key, value }) => [key, value]),
+      ...draftQueryParams.flatMap(({ key, value }) => [key, value]),
+    ].join("\n"),
+  );
+  const unresolvedVariables = findUnresolvedVariables(
+    [
+      draftUrl,
+      draftBody,
+      ...draftHeaders.flatMap(({ key, value }) => [key, value]),
+      ...draftQueryParams.flatMap(({ key, value }) => [key, value]),
+    ],
+    variables,
+  );
 
   useEffect(() => {
     if (!isDirty && request.version !== baseVersion) {
@@ -280,11 +306,46 @@ function LoadedRequestEditor({
             aria-label="Request-URL"
             autoComplete="off"
             disabled={readOnly}
+            list="request-variable-suggestions"
             spellCheck={false}
             {...register("url")}
           />
+          <datalist id="request-variable-suggestions">
+            {variables.map((variable) => (
+              <option
+                key={`${variable.scope}:${variable.key}`}
+                value={`{{${variable.key}}}`}
+              />
+            ))}
+          </datalist>
         </div>
         {errors.url ? <p className="field-error">{errors.url.message}</p> : null}
+        {referencedVariables.length > 0 ? (
+          <div className="variable-usage" aria-live="polite">
+            <span>
+              Variablen:{" "}
+              {referencedVariables.map((key) => (
+                <code
+                  className={
+                    unresolvedVariables.includes(key) ? "unresolved" : undefined
+                  }
+                  key={key}
+                >
+                  {`{{${key}}}`}
+                </code>
+              ))}
+            </span>
+            {unresolvedVariables.length > 0 ? (
+              <strong>
+                Nicht definiert: {unresolvedVariables.join(", ")}
+              </strong>
+            ) : (
+              <span className="resolved-url">
+                Vorschau: {resolveVariables(draftUrl, variables)}
+              </span>
+            )}
+          </div>
+        ) : null}
 
         <div className="tabs" role="tablist" aria-label="Request-Konfiguration">
           {([
