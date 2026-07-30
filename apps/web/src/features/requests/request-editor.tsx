@@ -9,10 +9,12 @@ import {
 } from "@api-client/contracts";
 import {
   ClipboardCopy,
+  Download,
   History,
   Import,
   Minus,
   Plus,
+  Search,
 } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
@@ -128,6 +130,8 @@ function LoadedRequestEditor({
   const [curlInput, setCurlInput] = useState("");
   const [curlError, setCurlError] = useState<string>();
   const [curlNotice, setCurlNotice] = useState<string>();
+  const [responseTab, setResponseTab] = useState<"body" | "headers">("body");
+  const [responseSearch, setResponseSearch] = useState("");
   const mutation = useUpdateRequest(workspaceId, request.id);
   const execution = useExecuteRequest(workspaceId);
   const {
@@ -491,15 +495,92 @@ function LoadedRequestEditor({
             </div>
           ) : execution.data ? (
             <div className="response-result">
-              <details>
-                <summary>Response-Header</summary>
+              <div className="response-toolbar">
+                <div aria-label="Response-Ansicht" className="response-tabs">
+                  <button
+                    aria-selected={responseTab === "body"}
+                    className={responseTab === "body" ? "active" : undefined}
+                    onClick={() => setResponseTab("body")}
+                    role="tab"
+                    type="button"
+                  >
+                    Body
+                  </button>
+                  <button
+                    aria-selected={responseTab === "headers"}
+                    className={
+                      responseTab === "headers" ? "active" : undefined
+                    }
+                    onClick={() => setResponseTab("headers")}
+                    role="tab"
+                    type="button"
+                  >
+                    Header ({Object.keys(execution.data.headers).length})
+                  </button>
+                </div>
+                <div className="response-actions">
+                  <label className="response-search">
+                    <Search aria-hidden="true" size={14} />
+                    <span className="sr-only">Response durchsuchen</span>
+                    <input
+                      aria-label="Response durchsuchen"
+                      onChange={(event) => setResponseSearch(event.target.value)}
+                      placeholder="Suchen"
+                      type="search"
+                      value={responseSearch}
+                    />
+                    {responseSearch ? (
+                      <span>
+                        {countMatches(
+                          responseTab === "body"
+                            ? formatResponseBody(execution.data.body)
+                            : formatResponseHeaders(execution.data.headers),
+                          responseSearch,
+                        )}{" "}
+                        Treffer
+                      </span>
+                    ) : null}
+                  </label>
+                  <button
+                    className="icon-button"
+                    onClick={() =>
+                      void navigator.clipboard.writeText(
+                        responseTab === "body"
+                          ? formatResponseBody(execution.data.body)
+                          : formatResponseHeaders(execution.data.headers),
+                      )
+                    }
+                    title="Aktuelle Response-Ansicht kopieren"
+                    type="button"
+                  >
+                    <ClipboardCopy aria-hidden="true" size={15} />
+                    <span className="sr-only">Response kopieren</span>
+                  </button>
+                  <button
+                    className="icon-button"
+                    onClick={() =>
+                      downloadResponseBody(
+                        execution.data.body,
+                        execution.data.headers,
+                      )
+                    }
+                    title="Response-Body herunterladen"
+                    type="button"
+                  >
+                    <Download aria-hidden="true" size={15} />
+                    <span className="sr-only">
+                      Response-Body herunterladen
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <div className="response-content" role="tabpanel">
                 <pre>
-                  {Object.entries(execution.data.headers)
-                    .map(([name, value]) => `${name}: ${value}`)
-                    .join("\n")}
+                  {responseTab === "body"
+                    ? formatResponseBody(execution.data.body)
+                    : formatResponseHeaders(execution.data.headers)}
                 </pre>
-              </details>
-              <pre>{formatResponseBody(execution.data.body)}</pre>
+              </div>
             </div>
           ) : (
             <div className="response-empty">
@@ -671,6 +752,48 @@ function formatResponseBody(body: string): string {
   } catch {
     return body;
   }
+}
+
+function formatResponseHeaders(headers: Record<string, string>): string {
+  return Object.entries(headers)
+    .map(([name, value]) => `${name}: ${value}`)
+    .join("\n");
+}
+
+export function countMatches(value: string, search: string): number {
+  const needle = search.trim().toLocaleLowerCase();
+  if (!needle) return 0;
+  let count = 0;
+  let offset = 0;
+  const haystack = value.toLocaleLowerCase();
+  while ((offset = haystack.indexOf(needle, offset)) !== -1) {
+    count += 1;
+    offset += needle.length;
+  }
+  return count;
+}
+
+function downloadResponseBody(
+  body: string,
+  headers: Record<string, string>,
+): void {
+  const contentTypeEntry = Object.entries(headers).find(
+    ([name]) => name.toLocaleLowerCase() === "content-type",
+  );
+  const contentType = contentTypeEntry?.[1] ?? "text/plain;charset=utf-8";
+  const extension = contentType.includes("json")
+    ? "json"
+    : contentType.includes("html")
+      ? "html"
+      : contentType.includes("xml")
+        ? "xml"
+        : "txt";
+  const url = URL.createObjectURL(new Blob([body], { type: contentType }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `response.${extension}`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function toDraft(request: ApiRequest): RequestDraft {

@@ -8,7 +8,7 @@ import {
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { RequestEditor } from "./request-editor";
+import { countMatches, RequestEditor } from "./request-editor";
 import { RequestConflictError } from "./request-api";
 import {
   useExecuteRequest,
@@ -80,6 +80,11 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("RequestEditor", () => {
+  it("counts case-insensitive response search matches", () => {
+    expect(countMatches("Alpha alpha ALPHA", "alpha")).toBe(3);
+    expect(countMatches("Alpha", " ")).toBe(0);
+  });
+
   it("loads the persisted request and marks local edits as dirty", async () => {
     const user = userEvent.setup();
     render(

@@ -153,18 +153,38 @@ export function WorkspacePage() {
   }, [activeWorkspace?.id]);
 
   useEffect(() => {
-    const focusSearch = (event: KeyboardEvent) => {
-      if (
-        event.key.toLowerCase() === "p" &&
-        (event.metaKey || event.ctrlKey)
-      ) {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+      const key = event.key.toLowerCase();
+      if (key === "p") {
         event.preventDefault();
         searchInputRef.current?.focus();
+        return;
       }
+      if (!activeRequestId) return;
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      if (key === "w") {
+        event.preventDefault();
+        closeRequest(activeRequestId);
+        return;
+      }
+      const intent =
+        key === "s" && canEdit
+          ? "save"
+          : event.key === "Enter"
+            ? "execute"
+            : undefined;
+      if (!intent) return;
+      event.preventDefault();
+      document
+        .querySelector<HTMLButtonElement>(
+          `button[form="request-form-${activeRequestId}"][value="${intent}"]`,
+        )
+        ?.click();
     };
-    window.addEventListener("keydown", focusSearch);
-    return () => window.removeEventListener("keydown", focusSearch);
-  }, []);
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [activeRequestId, canEdit, dirtyRequestIds]);
 
   function selectRequest(requestId: string) {
     setOpenRequestIds((current) =>

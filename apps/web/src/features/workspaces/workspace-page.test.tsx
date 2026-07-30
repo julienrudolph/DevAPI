@@ -18,6 +18,8 @@ import {
 } from "./workspace-queries";
 import { useEnvironments } from "../environments/environment-queries";
 
+const shortcutSubmission = vi.fn();
+
 vi.mock("./workspace-queries", () => ({
   useWorkspaces: vi.fn(),
   useWorkspaceTree: vi.fn(),
@@ -27,16 +29,34 @@ vi.mock("../environments/environment-queries", () => ({
 }));
 vi.mock("../requests/request-editor", () => ({
   RequestEditor: ({
+    formId,
     requestId,
     onDirtyChange,
   }: {
+    formId: string;
     requestId: string;
     onDirtyChange?: (dirty: boolean) => void;
   }) => (
-    <input
-      aria-label={`Entwurf ${requestId}`}
-      onChange={() => onDirtyChange?.(true)}
-    />
+    <form
+      id={formId}
+      onSubmit={(event) => {
+        event.preventDefault();
+        shortcutSubmission(
+          (event.nativeEvent as SubmitEvent).submitter instanceof
+            HTMLButtonElement
+            ? (
+                (event.nativeEvent as SubmitEvent)
+                  .submitter as HTMLButtonElement
+              ).value
+            : undefined,
+        );
+      }}
+    >
+      <input
+        aria-label={`Entwurf ${requestId}`}
+        onChange={() => onDirtyChange?.(true)}
+      />
+    </form>
   ),
 }));
 vi.mock("../requests/request-queries", () => ({
@@ -80,6 +100,7 @@ const secondRequestId = "a5acefdb-0b49-43d7-83dc-f3ec414aa501";
 
 beforeEach(() => {
   localStorage.clear();
+  shortcutSubmission.mockReset();
   vi.mocked(useWorkspaces).mockReturnValue({
     data: [
       {
@@ -309,5 +330,19 @@ describe("WorkspacePage", () => {
     expect(
       screen.getAllByText("https://api.example.com/customers"),
     ).toHaveLength(2);
+  });
+
+  it("saves, sends and closes only the active tab with shortcuts", async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+
+    await user.keyboard("{Control>}s{/Control}");
+    await user.keyboard("{Control>}{Enter}{/Control}");
+    expect(shortcutSubmission.mock.calls).toEqual([["save"], ["execute"]]);
+
+    await user.keyboard("{Control>}w{/Control}");
+    expect(
+      screen.getByText("Kein Request ausgewählt"),
+    ).toBeInTheDocument();
   });
 });
