@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="de">
+  <body>
+    <h2>Dein Anmeldelink</h2>
+    <p>Öffne den folgenden Link, um dich bei Relay anzumelden.</p>
+    <p>
+      <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email">
+        Bei Relay anmelden
+      </a>
+    </p>
+    <p>Alternativ kannst du diesen Code verwenden: {{ .Token }}</p>
+  </body>
+</html>

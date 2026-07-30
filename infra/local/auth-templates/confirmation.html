@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="de">
+  <body>
+    <h2>E-Mail-Adresse bestätigen</h2>
+    <p>Öffne den folgenden Link, um deine E-Mail-Adresse zu bestätigen.</p>
+    <p>
+      <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email">
+        E-Mail-Adresse bestätigen
+      </a>
+    </p>
+    <p>Alternativ kannst du diesen Code verwenden: {{ .Token }}</p>
+  </body>
+</html>

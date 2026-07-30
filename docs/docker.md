@@ -6,7 +6,8 @@ Das Repository enthält zwei kombinierbare Compose-Dateien:
 
 - `compose.yaml` baut und startet Web, API und Request-Proxy.
 - `compose.local.yaml` ergänzt PostgreSQL, Supabase Auth, PostgREST, einen
-  lokalen API-Gateway, Mail-Capture und den Migration-Runner.
+  lokalen API-Gateway, Mail-Capture, Auth-E-Mail-Vorlagen und den
+  Migration-Runner.
 
 Die lokale Supabase-Ergänzung ist für Entwicklung und Integrationstests
 gedacht. Für ein öffentliches Self-Hosting soll die vollständige, von Supabase
@@ -45,7 +46,9 @@ Erreichbare Dienste:
 | Mail-Capture | `http://localhost:9000` |
 | PostgreSQL | `localhost:54322` |
 
-Anmeldelinks aus der lokalen E-Mail-Anmeldung erscheinen im Mail-Capture.
+Anmeldelinks aus der lokalen E-Mail-Anmeldung erscheinen im Mail-Capture. Die
+Links verwenden die lokalen Vorlagen und führen über `/auth/confirm` zurück zur
+Web-App.
 
 Stack stoppen:
 
@@ -63,6 +66,11 @@ Der kurzlebige Dienst `migrate` wartet auf PostgreSQL und Supabase Auth und
 wendet anschließend alle Dateien aus `supabase/migrations` in sortierter
 Reihenfolge an. Bereits erfolgreich angewendete Dateinamen werden in
 `app_migrations.applied` erfasst.
+
+Vor Auth und PostgREST initialisiert der kurzlebige Dienst `db-bootstrap` die
+lokalen Datenbankrollen mit dem generierten Datenbankpasswort. Er ist
+idempotent und funktioniert sowohl bei einer neuen als auch bei einer bereits
+vorhandenen lokalen Datenbank.
 
 Eine Migration darf nach ihrer Anwendung nicht verändert werden. Korrekturen
 erfolgen durch eine neue, später sortierte Migrationsdatei.
@@ -86,6 +94,10 @@ docker compose --env-file .env.compose -f compose.yaml up -d --build --wait
 
 Die Datenbankmigrationen werden in diesem Fall über die Supabase-CLI oder die
 Deployment-Pipeline angewendet, nicht durch `compose.local.yaml`.
+
+Die Supabase-E-Mail-Vorlagen für Registrierung und Magic Link müssen außerdem
+wie in `docs/authentication.md` beschrieben auf den Callback der Anwendung
+zeigen.
 
 ## OIDC
 

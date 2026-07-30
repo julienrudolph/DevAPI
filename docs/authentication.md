@@ -13,6 +13,27 @@ Authorization-Code-Flow aus und stellt anschließend eine normale
 Supabase-Session aus. Dadurch bleiben `auth.uid()`, PostgreSQL-RLS und die
 Workspace-Rollen für beide Anmeldewege identisch.
 
+## E-Mail-Anmeldelinks
+
+E-Mail-Links zeigen auf `/auth/confirm` und enthalten einen kurzlebigen
+`token_hash`. Die Callback-Seite bestätigt ihn über `verifyOtp`, übernimmt die
+Supabase-Session und entfernt den Token unmittelbar aus der sichtbaren URL.
+Damit funktioniert der Link auch dann, wenn das Postfach in einem anderen Tab
+geöffnet ist und dort kein zuvor gespeicherter PKCE-Verifier vorliegt.
+
+Der lokale Compose-Stack liefert dafür eigene Vorlagen aus
+`infra/local/auth-templates` aus. Bei Hosted Supabase müssen die Vorlagen für
+**Confirm signup** und **Magic link** entsprechend angepasst werden:
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">
+  Anmelden
+</a>
+```
+
+Der Token ist einmalig und darf nicht geloggt werden. Abgelaufene oder bereits
+verwendete Links führen kontrolliert zurück zur Anmeldung.
+
 ## OIDC-Provider konfigurieren
 
 1. In Supabase unter **Auth → Providers** einen neuen Provider anlegen.

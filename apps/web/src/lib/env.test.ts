@@ -14,6 +14,22 @@ describe("public auth configuration", () => {
     });
   });
 
+  it("treats empty Compose OIDC values as disabled", () => {
+    expect(
+      readPublicEnv({
+        VITE_SUPABASE_URL: "http://localhost:8000",
+        VITE_SUPABASE_PUBLISHABLE_KEY: "local-anon-jwt",
+        VITE_OIDC_PROVIDER: "",
+        VITE_OIDC_LABEL: "",
+      }),
+    ).toEqual({
+      VITE_SUPABASE_URL: "http://localhost:8000",
+      VITE_SUPABASE_PUBLISHABLE_KEY: "local-anon-jwt",
+      VITE_OIDC_PROVIDER: undefined,
+      VITE_OIDC_LABEL: undefined,
+    });
+  });
+
   it("accepts a custom OIDC provider", () => {
     expect(
       readPublicEnv({
