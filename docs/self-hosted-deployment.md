@@ -1,0 +1,183 @@
+# Vollständig selbst gehostetes Deployment
+
+Diese Anleitung beschreibt den cloudfreien Standardbetrieb von DevAPI hinter
+einem vorhandenen Nginx Proxy Manager.
+
+## Enthaltene Dienste
+
+Der Compose-Stack startet:
+
+- PostgreSQL mit Supabase-Rollen und Auth-Schema
+- GoTrue als Supabase-Auth-Dienst
+- PostgREST als RLS-fähige Daten-API
+- einen internen Supabase-Gateway
+- die DevAPI-Webanwendung
+- die DevAPI-API
+- den abgesicherten HTTP-Request-Proxy
+- einmalige Bootstrap- und Migrationscontainer
+
+Storage, Realtime, Studio, Analytics und Edge Functions sind nicht enthalten,
+weil DevAPI sie derzeit nicht benötigt. Alle fachlichen Daten und
+Anmeldekonten verbleiben im PostgreSQL-Volume auf dem eigenen Server.
+
+## Netzwerkgrenzen
+
+```text
+Internet
+  |
+Nginx Proxy Manager (TLS)
+  |
+botnet
+  |
+devapi-web:8080
+  |
+devapi_backend
+  +-- api
+  +-- proxy
+  +-- supabase-gateway
+  +-- auth
+  +-- rest
+  +-- db
+```
+
+Nur `devapi-web` ist Mitglied von `botnet`. Der Browser verwendet dieselbe
+öffentliche Origin für App, Auth und Datenzugriff:
+
+```text
+https://devapi.example.de/             Webanwendung
+https://devapi.example.de/api/         DevAPI-Backend
+https://devapi.example.de/auth/v1/     Auth
+https://devapi.example.de/rest/v1/     PostgREST
+```
+
+PostgreSQL sowie die internen Dienste veröffentlichen keine Ports am Host.
+
+## Installation
+
+Im Wurzelordner des geklonten Repositories:
+
+```bash
+npm run compose:selfhosted:env -- https://devapi.example.de
+chmod 600 .env.selfhosted
+docker network inspect botnet
+npm run compose:selfhosted:config
+npm run compose:selfhosted:up
+```
+
+Der Generator schreibt zufällige Secrets in `.env.selfhosted`. Die Datei muss
+gesichert werden, darf aber niemals ins Repository gelangen. Das erneute
+Generieren mit `--force` ist nach dem ersten Start keine Aktualisierung:
+Dadurch ändern sich Datenbankpasswort und JWT-Secret und bestehende Zugänge
+brechen.
+
+## Nginx Proxy Manager
+
+Einen Proxy Host konfigurieren:
+
+| Einstellung | Wert |
+|---|---|
+| Domain | `devapi.example.de` |
+| Scheme | `http` |
+| Forward Hostname | `devapi-web` |
+| Forward Port | `8080` |
+| Block Common Exploits | an |
+| Websockets Support | an |
+| Force SSL | an |
+| HTTP/2 Support | an |
+
+Keine eigenen Locations für `/api`, `/auth/v1` oder `/rest/v1` anlegen. Die
+Webanwendung leitet diese Pfade kontrolliert über das interne Netz weiter.
+
+## Auth ohne Mailserver
+
+Die erzeugte Standardkonfiguration erlaubt E-Mail-/Passwort-Registrierung und
+bestätigt Konten automatisch:
+
+```text
+PASSWORD_AUTH_ENABLED=true
+PASSWORD_SIGNUP_ENABLED=true
+MAGIC_LINK_AUTH_ENABLED=false
+AUTH_DISABLE_SIGNUP=false
+AUTH_AUTOCONFIRM=true
+```
+
+Das ist der niedrigschwellige Einstieg ohne Mailserver. Die E-Mail-Adresse
+wird dabei nicht verifiziert. Passwort-Wiederherstellung, Magic Links,
+Einladungsmails und Sicherheitsbenachrichtigungen funktionieren erst nach
+Konfiguration eines SMTP-Servers.
+
+Auth-Einstellungen werden beim Self-Hosting über Umgebungsvariablen
+konfiguriert. Eine Supabase-Cloudoberfläche wird nicht verwendet.
+
+## Migrationen
+
+Beim Start wartet der einmalige `migrate`-Container auf die Datenbank und
+wendet Dateien aus `supabase/migrations` nach ihrem Zeitstempel an. Bereits
+registrierte Migrationen werden übersprungen. Es sind keine Supabase CLI und
+kein manuell installierter PostgreSQL-Client erforderlich.
+
+Status und Logs:
+
+```bash
+docker compose \
+  --env-file .env.selfhosted \
+  -f compose.yaml \
+  -f compose.selfhosted.yaml \
+  -f compose.npm-proxy.yaml \
+  ps
+
+docker compose \
+  --env-file .env.selfhosted \
+  -f compose.yaml \
+  -f compose.selfhosted.yaml \
+  -f compose.npm-proxy.yaml \
+  logs --tail=200
+```
+
+## Datensicherung
+
+Das persistente Volume heißt standardmäßig `devapi_devapi-db-data`. Ein
+Volume-Snapshot allein ersetzt keinen konsistenten Datenbank-Dump.
+
+Beispiel für einen logischen Dump in eine bereits geschützte
+Backup-Umgebung:
+
+```bash
+docker compose \
+  --env-file .env.selfhosted \
+  -f compose.yaml \
+  -f compose.selfhosted.yaml \
+  -f compose.npm-proxy.yaml \
+  exec -T db pg_dump -U postgres -d postgres -Fc \
+  > devapi-$(date +%F).dump
+```
+
+Backup-Dateien enthalten Anmelde- und Workspace-Daten und müssen
+verschlüsselt, zugriffsgeschützt und regelmäßig durch eine Wiederherstellung
+in einer getrennten Testumgebung geprüft werden.
+
+## Aktualisierung
+
+Vorher Datenbank sichern und neue Image-Versionen sowie Migrationen in einer
+getrennten Installation testen:
+
+```bash
+git pull --ff-only
+npm run compose:selfhosted:config
+npm run compose:selfhosted:up
+```
+
+Die Image-Tags sind bewusst festgeschrieben. Einzelne Supabase-Komponenten
+nicht unabhängig und ungeprüft auf `latest` setzen.
+
+## Offline-Abgrenzung
+
+Der laufende Stack benötigt keine Supabase-Cloudressourcen und sendet keine
+Supabase-Telemetrie. Für die Erstinstallation werden normalerweise Git,
+Docker-Registry und npm benötigt. In einem vollständig isolierten Netz müssen
+Repository, Container-Images und gegebenenfalls npm-Abhängigkeiten vorher
+übertragen werden.
+
+Auch öffentliche DNS-Auflösung und Let's Encrypt sind externe Dienste. Für
+ein vollständig internes Netz können interner DNS und ein Zertifikat der
+eigenen Zertifizierungsstelle verwendet werden.

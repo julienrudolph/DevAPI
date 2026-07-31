@@ -1,6 +1,10 @@
 # Produktionsbetrieb
 
-Diese Anleitung beschreibt den ersten unterstützten Produktionsbetrieb:
+> Diese Datei beschreibt die optionale Variante mit einem externen
+> Supabase-Projekt. Der cloudfreie Standardbetrieb ist unter
+> [self-hosted-deployment.md](self-hosted-deployment.md) dokumentiert.
+
+Diese Anleitung beschreibt die weiterhin unterstützte externe Variante:
 
 - ein Linux-Server mit Docker Compose
 - Caddy als einziger öffentlich erreichbarer Dienst

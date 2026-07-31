@@ -99,256 +99,64 @@ Ausführliche Hinweise für lokale Tests stehen in `docs/docker.md`.
 
 ## Auf einem Server deployen
 
-Der derzeit unterstützte Produktionsaufbau verwendet:
+Der Standard-Serverbetrieb ist vollständig selbst gehostet. PostgreSQL,
+Supabase Auth, PostgREST, DevAPI-Web, API und Request-Proxy laufen als
+Container auf demselben Server. Es wird weder ein Supabase-Cloudkonto noch
+eine andere Cloud-Datenbank benötigt.
 
-- einen Linux-Server mit Docker Compose
-- eine Domain für DevAPI
-- Caddy für HTTPS
-- Hosted Supabase für Datenbank, Auth und PostgREST
+Das vorhandene Nginx-Proxy-Manager-Netzwerk heißt standardmäßig `botnet`.
+Nur der Web-Container wird damit verbunden. Datenbank, Auth, PostgREST, API
+und Request-Proxy bleiben im privaten Docker-Netz.
 
-Der lokale Supabase-Stack aus `compose.local.yaml` ist nicht für einen
-öffentlichen Server gedacht. Er enthält unter anderem einen lokalen
-Mail-Capture-Dienst.
+### 1. Voraussetzungen
 
-### 1. Server und DNS vorbereiten
+- Linux-Server mit Docker Engine und Docker Compose
+- mindestens 4 GB RAM, empfohlen 8 GB
+- mindestens 40 GB SSD, empfohlen 80 GB
+- Git
+- Node.js 22 und npm zum komfortablen Erzeugen der Konfiguration
+- vorhandener Nginx Proxy Manager im externen Docker-Netz `botnet`
 
-Empfohlene Mindestgröße:
+Von außen werden nur die bereits durch Nginx Proxy Manager belegten Ports 80
+und 443 benötigt. PostgreSQL und die internen APIs erhalten keine Host-Ports.
 
-```text
-2 CPU-Kerne
-4 GB RAM
-20 GB freier Speicher
-```
-
-Auf dem Server werden benötigt:
-
-```text
-Docker Engine
-Docker Compose Plugin
-Git
-optional Node.js >= 22.22 und npm >= 11
-```
-
-Für die gewünschte Domain, beispielsweise `devapi.example.de`, einen
-DNS-A-Record auf die öffentliche IPv4-Adresse des Servers setzen. Bei
-vorhandenem IPv6 zusätzlich einen AAAA-Record setzen.
-
-In der Firewall nur diese öffentlichen Ports für DevAPI freigeben:
-
-```text
-80/tcp
-443/tcp
-443/udp optional für HTTP/3
-```
-
-Die Ports von API, Proxy und Datenbank dürfen nicht öffentlich freigegeben
-werden.
-
-### 2. Projekt auf den Server übertragen
-
-Repository klonen oder den freigegebenen Quellstand auf den Server kopieren:
+### 2. Projekt und Konfiguration
 
 ```bash
 git clone <REPOSITORY-URL> devapi
 cd devapi
+npm run compose:selfhosted:env -- https://devapi.example.de
 ```
 
-Für spätere Updates sollte der Server auf einem bekannten Commit oder Release
-stehen, nicht auf einem beliebigen Zwischenstand.
-
-### 3. Supabase vorbereiten
-
-Die Produktionskonfiguration verwendet standardmäßig ein Projekt auf der
-Supabase-Plattform. Beim Erstellen dieses Projekts stellt Supabase bereits
-PostgreSQL, Auth und die API bereit. Auf dem DevAPI-Server muss deshalb kein
-zusätzlicher PostgreSQL- oder Supabase-Container gestartet werden.
-
-Soll Supabase einschließlich PostgreSQL stattdessen vollständig auf demselben
-Server betrieben werden, ist dafür ein eigener produktionsgeeigneter
-Self-Hosting-Stack erforderlich. `compose.local.yaml` startet zwar lokale
-Supabase-Dienste für Entwicklung und Tests, ist aber nicht als öffentlich
-erreichbare Produktionsdatenbank gehärtet. Dieser alternative Betriebsweg ist
-noch nicht Bestandteil der folgenden Anleitung.
-
-1. Unter [database.new](https://database.new/) ein Supabase-Projekt erstellen.
-   Das dabei vergebene Datenbankpasswort sicher aufbewahren.
-2. Die **Project ID** beziehungsweise **Project Reference** notieren. Sie steht
-   in der Dashboard-URL hinter `/project/`, zum Beispiel:
-
-   ```text
-   https://supabase.com/dashboard/project/abcdefghijklmnopqrst
-                                          ^^^^^^^^^^^^^^^^^^^^
-                                          Project Reference
-   ```
-
-3. Die Migrationen mit der Supabase CLI einspielen. Diese Befehle werden in
-   einem Terminal im Wurzelordner des geklonten DevAPI-Projekts ausgeführt –
-   dort, wo `README.md`, `compose.yaml` und der Ordner `supabase/` liegen:
-
-   ```bash
-   cd /pfad/zu/DevAPI
-   npx supabase init
-   npx supabase login
-   npx supabase link --project-ref <PROJECT_REFERENCE>
-   npx supabase db push --dry-run
-   npx supabase db push
-   ```
-
-   Auf einem Server ohne grafischen Browser kann stattdessen
-   `npx supabase login --no-browser` verwendet werden. `link` fragt
-   gegebenenfalls nach dem Datenbankpasswort des Supabase-Projekts.
-
-   `db push --dry-run` zeigt zuerst nur an, was ausgeführt würde. Der
-   anschließende Befehl wendet alle noch fehlenden Dateien aus
-   `supabase/migrations` automatisch in aufsteigender Reihenfolge an.
-   „Aufsteigend“ bezieht sich auf den Zeitstempel am Anfang des Dateinamens:
-
-   ```text
-   20260728170000_initial_requests.sql
-   20260729133000_harden_request_rpc.sql
-   20260729150000_workspace_navigation.sql
-   ...
-   ```
-
-   Die kleinste beziehungsweise älteste Nummer wird zuerst ausgeführt. Die
-   Dateien nicht einzeln im SQL Editor einfügen; die CLI führt zusätzlich eine
-   Migrationshistorie und überspringt bereits angewendete Migrationen.
-
-4. Im Supabase Dashboard das Projekt öffnen und zu
-   **Authentication → URL Configuration** wechseln.
-5. Unter **Site URL** `https://devapi.example.de` eintragen.
-6. Unter **Redirect URLs** über **Add URL**
-   `https://devapi.example.de/auth/confirm` ergänzen und speichern.
-7. Unter **Authentication → Sign In / Providers → Email** die
-   E-Mail-/Passwort-Anmeldung aktivieren.
-8. Für einen internen Testserver ohne SMTP dort **Confirm Email**
-   deaktivieren.
-9. Optional den Custom-OIDC-Provider einrichten.
-10. Unter **Project Settings → API Keys** den öffentlichen Publishable Key
-    notieren.
-
-Die CLI kann ebenso auf einem administrativen Rechner ausgeführt werden. Es
-muss lediglich derselbe Repository-Stand vorhanden sein und eine Verbindung
-zur Supabase-Plattform bestehen. Sie muss nicht zwingend auf dem
-Anwendungsserver laufen.
-
-Für einen öffentlichen Produktivbetrieb sollte `Confirm Email` aktiviert und
-ein SMTP-Dienst eingerichtet werden. Ohne Bestätigung behandelt Supabase die
-angegebene E-Mail-Adresse ungeprüft als bestätigt.
-
-OIDC-Client-Secret, Datenbankpasswort und Service-Role-Key gehören niemals in
-die Web- oder Desktop-Konfiguration.
-
-### 4. Produktionskonfiguration anlegen
-
-Vorlage kopieren:
+Der letzte Befehl erzeugt `.env.selfhosted` mit zufälligem
+Datenbankpasswort, JWT-Secret, öffentlichem Anwendungs-Key und internem
+Proxy-Token. Die Datei ist nicht für Git vorgesehen:
 
 ```bash
-cp .env.production.example .env.production
+chmod 600 .env.selfhosted
 ```
 
-Einen sicheren internen Proxy-Token erzeugen:
+Falls das externe Netzwerk anders heißt, `NPM_NETWORK` in
+`.env.selfhosted` anpassen. Das Skript darf nach der Inbetriebnahme nicht mit
+`--force` erneut ausgeführt werden, weil neue Schlüssel bestehende Sessions
+und Datenbankzugänge ungültig machen.
 
-```bash
-openssl rand -hex 32
-```
-
-Danach `.env.production` bearbeiten:
-
-```text
-PUBLIC_HOST=devapi.example.de
-ACME_EMAIL=admin@example.de
-SITE_URL=https://devapi.example.de
-
-SUPABASE_PUBLIC_URL=https://PROJECT.supabase.co
-SUPABASE_INTERNAL_URL=https://PROJECT.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
-
-PROXY_INTERNAL_TOKEN=<Ausgabe von openssl rand -hex 32>
-
-OIDC_PROVIDER=
-OIDC_LABEL=Mit Firmenkonto anmelden
-
-PASSWORD_AUTH_ENABLED=true
-PASSWORD_SIGNUP_ENABLED=true
-MAGIC_LINK_AUTH_ENABLED=false
-```
-
-`PUBLIC_HOST` enthält nur den Hostnamen und kein `https://`. Die Site- und
-Supabase-URLs enthalten dagegen das Protokoll.
-
-Die Auth-Schalter steuern die sichtbaren Optionen:
-
-| Einstellung | Bedeutung |
-|---|---|
-| `PASSWORD_AUTH_ENABLED=true` | Anmeldung mit E-Mail und Passwort |
-| `PASSWORD_SIGNUP_ENABLED=true` | Nutzer dürfen selbst Konten erstellen |
-| `MAGIC_LINK_AUTH_ENABLED=false` | keine Anmeldemails erforderlich |
-
-Für einen späteren geschlossenen Produktivbetrieb ist beispielsweise möglich:
-
-```text
-PASSWORD_AUTH_ENABLED=true
-PASSWORD_SIGNUP_ENABLED=false
-MAGIC_LINK_AUTH_ENABLED=false
-OIDC_PROVIDER=custom:company-oidc
-```
-
-`.env.production` ist nicht für Git vorgesehen. Die Datei muss auf dem Server
-nur für den Betriebsbenutzer lesbar sein:
-
-```bash
-chmod 600 .env.production
-```
-
-### 5. Konfiguration prüfen
-
-Mit installiertem npm:
-
-```bash
-npm run compose:production:config
-```
-
-Alternativ nur mit Docker Compose:
-
-```bash
-docker compose \
-  --env-file .env.production \
-  -f compose.yaml \
-  -f compose.production.yaml \
-  config --quiet
-```
-
-Der Befehl darf keine Warnung über fehlende Variablen ausgeben.
-
-### Alternative: vorhandener Nginx Proxy Manager
-
-Wenn auf dem Server bereits Nginx Proxy Manager läuft, wird Caddy nicht
-benötigt. Das Overlay `compose.npm-proxy.yaml` verbindet ausschließlich den
-Web-Container zusätzlich mit dem vorhandenen externen Docker-Netzwerk. API und
-Request-Proxy bleiben im privaten DevAPI-Netz und veröffentlichen keine Ports.
-
-Für ein Nginx-Proxy-Manager-Netz namens `botnet` bleibt in
-`.env.production`:
-
-```text
-NPM_NETWORK=botnet
-```
-
-Das Netzwerk und die Mitgliedschaft des Nginx Proxy Managers prüfen:
+### 3. Stack prüfen und starten
 
 ```bash
 docker network inspect botnet
+npm run compose:selfhosted:config
+npm run compose:selfhosted:up
 ```
 
-Danach DevAPI ohne Caddy starten:
+Beim ersten Start werden PostgreSQL und Auth initialisiert. Der einmalige
+`migrate`-Container wendet alle noch fehlenden Dateien aus
+`supabase/migrations` automatisch in aufsteigender Zeitstempel-Reihenfolge an.
+Es sind weder Supabase CLI noch manuelle SQL-Befehle erforderlich.
 
-```bash
-npm run compose:npm-proxy:config
-npm run compose:npm-proxy:up
-```
+### 4. Nginx Proxy Manager
 
-Im Nginx Proxy Manager einen Proxy Host anlegen:
+Einen Proxy Host anlegen:
 
 | Feld | Wert |
 |---|---|
@@ -360,38 +168,30 @@ Im Nginx Proxy Manager einen Proxy Host anlegen:
 | Websockets Support | aktiv |
 
 Unter **SSL** das Zertifikat auswählen beziehungsweise anfordern, **Force
-SSL** und **HTTP/2 Support** aktivieren. HSTS erst aktivieren, nachdem HTTPS
-zuverlässig funktioniert. Die öffentliche Supabase Site URL und Redirect-URL
-müssen weiterhin `https://devapi.example.de` verwenden.
+SSL** und **HTTP/2 Support** aktivieren. Es werden keine zusätzlichen Proxy
+Hosts oder Location-Regeln für Auth beziehungsweise PostgREST benötigt:
+`/auth/v1` und `/rest/v1` werden vom Web-Container intern weitergeleitet.
 
-Wichtig: Nicht gleichzeitig `compose.production.yaml` verwenden. Dieses
-Overlay startet Caddy und würde die öffentlichen Ports 80 und 443 belegen.
-Die ausführliche Einbindung einschließlich Firewall- und Update-Hinweisen
-steht in
-[`docs/nginx-proxy-manager.md`](docs/nginx-proxy-manager.md).
+### 5. Authentifizierung
 
-### 6. Anwendung starten
+Es gibt bei Self-Hosting keine Supabase-Cloudoberfläche für die
+Auth-Konfiguration. Die Einstellungen liegen in `.env.selfhosted`.
+Standardmäßig gelten:
 
-Mit npm:
-
-```bash
-npm run compose:production:up
+```text
+PASSWORD_AUTH_ENABLED=true
+PASSWORD_SIGNUP_ENABLED=true
+MAGIC_LINK_AUTH_ENABLED=false
+AUTH_DISABLE_SIGNUP=false
+AUTH_AUTOCONFIRM=true
 ```
 
-Oder direkt:
+Damit funktionieren Registrierung und Anmeldung per E-Mail und Passwort ohne
+Mailserver. E-Mail-Adressen werden dabei nicht verifiziert. Passwort-Reset,
+Magic Links und Einladungsmails benötigen später einen erreichbaren
+SMTP-Server.
 
-```bash
-docker compose \
-  --env-file .env.production \
-  -f compose.yaml \
-  -f compose.production.yaml \
-  up -d --build --wait
-```
-
-Caddy fordert automatisch ein TLS-Zertifikat an. Dafür müssen DNS sowie Port
-80 und 443 bereits korrekt konfiguriert sein.
-
-### 7. Deployment prüfen
+### 6. Deployment prüfen
 
 Diese Adressen müssen ohne Zertifikatswarnung erreichbar sein:
 
@@ -409,9 +209,10 @@ Containerstatus prüfen:
 
 ```bash
 docker compose \
-  --env-file .env.production \
+  --env-file .env.selfhosted \
   -f compose.yaml \
-  -f compose.production.yaml \
+  -f compose.selfhosted.yaml \
+  -f compose.npm-proxy.yaml \
   ps
 ```
 
@@ -419,9 +220,10 @@ Logs ansehen:
 
 ```bash
 docker compose \
-  --env-file .env.production \
+  --env-file .env.selfhosted \
   -f compose.yaml \
-  -f compose.production.yaml \
+  -f compose.selfhosted.yaml \
+  -f compose.npm-proxy.yaml \
   logs --tail=200
 ```
 
@@ -435,47 +237,52 @@ Anschließend mindestens manuell testen:
 6. Request ausführen
 7. Zugriff mit einem Nutzer aus einem anderen Team ablehnen
 
-Ohne SMTP kann eine Einladungsmail nicht zugestellt werden. Zusätzliche Konten
-müssen für den Testbetrieb deshalb zunächst über Selbstregistrierung angelegt
-werden.
+Ohne SMTP müssen zusätzliche Konten über Selbstregistrierung angelegt werden.
 
-### 8. Anwendung aktualisieren
+### 7. Aktualisieren
 
-Vor einem Update zuerst ein Supabase-Datenbankbackup erstellen. Danach:
+Vor jedem Update zuerst die PostgreSQL-Daten sichern. Danach:
 
 ```bash
 git pull --ff-only
-npm run compose:production:config
-npm run compose:production:up
+npm run compose:selfhosted:config
+npm run compose:selfhosted:up
 ```
 
 Neue Migrationen müssen vor dem Start der davon abhängigen Anwendung in
-Staging geprüft und anschließend auf das Produktionsprojekt angewendet werden.
+einer getrennten Testinstallation geprüft werden. Der `migrate`-Container
+wendet sie beim Start automatisch an.
 
-### 9. Anwendung stoppen
+### 8. Stoppen
 
 ```bash
-npm run compose:production:down
+npm run compose:selfhosted:down
 ```
 
-Das entfernt die laufenden App-Container und Netzwerke, aber nicht automatisch
-die Caddy-Volumes. Fachliche Workspace-Daten liegen im konfigurierten
-Supabase-Projekt.
+Das Datenvolume `devapi_devapi-db-data` bleibt dabei erhalten. `down -v` würde
+es löschen und darf im normalen Betrieb nicht verwendet werden.
 
-### 10. Backups und Betrieb
+### 9. Backups und Offline-Betrieb
 
-Für Hosted Supabase sollten automatische Backups aktiviert werden. Zusätzlich
-empfohlen:
+Der Betreiber ist selbst für Backups, Updates und Wiederherstellung
+verantwortlich. Empfohlen werden:
 
-- tägliche Sicherung
+- täglicher PostgreSQL-Dump
 - 14 bis 30 Tage Aufbewahrung
 - verschlüsselte Kopie außerhalb des App-Servers
 - regelmäßiger Restore-Test
 - Überwachung von HTTPS, Container-Healthchecks und freiem Speicher
 - Log-Rotation mit begrenzter Aufbewahrung
 
+Im laufenden Betrieb baut DevAPI keine Verbindung zur Supabase-Plattform auf.
+Für die erstmalige Installation müssen jedoch Images und Quellcode bezogen
+werden. Für einen physisch vom Internet getrennten Betrieb müssen die
+Container-Images und das Repository vorher in das Zielnetz übertragen werden.
+Ein Let's-Encrypt-Zertifikat benötigt ebenfalls Internetzugang; vollständig
+isolierte Netze verwenden stattdessen ein Zertifikat der eigenen CA.
+
 Die ausführliche Betriebs-, Sicherheits- und Rollback-Anleitung steht in
-[`docs/production-deployment.md`](docs/production-deployment.md).
+[`docs/self-hosted-deployment.md`](docs/self-hosted-deployment.md).
 
 Das sichere Electron-Grundgerüst und der geplante Windows-Build sind in
 `docs/desktop.md` dokumentiert.

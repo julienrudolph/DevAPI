@@ -2,7 +2,7 @@
 
 ## Struktur
 
-Das Repository enthält zwei kombinierbare Compose-Dateien:
+Das Repository enthält mehrere kombinierbare Compose-Dateien:
 
 - `compose.yaml` baut und startet Web, API und Request-Proxy.
 - `compose.local.yaml` ergänzt PostgreSQL, Supabase Auth, PostgREST, einen
@@ -10,12 +10,15 @@ Das Repository enthält zwei kombinierbare Compose-Dateien:
   Migration-Runner.
 - `compose.production.yaml` ergänzt Caddy mit automatischem TLS und
   veröffentlicht ausschließlich die HTTP-/HTTPS-Eingänge.
+- `compose.selfhosted.yaml` ergänzt PostgreSQL, Auth und PostgREST für den
+  vollständig cloudfreien Serverbetrieb.
+- `compose.npm-proxy.yaml` verbindet den Web-Container mit einem vorhandenen
+  externen Nginx-Proxy-Manager-Netzwerk.
 
-Die lokale Supabase-Ergänzung ist für Entwicklung und Integrationstests
-gedacht. Für ein öffentliches Self-Hosting soll die vollständige, von Supabase
-veröffentlichte Docker-Distribution verwendet werden. Sie ergänzt unter
-anderem Secret-Generierung, Studio, Pooling, Backups und weitere
-Betriebsfunktionen.
+Die lokale Supabase-Ergänzung mit Mail-Capture ist für Entwicklung und
+Integrationstests gedacht. Der reduzierte produktive Self-Hosted-Stack enthält
+nur die von DevAPI benötigten Supabase-Komponenten. Details stehen unter
+[self-hosted-deployment.md](self-hosted-deployment.md).
 
 ## Lokalen Stack starten
 
@@ -82,6 +85,9 @@ erfolgen durch eine neue, später sortierte Migrationsdatei.
 
 ## Hosted Supabase verwenden
 
+Dieser Abschnitt ist optional. Der Standard-Serverbetrieb ist vollständig
+selbst gehostet.
+
 Für Entwicklung oder Deployment mit Hosted Supabase wird nur `compose.yaml`
 benötigt. In `.env.compose` werden gesetzt:
 
@@ -123,8 +129,11 @@ schlanke lokale Stack aktiviert standardmäßig Passwort-Authentifizierung.
 
 ## Produktion
 
-Der konkrete Ablauf für eine Einzelserver-Installation mit Hosted Supabase
-steht in [production-deployment.md](production-deployment.md).
+Der Standardablauf für die vollständig selbst gehostete
+Einzelserver-Installation steht in
+[self-hosted-deployment.md](self-hosted-deployment.md). Die optionale
+Anbindung eines externen Supabase-Projekts bleibt separat unter
+[production-deployment.md](production-deployment.md) dokumentiert.
 
 Vor einem öffentlichen Rollout:
 

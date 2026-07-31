@@ -2,7 +2,8 @@
 
 Diese Variante ist für einen Server gedacht, auf dem Nginx Proxy Manager
 bereits den eingehenden Verkehr, TLS-Zertifikate und die Weiterleitung zu
-Docker-Diensten übernimmt.
+Docker-Diensten übernimmt. Der Standardweg verwendet den vollständig selbst
+gehosteten Stack aus `compose.selfhosted.yaml`.
 
 ## Zielarchitektur
 
@@ -55,12 +56,12 @@ abweichen. Das Netzwerk nicht neu anlegen, wenn es bereits existiert.
 
 ## 2. DevAPI konfigurieren
 
-Produktionsvorlage kopieren und wie in der allgemeinen
-Deployment-Anleitung ausfüllen:
+Im Wurzelordner des DevAPI-Repositories die Konfiguration mit zufälligen
+Secrets erzeugen:
 
 ```bash
-cp .env.production.example .env.production
-chmod 600 .env.production
+npm run compose:selfhosted:env -- https://devapi.example.de
+chmod 600 .env.selfhosted
 ```
 
 Für die Proxy-Anbindung ist insbesondere dieser Wert relevant:
@@ -69,6 +70,7 @@ Für die Proxy-Anbindung ist insbesondere dieser Wert relevant:
 NPM_NETWORK=botnet
 PUBLIC_HOST=devapi.example.de
 SITE_URL=https://devapi.example.de
+SUPABASE_PUBLIC_URL=https://devapi.example.de
 ```
 
 `NPM_NETWORK` ist der Docker-Netzwerkname. `PUBLIC_HOST` enthält kein
@@ -77,22 +79,24 @@ Protokoll, `SITE_URL` dagegen schon.
 ## 3. Compose-Konfiguration prüfen und starten
 
 ```bash
-npm run compose:npm-proxy:config
-npm run compose:npm-proxy:up
+npm run compose:selfhosted:config
+npm run compose:selfhosted:up
 ```
 
 Ohne npm sind die entsprechenden Befehle:
 
 ```bash
 docker compose \
-  --env-file .env.production \
+  --env-file .env.selfhosted \
   -f compose.yaml \
+  -f compose.selfhosted.yaml \
   -f compose.npm-proxy.yaml \
   config --quiet
 
 docker compose \
-  --env-file .env.production \
+  --env-file .env.selfhosted \
   -f compose.yaml \
+  -f compose.selfhosted.yaml \
   -f compose.npm-proxy.yaml \
   up -d --build --wait
 ```
@@ -127,15 +131,15 @@ Unter **SSL**:
 4. HSTS erst nach erfolgreichem HTTPS-Test aktivieren
 
 Für die erste Inbetriebnahme sind keine benutzerdefinierten Location-Regeln
-nötig. Insbesondere `/api` darf nicht direkt auf den API-Container zeigen,
-weil die vorgesehene interne Weiterleitung und Sicherheitsgrenze sonst
-umgangen würde.
+nötig. Insbesondere `/api`, `/auth/v1` und `/rest/v1` dürfen nicht direkt auf
+interne Container zeigen, weil die vorgesehene interne Weiterleitung und
+Sicherheitsgrenze sonst umgangen würde.
 
 ## 5. DNS, Supabase und Firewall
 
 - Der DNS-Eintrag der Domain zeigt auf den Nginx-Proxy-Manager-Server.
-- In Supabase ist `https://devapi.example.de` als Site URL eingetragen.
-- `https://devapi.example.de/auth/confirm` ist eine erlaubte Redirect-URL.
+- Site URL und erlaubte Auth-Weiterleitungen stehen in `.env.selfhosted`.
+- Eine Supabase-Cloudoberfläche wird nicht benötigt.
 - Von außen sind nur die durch Nginx Proxy Manager benötigten Ports 80 und
   443 geöffnet.
 - Die Ports 8080, 3001 und 3002 werden nicht in der Server-Firewall
@@ -169,14 +173,14 @@ Update:
 
 ```bash
 git pull --ff-only
-npm run compose:npm-proxy:config
-npm run compose:npm-proxy:up
+npm run compose:selfhosted:config
+npm run compose:selfhosted:up
 ```
 
 Stoppen:
 
 ```bash
-npm run compose:npm-proxy:down
+npm run compose:selfhosted:down
 ```
 
 Das externe Netzwerk `botnet` und der Nginx Proxy Manager werden durch diesen
