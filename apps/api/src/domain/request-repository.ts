@@ -1,12 +1,17 @@
 import type {
   ApiRequest,
+  RequestConflict,
   RequestRevision,
   RequestDraft,
   RestoreRequestRevision,
   UpdateRequest,
 } from "@api-client/contracts";
 
-import type { UpdateResult } from "./request-store.js";
+export type UpdateResult =
+  | { kind: "updated"; request: ApiRequest }
+  | { kind: "conflict"; conflict: RequestConflict }
+  | { kind: "forbidden" }
+  | { kind: "not-found" };
 
 export interface UpdatePersistedRequestCommand {
   requestId: string;

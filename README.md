@@ -2,6 +2,10 @@
 
 Ein schlanker, kollaborativer REST-API-Client für gemeinsame Team-Workspaces.
 
+Neue Entwickler beginnen mit [DEVELOPMENT.md](DEVELOPMENT.md). Die
+verbindlichen Architektur- und Sicherheitsregeln stehen in
+[AGENTS.md](AGENTS.md).
+
 ## Projektstatus
 
 Das Projekt befindet sich im Aufbau. Der interne MVP umfasst inzwischen
@@ -13,36 +17,26 @@ Revisionen und eine datensparsame Ausführungshistorie.
 
 - Node.js 22 oder neuer
 - npm 11 oder neuer
+- Docker Engine oder Docker Desktop
+- Docker Compose
 
 ## Lokaler Start
 
 ```bash
-npm install
-npm run dev
+npm ci
+npm run compose:env
+npm run compose:up
 ```
 
-Weitere Dienste:
+Danach ist die Anwendung unter `http://localhost:8080` erreichbar. Das lokale
+Test-Postfach läuft unter `http://localhost:9000`.
 
 ```bash
-npm run dev:api
-npm run dev:proxy
+npm run compose:down
 ```
 
-Für die API werden `SUPABASE_URL`, `PUBLIC_SUPABASE_URL`,
-`SUPABASE_PUBLISHABLE_KEY`,
-`PROXY_INTERNAL_URL` und derselbe `PROXY_INTERNAL_TOKEN` benötigt.
-Die API verwendet bewusst keinen Service-Role-Schlüssel: Sie validiert den
-Supabase-Bearer-Token und führt Datenbankoperationen mit der jeweiligen
-Benutzersitzung aus, damit RLS durchgesetzt wird.
-
-Der Proxy benötigt für Ausführungsaufrufe einen internen Service-Token:
-
-```bash
-PROXY_INTERNAL_TOKEN="lokaler-nur-für-die-entwicklung-token" npm run dev:proxy
-```
-
-Der Browser soll diesen Token später nicht erhalten. Die fachliche API prüft den
-Supabase-Nutzer und ruft den isolierten Proxy anschließend serverseitig auf.
+Hot Reload, Einzelstart von Web/API/Proxy, Migrationen und Testkonventionen
+sind in [DEVELOPMENT.md](DEVELOPMENT.md) beschrieben.
 
 ## Authentifizierung
 
@@ -84,18 +78,6 @@ Bei Pushes auf `main` und in Pull Requests führt GitHub Actions dieselben
 Prüfungen mit der in `.nvmrc` festgelegten Node.js-Version aus. Zusätzlich
 werden Produktionsabhängigkeiten auf bekannte Schwachstellen hoher oder
 kritischer Schwere geprüft.
-
-## Docker
-
-Ein lokaler Integrationsstack mit Web, API, Proxy, Supabase Auth, PostgREST,
-PostgreSQL, Migrationen und Mail-Capture kann so gestartet werden:
-
-```bash
-npm run compose:env
-npm run compose:up
-```
-
-Ausführliche Hinweise für lokale Tests stehen in `docs/docker.md`.
 
 ## Auf einem Server deployen
 
@@ -251,7 +233,7 @@ Anschließend mindestens manuell testen:
 
 1. Registrierung mit E-Mail und Passwort
 2. Abmelden und erneut mit Passwort anmelden
-3. optional OIDC-Anmeldung
+3. nach serverseitiger Provider-Provisionierung optional OIDC-Anmeldung
 4. Workspace öffnen
 5. Request speichern
 6. Request ausführen

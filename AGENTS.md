@@ -17,7 +17,7 @@ Wenn eine gewünschte Änderung diesen Regeln widerspricht oder den MVP-Scope de
 
 ## 2. Produktziel
 
-Das Produkt ist ein schlanker, webbasierter und kollaborativer REST-API-Client. Teams sollen API-Requests in gemeinsamen Workspaces zentral erstellen, organisieren, bearbeiten und ausführen können, ohne Dateien manuell auszutauschen.
+Das Produkt ist ein schlanker, serverbasierter und kollaborativer REST-API-Client. Teams sollen API-Requests in gemeinsamen Workspaces zentral erstellen, organisieren, bearbeiten und ausführen können, ohne Dateien manuell auszutauschen. Die React-Oberfläche wird als Web-App und zusätzlich über einen abgesicherten Electron-Desktop-Client angeboten; beide verwenden denselben zentralen DevAPI-Server.
 
 Die Zusammenarbeit erfolgt über gemeinsam gespeicherte Daten. Eine gleichzeitige Live-Bearbeitung desselben Requests ist nicht vorgesehen. Parallele Änderungen werden über Versionsnummern erkannt und müssen bewusst durch Nutzer aufgelöst werden.
 
@@ -50,6 +50,8 @@ Der MVP umfasst:
 - Request-Revisions als Sicherheitsnetz
 - serverseitige Ausführung externer Requests über ein separates, abgesichertes Proxy-Backend
 - klare Lade-, Fehler-, Leer- und Berechtigungszustände in der Oberfläche
+- vollständig selbst gehosteter Serverbetrieb ohne verpflichtende Cloudressourcen
+- Electron-Client für denselben zentralen Server
 
 ### 3.2 Kollaborationsmodell
 
@@ -101,6 +103,7 @@ Netze bleibt eine getrennte, sicherheitskritische Folgeentscheidung.
 - Zustand ausschließlich für lokalen, übergreifenden UI-State
 - shadcn/ui als Komponentenbasis
 - Monaco Editor für JSON- und Textbearbeitung
+- Electron für den installierbaren Desktop-Client
 
 TanStack Query ist die Quelle für geladenen Server-State. Zustand darf keine zweite, dauerhaft synchronisierte Kopie von Serverdaten enthalten. Lokale Formulare und ungespeicherte Entwürfe bleiben im Formular beziehungsweise in einem gezielt dafür vorgesehenen lokalen Editor-State.
 
@@ -151,7 +154,8 @@ Die genaue Aufteilung darf mit wachsendem Projekt angepasst werden. Bevorzugt wi
 │   │       ├── hooks/
 │   │       └── types/
 │   ├── api/
-│   └── proxy/
+│   ├── proxy/
+│   └── desktop/
 ├── packages/
 │   ├── contracts/
 │   ├── config/
@@ -579,7 +583,7 @@ Für Proxy-, Authentifizierungs-, Autorisierungs-, RLS- und Konfliktlogik ist ei
 - React-, TypeScript- und Vite-Grundlage
 - Routing, Query-Provider, UI-Basis und Testwerkzeuge
 - lokale Entwicklungsumgebung
-- Supabase-Projektkonfiguration und Migrationen
+- lokale und selbst gehostete Supabase-Konfiguration sowie Migrationen
 - CI für Typprüfung, Linting, Tests und Build
 
 Ergebnis: reproduzierbares, getestetes Projektgerüst.
@@ -655,6 +659,16 @@ Ergebnis: ein intern täglich nutzbarer MVP.
 - gezielte Stabilitäts- und Usability-Verbesserungen
 
 Ergebnis: eine begrenzt öffentlich nutzbare Beta ohne Erweiterung der festgelegten Nicht-Ziele.
+
+### Meilenstein 8 – Desktop-Verteilung
+
+- Electron-Client gegen denselben zentralen DevAPI-Server
+- sichere Main-/Preload-Grenze ohne Node-Zugriff im Renderer
+- Windows-Paketierung und Installer-Test
+- Code Signing und reproduzierbare Releaseartefakte
+- sicherer Callback für OIDC beziehungsweise Magic Links
+
+Ergebnis: ein installierbarer Desktop-Client ohne Aufweichung der serverseitigen Berechtigungs- und Sicherheitsgrenzen.
 
 ## 18. Arbeitsweise bei Änderungen
 

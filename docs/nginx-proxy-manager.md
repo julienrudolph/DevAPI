@@ -101,8 +101,7 @@ docker compose \
   up -d --build --wait
 ```
 
-Das Caddy-Overlay `compose.production.yaml` darf hierbei nicht zusätzlich
-angegeben werden. DevAPI veröffentlicht in dieser Variante keinen Host-Port.
+DevAPI veröffentlicht in dieser Variante keinen Host-Port.
 
 ## 4. Proxy Host in Nginx Proxy Manager
 
@@ -135,7 +134,7 @@ nötig. Insbesondere `/api`, `/auth/v1` und `/rest/v1` dürfen nicht direkt auf
 interne Container zeigen, weil die vorgesehene interne Weiterleitung und
 Sicherheitsgrenze sonst umgangen würde.
 
-## 5. DNS, Supabase und Firewall
+## 5. DNS, Auth und Firewall
 
 - Der DNS-Eintrag der Domain zeigt auf den Nginx-Proxy-Manager-Server.
 - Site URL und erlaubte Auth-Weiterleitungen stehen in `.env.selfhosted`.
@@ -184,5 +183,5 @@ npm run compose:selfhosted:down
 ```
 
 Das externe Netzwerk `botnet` und der Nginx Proxy Manager werden durch diesen
-Befehl nicht entfernt. Auch DevAPI-Daten im konfigurierten Supabase-Projekt
+Befehl nicht entfernt. Die DevAPI-Daten im konfigurierten Hostverzeichnis
 bleiben erhalten.

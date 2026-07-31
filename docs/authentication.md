@@ -48,8 +48,7 @@ Damit funktioniert der Link auch dann, wenn das Postfach in einem anderen Tab
 geöffnet ist und dort kein zuvor gespeicherter PKCE-Verifier vorliegt.
 
 Der lokale Compose-Stack liefert dafür eigene Vorlagen aus
-`infra/local/auth-templates` aus. Bei Hosted Supabase müssen die Vorlagen für
-**Confirm signup** und **Magic link** entsprechend angepasst werden:
+`infra/local/auth-templates` aus:
 
 ```html
 <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">
@@ -62,23 +61,36 @@ verwendete Links führen kontrolliert zurück zur Anmeldung.
 
 ## OIDC-Provider konfigurieren
 
-1. In Supabase unter **Auth → Providers** einen neuen Provider anlegen.
-2. **Auto-discovery (OIDC)** auswählen.
-3. Einen Bezeichner mit `custom:`-Präfix vergeben.
-4. Client-ID, Client-Secret und Issuer-URL hinterlegen.
-5. Die von Supabase angezeigte Callback-URL beim Identity Provider erlauben.
-6. PKCE und Nonce-Prüfung aktiviert lassen.
-7. Den Bezeichner in der Serverkonfiguration hinterlegen:
+Die Webanwendung und die öffentliche Laufzeitkonfiguration unterstützen einen
+Custom-OIDC-Provider. Im vollständig selbst gehosteten Betrieb gibt es jedoch
+keine Supabase-Cloudoberfläche für dessen Einrichtung. Der Provider muss über
+die serverseitige Auth-Administration provisioniert werden.
+
+Diese Provisionierung ist im aktuellen reduzierten Self-Hosted-Stack noch
+nicht automatisiert. Solange sie fehlt, muss `OIDC_PROVIDER` leer bleiben; die
+Oberfläche zeigt dann ausschließlich die Passwort-Anmeldung. `OIDC_LABEL` ist
+ohne Provider wirkungslos. Das Setzen eines Bezeichners allein aktiviert
+keinen Provider.
+
+Für die spätere Integration gelten:
 
 ```text
 OIDC_PROVIDER=custom:company-oidc
 OIDC_LABEL=Mit Firmenkonto anmelden
 ```
 
-Der Client-Secret des OIDC-Providers gehört ausschließlich in die
-serverseitige Supabase-Konfiguration. `VITE_*`-Werte existieren nur als
-Fallback für den direkten lokalen Vite-Entwicklungsserver; Docker- und
-Desktop-Clients laden die öffentliche Konfiguration zur Laufzeit.
+- Custom-Identifier beginnen mit `custom:`.
+- Der Identity Provider erlaubt
+  `https://devapi.example.de/auth/v1/callback`.
+- Authorization Code Flow, PKCE und Nonce-Prüfung bleiben aktiviert.
+- Client-ID, Client-Secret und Issuer liegen ausschließlich in der
+  serverseitigen Auth-Konfiguration.
+- Erst nach erfolgreicher Provider-Provisionierung wird der Identifier als
+  `OIDC_PROVIDER` an die DevAPI-Oberfläche ausgegeben.
+
+`VITE_*`-Werte existieren nur als Fallback für den direkten lokalen
+Vite-Entwicklungsserver; Docker- und Desktop-Clients laden die öffentliche
+Konfiguration zur Laufzeit.
 
 ## Identitäten und Mitgliedschaften
 

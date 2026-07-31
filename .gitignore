@@ -6,7 +6,6 @@ coverage/
 .env.*
 !.env.example
 !.env.compose.example
-!.env.production.example
 !.env.selfhosted.example
 *.local
 *.log

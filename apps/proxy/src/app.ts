@@ -13,9 +13,7 @@ import {
   type ProxyAuthenticator,
 } from "./security/authentication.js";
 import { UnsafeHeaderError } from "./security/headers.js";
-import {
-  UnsafeTargetError,
-} from "./security/target-policy.js";
+import { UnsafeTargetError } from "./security/target-policy.js";
 
 export interface ProxyAppOptions {
   transport?: Transport;

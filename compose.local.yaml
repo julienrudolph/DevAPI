@@ -42,7 +42,7 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - ./infra/local/bootstrap-database.sh:/usr/local/bin/bootstrap-database:ro
+      - ./infra/database/bootstrap-database.sh:/usr/local/bin/bootstrap-database:ro
     command: ["/bin/sh", "/usr/local/bin/bootstrap-database"]
     networks:
       - backend
@@ -177,7 +177,7 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - ./supabase/migrations:/migrations:ro
-      - ./infra/local/apply-migrations.sh:/usr/local/bin/apply-migrations:ro
+      - ./infra/database/apply-migrations.sh:/usr/local/bin/apply-migrations:ro
     command: ["/bin/sh", "/usr/local/bin/apply-migrations"]
     networks:
       - backend

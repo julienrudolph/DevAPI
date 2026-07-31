@@ -8,8 +8,6 @@ Das Repository enthält mehrere kombinierbare Compose-Dateien:
 - `compose.local.yaml` ergänzt PostgreSQL, Supabase Auth, PostgREST, einen
   lokalen API-Gateway, Mail-Capture, Auth-E-Mail-Vorlagen und den
   Migration-Runner.
-- `compose.production.yaml` ergänzt Caddy mit automatischem TLS und
-  veröffentlicht ausschließlich die HTTP-/HTTPS-Eingänge.
 - `compose.selfhosted.yaml` ergänzt PostgreSQL, Auth und PostgREST für den
   vollständig cloudfreien Serverbetrieb.
 - `compose.npm-proxy.yaml` verbindet den Web-Container mit einem vorhandenen
@@ -83,33 +81,6 @@ vorhandenen lokalen Datenbank.
 Eine Migration darf nach ihrer Anwendung nicht verändert werden. Korrekturen
 erfolgen durch eine neue, später sortierte Migrationsdatei.
 
-## Hosted Supabase verwenden
-
-Dieser Abschnitt ist optional. Der Standard-Serverbetrieb ist vollständig
-selbst gehostet.
-
-Für Entwicklung oder Deployment mit Hosted Supabase wird nur `compose.yaml`
-benötigt. In `.env.compose` werden gesetzt:
-
-```text
-SUPABASE_PUBLIC_URL=https://PROJECT.supabase.co
-SUPABASE_INTERNAL_URL=https://PROJECT.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
-```
-
-Start:
-
-```bash
-docker compose --env-file .env.compose -f compose.yaml up -d --build --wait
-```
-
-Die Datenbankmigrationen werden in diesem Fall über die Supabase-CLI oder die
-Deployment-Pipeline angewendet, nicht durch `compose.local.yaml`.
-
-Die Supabase-E-Mail-Vorlagen für Registrierung und Magic Link müssen außerdem
-wie in `docs/authentication.md` beschrieben auf den Callback der Anwendung
-zeigen.
-
 ## OIDC
 
 Die API liefert den optionalen Provider zur Laufzeit aus diesen Variablen:
@@ -119,35 +90,31 @@ OIDC_PROVIDER=custom:company-oidc
 OIDC_LABEL=Mit Firmenkonto anmelden
 ```
 
-Der Provider selbst wird in Supabase Auth konfiguriert. Client-Secret, Issuer
-und andere vertrauliche Providerdaten gehören niemals in Docker-Build-Args oder
-die öffentliche Laufzeitkonfiguration.
-
-Für lokale Tests mit einem externen OIDC-System ist Hosted Supabase oder die
-vollständige offizielle Self-hosted-Distribution der bevorzugte Weg. Der
-schlanke lokale Stack aktiviert standardmäßig Passwort-Authentifizierung.
+Der Provider selbst muss serverseitig in Supabase Auth konfiguriert werden.
+Client-Secret, Issuer und andere vertrauliche Providerdaten gehören niemals in
+Docker-Build-Args oder die öffentliche Laufzeitkonfiguration. Der reduzierte
+Self-Hosted-Stack aktiviert standardmäßig nur Passwort-Authentifizierung; die
+automatisierte Provisionierung eines Custom-OIDC-Providers ist noch nicht
+Bestandteil des Setup-Skripts.
 
 ## Produktion
 
 Der Standardablauf für die vollständig selbst gehostete
 Einzelserver-Installation steht in
-[self-hosted-deployment.md](self-hosted-deployment.md). Die optionale
-Anbindung eines externen Supabase-Projekts bleibt separat unter
-[production-deployment.md](production-deployment.md) dokumentiert.
+[self-hosted-deployment.md](self-hosted-deployment.md).
 
 Vor einem öffentlichen Rollout:
 
-1. Zufällige Produktions-Secrets in einem Secret-Manager erzeugen.
+1. Secrets mit `scripts/setup-selfhosted.sh` erzeugen und
+   `.env.selfhosted` mit Dateimodus `0600` schützen.
 2. TLS vor Web und Supabase erzwingen.
 3. Nur Web beziehungsweise den vorgeschalteten Reverse Proxy veröffentlichen.
 4. API, Request-Proxy, PostgreSQL und interne Supabase-Dienste in privaten
    Netzwerken halten.
-5. `WEB_BIND_ADDRESS` nur hinter einem abgesicherten Reverse Proxy auf
-   `0.0.0.0` setzen.
-6. Datenbank-Backups und eine Wiederherstellungsprobe einrichten.
-7. Ressourcenlimits, Monitoring und Log-Rotation konfigurieren.
-8. Image-Tags kontrolliert und gemeinsam aktualisieren.
-9. Migrationen vor dem Rollout in einer Staging-Umgebung ausführen.
+5. Datenbank-Backups und eine Wiederherstellungsprobe einrichten.
+6. Ressourcenlimits, Monitoring und Log-Rotation konfigurieren.
+7. Image-Tags kontrolliert und gemeinsam aktualisieren.
+8. Migrationen vor dem Rollout in einer Staging-Umgebung ausführen.
 
 Self-hosted Supabase bringt zusätzliche Betriebsverantwortung für Updates,
 Hochverfügbarkeit, Backups, Monitoring und Datenbankwartung mit. Die

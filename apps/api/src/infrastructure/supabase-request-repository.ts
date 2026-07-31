@@ -12,7 +12,7 @@ import type {
   FindPersistedRequestCommand,
   UpdatePersistedRequestCommand,
 } from "../domain/request-repository.js";
-import type { UpdateResult } from "../domain/request-store.js";
+import type { UpdateResult } from "../domain/request-repository.js";
 import { createUserSupabaseClient } from "./supabase-user-client.js";
 
 const databaseRequestSchema = z
