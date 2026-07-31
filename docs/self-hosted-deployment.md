@@ -18,7 +18,8 @@ Der Compose-Stack startet:
 
 Storage, Realtime, Studio, Analytics und Edge Functions sind nicht enthalten,
 weil DevAPI sie derzeit nicht benötigt. Alle fachlichen Daten und
-Anmeldekonten verbleiben im PostgreSQL-Volume auf dem eigenen Server.
+Anmeldekonten verbleiben im gewählten PostgreSQL-Datenverzeichnis auf dem
+eigenen Server.
 
 ## Netzwerkgrenzen
 
@@ -57,18 +58,28 @@ PostgreSQL sowie die internen Dienste veröffentlichen keine Ports am Host.
 Im Wurzelordner des geklonten Repositories:
 
 ```bash
-npm run compose:selfhosted:env -- https://devapi.example.de
-chmod 600 .env.selfhosted
-docker network inspect botnet
-npm run compose:selfhosted:config
-npm run compose:selfhosted:up
+./scripts/setup-selfhosted.sh
 ```
 
-Der Generator schreibt zufällige Secrets in `.env.selfhosted`. Die Datei muss
-gesichert werden, darf aber niemals ins Repository gelangen. Das erneute
-Generieren mit `--force` ist nach dem ersten Start keine Aktualisierung:
-Dadurch ändern sich Datenbankpasswort und JWT-Secret und bestehende Zugänge
-brechen.
+Das Skript fragt die öffentliche HTTPS-URL, das persistente Datenverzeichnis
+und das externe NPM-Netzwerk ab. Anschließend prüft es die Voraussetzungen,
+erzeugt zufällige Secrets, legt PostgreSQL- und Backup-Verzeichnisse an und
+validiert Compose. Es startet den Stack nicht selbst, sondern gibt den
+passenden Startbefehl aus.
+
+Automatisierter Aufruf:
+
+```bash
+./scripts/setup-selfhosted.sh \
+  --url https://devapi.example.de \
+  --data-dir /srv/devapi/data \
+  --npm-network botnet \
+  --non-interactive
+```
+
+Der Installer schreibt die Secrets mit Dateimodus `0600` in
+`.env.selfhosted`. Er verweigert das Überschreiben einer bestehenden
+Konfiguration und eines nicht leeren PostgreSQL-Verzeichnisses.
 
 ## Nginx Proxy Manager
 
@@ -136,11 +147,23 @@ docker compose \
 
 ## Datensicherung
 
-Das persistente Volume heißt standardmäßig `devapi_devapi-db-data`. Ein
-Volume-Snapshot allein ersetzt keinen konsistenten Datenbank-Dump.
+PostgreSQL liegt als Bind-Mount unter
+`<DEVAPI_DATA_DIR>/postgres`. Der Dienst `db-backup` erstellt standardmäßig
+alle 24 Stunden einen konsistenten Custom-Format-Dump unter
+`<DEVAPI_DATA_DIR>/backups` und entfernt Dumps nach 30 Tagen.
 
-Beispiel für einen logischen Dump in eine bereits geschützte
-Backup-Umgebung:
+Die Intervalle stehen in `.env.selfhosted`:
+
+```text
+BACKUP_INTERVAL_SECONDS=86400
+BACKUP_RETENTION_DAYS=30
+```
+
+Ein lokaler Dump auf demselben Server schützt nicht gegen Ausfall oder Verlust
+des Servers. Mindestens eine verschlüsselte Kopie muss regelmäßig auf einen
+getrennten Datenträger übertragen werden.
+
+Zusätzlicher manueller Dump:
 
 ```bash
 docker compose \

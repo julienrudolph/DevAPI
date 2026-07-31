@@ -6,12 +6,19 @@ const target = resolve(".env.selfhosted");
 const siteUrlArgument = process.argv.find((argument) =>
   argument.startsWith("http"),
 );
+const dataDirectoryArgument = process.argv.find((argument) =>
+  argument.startsWith("/"),
+);
 const force = process.argv.includes("--force");
 
 if (!siteUrlArgument) {
   console.error(
-    "Aufruf: npm run compose:selfhosted:env -- https://devapi.example.de",
+    "Aufruf: npm run compose:selfhosted:env -- https://devapi.example.de /srv/devapi/data",
   );
+  process.exit(1);
+}
+if (!dataDirectoryArgument || dataDirectoryArgument === "/") {
+  console.error("Ein absolutes, nicht-root Datenverzeichnis ist erforderlich.");
   process.exit(1);
 }
 
@@ -53,6 +60,7 @@ const anonKey = signJwt(
 );
 
 const content = `NPM_NETWORK=botnet
+DEVAPI_DATA_DIR=${dataDirectoryArgument.replace(/\/$/, "")}
 
 PUBLIC_HOST=${siteUrl.hostname}
 SITE_URL=${normalizedSiteUrl}
@@ -79,6 +87,9 @@ SMTP_PORT=25
 SMTP_USER=
 SMTP_PASS=
 SMTP_SENDER_NAME=DevAPI
+
+BACKUP_INTERVAL_SECONDS=86400
+BACKUP_RETENTION_DAYS=30
 `;
 
 writeFileSync(target, content, { encoding: "utf8", mode: 0o600 });

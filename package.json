@@ -25,6 +25,7 @@
     "compose:npm-proxy:up": "docker compose --env-file .env.production -f compose.yaml -f compose.npm-proxy.yaml up -d --build --wait",
     "compose:npm-proxy:down": "docker compose --env-file .env.production -f compose.yaml -f compose.npm-proxy.yaml down",
     "compose:selfhosted:env": "node scripts/generate-selfhosted-env.mjs",
+    "compose:selfhosted:setup": "bash scripts/setup-selfhosted.sh",
     "compose:selfhosted:config": "docker compose --env-file .env.selfhosted -f compose.yaml -f compose.selfhosted.yaml -f compose.npm-proxy.yaml config --quiet",
     "compose:selfhosted:up": "docker compose --env-file .env.selfhosted -f compose.yaml -f compose.selfhosted.yaml -f compose.npm-proxy.yaml up -d --build --wait",
     "compose:selfhosted:down": "docker compose --env-file .env.selfhosted -f compose.yaml -f compose.selfhosted.yaml -f compose.npm-proxy.yaml down",

@@ -56,15 +56,15 @@ abweichen. Das Netzwerk nicht neu anlegen, wenn es bereits existiert.
 
 ## 2. DevAPI konfigurieren
 
-Im Wurzelordner des DevAPI-Repositories die Konfiguration mit zufälligen
-Secrets erzeugen:
+Im Wurzelordner des DevAPI-Repositories das interaktive Setup starten:
 
 ```bash
-npm run compose:selfhosted:env -- https://devapi.example.de
-chmod 600 .env.selfhosted
+./scripts/setup-selfhosted.sh
 ```
 
-Für die Proxy-Anbindung ist insbesondere dieser Wert relevant:
+Das Skript fragt URL, Datenverzeichnis und Netzwerk ab, erzeugt alle Secrets
+und gibt am Ende den Startbefehl aus. Für die Proxy-Anbindung ist insbesondere
+dieser Wert relevant:
 
 ```text
 NPM_NETWORK=botnet

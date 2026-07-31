@@ -125,21 +125,41 @@ und 443 benötigt. PostgreSQL und die internen APIs erhalten keine Host-Ports.
 ```bash
 git clone <REPOSITORY-URL> devapi
 cd devapi
-npm run compose:selfhosted:env -- https://devapi.example.de
+./scripts/setup-selfhosted.sh
 ```
 
-Der letzte Befehl erzeugt `.env.selfhosted` mit zufälligem
-Datenbankpasswort, JWT-Secret, öffentlichem Anwendungs-Key und internem
-Proxy-Token. Die Datei ist nicht für Git vorgesehen:
+Das interaktive Setup fragt ab:
+
+- öffentliche HTTPS-URL
+- absolutes Verzeichnis für PostgreSQL und Backups
+- Docker-Netzwerk des vorhandenen Nginx Proxy Managers
+
+Es prüft Docker und Compose, erzeugt alle benötigten Secrets, legt die
+Datenverzeichnisse mit restriktiven Rechten an, validiert die fertige
+Compose-Konfiguration und gibt den vollständigen Startbefehl aus. Das Skript
+startet selbst keine Container.
+
+Für eine nicht-interaktive Vorbereitung:
+
+```bash
+./scripts/setup-selfhosted.sh \
+  --url https://devapi.example.de \
+  --data-dir /srv/devapi/data \
+  --npm-network botnet \
+  --non-interactive
+```
+
+Das Skript erzeugt `.env.selfhosted` mit zufälligem Datenbankpasswort,
+JWT-Secret, öffentlichem Anwendungs-Key und internem Proxy-Token. Die Datei ist
+nicht für Git vorgesehen:
 
 ```bash
 chmod 600 .env.selfhosted
 ```
 
-Falls das externe Netzwerk anders heißt, `NPM_NETWORK` in
-`.env.selfhosted` anpassen. Das Skript darf nach der Inbetriebnahme nicht mit
-`--force` erneut ausgeführt werden, weil neue Schlüssel bestehende Sessions
-und Datenbankzugänge ungültig machen.
+Eine bestehende `.env.selfhosted` oder ein nicht leeres
+PostgreSQL-Verzeichnis werden bewusst nicht überschrieben. Dadurch kann ein
+versehentlicher zweiter Lauf keine produktiven Secrets oder Daten ersetzen.
 
 ### 3. Stack prüfen und starten
 
@@ -259,20 +279,24 @@ wendet sie beim Start automatisch an.
 npm run compose:selfhosted:down
 ```
 
-Das Datenvolume `devapi_devapi-db-data` bleibt dabei erhalten. `down -v` würde
-es löschen und darf im normalen Betrieb nicht verwendet werden.
+Die Daten bleiben im während des Setups gewählten Hostverzeichnis erhalten.
+Der normale Stop-Befehl entfernt sie nicht.
 
 ### 9. Backups und Offline-Betrieb
 
 Der Betreiber ist selbst für Backups, Updates und Wiederherstellung
 verantwortlich. Empfohlen werden:
 
-- täglicher PostgreSQL-Dump
+- automatischer täglicher PostgreSQL-Dump durch den `db-backup`-Container
 - 14 bis 30 Tage Aufbewahrung
 - verschlüsselte Kopie außerhalb des App-Servers
 - regelmäßiger Restore-Test
 - Überwachung von HTTPS, Container-Healthchecks und freiem Speicher
 - Log-Rotation mit begrenzter Aufbewahrung
+
+Die Standardkonfiguration legt Dumps unter
+`<DEVAPI_DATA_DIR>/backups` ab und bewahrt sie 30 Tage auf. Eine zusätzliche
+verschlüsselte Kopie auf einem getrennten Datenträger bleibt erforderlich.
 
 Im laufenden Betrieb baut DevAPI keine Verbindung zur Supabase-Plattform auf.
 Für die erstmalige Installation müssen jedoch Images und Quellcode bezogen

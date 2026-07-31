@@ -14,7 +14,7 @@ services:
       timeout: 5s
       retries: 20
     volumes:
-      - devapi-db-data:/var/lib/postgresql/data
+      - ${DEVAPI_DATA_DIR}/postgres:/var/lib/postgresql/data
     networks:
       - backend
 
@@ -138,12 +138,34 @@ services:
     networks:
       - backend
 
+  db-backup:
+    image: supabase/postgres:17.6.1.136
+    restart: unless-stopped
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: postgres
+      PGUSER: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+    volumes:
+      - ${DEVAPI_DATA_DIR}/backups:/backups
+      - ./infra/selfhosted/backup-database.sh:/usr/local/bin/backup-database:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/backup-database"]
+    networks:
+      - backend
+
   api:
     depends_on:
       migrate:
         condition: service_completed_successfully
       supabase-gateway:
         condition: service_healthy
-
-volumes:
-  devapi-db-data:
