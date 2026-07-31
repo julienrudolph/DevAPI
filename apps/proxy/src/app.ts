@@ -1,5 +1,6 @@
 import { executeRequestSchema } from "@api-client/contracts";
 import Fastify from "fastify";
+import { randomUUID } from "node:crypto";
 
 import {
   executeHttpRequest,
@@ -14,11 +15,14 @@ import {
 } from "./security/authentication.js";
 import { UnsafeHeaderError } from "./security/headers.js";
 import { UnsafeTargetError } from "./security/target-policy.js";
+import { HttpOperations, validBearerToken } from "./operations.js";
 
 export interface ProxyAppOptions {
   transport?: Transport;
   authenticate?: ProxyAuthenticator;
   maxConcurrentRequests?: number;
+  metricsToken?: string;
+  logger?: boolean;
 }
 
 type TargetFailure = {
@@ -102,12 +106,27 @@ export function buildProxyApp(options: ProxyAppOptions = {}) {
   const maxConcurrentRequests = options.maxConcurrentRequests ?? 50;
   let activeExecutions = 0;
   const app = Fastify({
-    logger: false,
+    logger: options.logger ?? false,
+    genReqId: () => randomUUID(),
     bodyLimit: 1_100_000,
     requestTimeout: 15_000,
   });
+  const operations = new HttpOperations();
+  operations.attach(app);
+  app.addHook("onRequest", async (request, reply) => {
+    void reply.header("X-Request-ID", request.id);
+  });
 
   app.get("/health", async () => ({ status: "ok" }));
+  app.get("/ready", async () => ({ status: "ready" }));
+  app.get("/metrics", async (request, reply) => {
+    if (!validBearerToken(request.headers.authorization, options.metricsToken)) {
+      return reply.code(401).send({ code: "UNAUTHORIZED" });
+    }
+    return reply
+      .type("text/plain; version=0.0.4; charset=utf-8")
+      .send(operations.render());
+  });
 
   app.post("/v1/execute", async (request, reply) => {
     if (!(await authenticate(request.headers.authorization))) {

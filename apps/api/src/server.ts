@@ -11,7 +11,27 @@ import { SupabaseTeamMemberRepository } from "./infrastructure/supabase-team-mem
 import { InMemoryExecutionLimiter } from "./domain/execution-limiter.js";
 
 const config = readApiConfig();
+
+async function dependencyAvailable(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(2_000) });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 const app = buildApp({
+  logger: true,
+  metricsToken: config.METRICS_TOKEN ?? config.PROXY_INTERNAL_TOKEN,
+  readiness: async () => ({
+    supabase: await dependencyAvailable(
+      new URL("/health", config.SUPABASE_URL).toString(),
+    ),
+    proxy: await dependencyAvailable(
+      new URL("/health", config.PROXY_INTERNAL_URL).toString(),
+    ),
+  }),
   publicConfig: {
     apiBaseUrl: "/api",
     supabaseUrl: config.PUBLIC_SUPABASE_URL,

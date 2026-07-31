@@ -27,6 +27,7 @@ import {
   type PublicClientConfig,
 } from "@api-client/contracts";
 import Fastify, { type FastifyReply } from "fastify";
+import { randomUUID } from "node:crypto";
 
 import type {
   AuthenticatedUser,
@@ -54,6 +55,7 @@ import type {
   UpdateFolderResult,
   WorkspaceRepository,
 } from "./domain/workspace-repository.js";
+import { HttpOperations, validBearerToken } from "./operations.js";
 
 export interface ApiDependencies {
   authenticate: Authenticator;
@@ -66,10 +68,21 @@ export interface ApiDependencies {
   executionHistory?: ExecutionHistoryRepository;
   executionLimiter?: ExecutionLimiter;
   publicConfig?: PublicClientConfig;
+  metricsToken?: string;
+  readiness?: () => Promise<Record<string, boolean>>;
+  logger?: boolean;
 }
 
 export function buildApp(dependencies: ApiDependencies) {
-  const app = Fastify({ logger: false });
+  const app = Fastify({
+    logger: dependencies.logger ?? false,
+    genReqId: () => randomUUID(),
+  });
+  app.addHook("onRequest", async (request, reply) => {
+    void reply.header("X-Request-ID", request.id);
+  });
+  const operations = new HttpOperations();
+  operations.attach(app);
   const executionLimiter =
     dependencies.executionLimiter ??
     new InMemoryExecutionLimiter({
@@ -81,6 +94,35 @@ export function buildApp(dependencies: ApiDependencies) {
     });
 
   app.get("/health", async () => ({ status: "ok" }));
+  app.get("/ready", async (_request, reply) => {
+    try {
+      const checks = dependencies.readiness
+        ? await dependencies.readiness()
+        : { application: true };
+      const ready = Object.values(checks).every(Boolean);
+      return reply.code(ready ? 200 : 503).send({
+        status: ready ? "ready" : "unavailable",
+        checks,
+      });
+    } catch {
+      return reply
+        .code(503)
+        .send({ status: "unavailable", checks: { dependencies: false } });
+    }
+  });
+  app.get("/metrics", async (request, reply) => {
+    if (
+      !validBearerToken(
+        request.headers.authorization,
+        dependencies.metricsToken,
+      )
+    ) {
+      return reply.code(401).send({ code: "UNAUTHORIZED" });
+    }
+    return reply
+      .type("text/plain; version=0.0.4; charset=utf-8")
+      .send(operations.render("devapi_api"));
+  });
 
   app.get("/v1/config", async (_request, reply) => {
     if (!dependencies.publicConfig) {

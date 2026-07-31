@@ -11,6 +11,7 @@ describe("API configuration", () => {
         SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
         PROXY_INTERNAL_URL: "http://proxy:3002",
         PROXY_INTERNAL_TOKEN: "a".repeat(32),
+        METRICS_TOKEN: "m".repeat(32),
       }),
     ).toEqual({
       SUPABASE_URL: "https://project.supabase.co",
@@ -18,6 +19,7 @@ describe("API configuration", () => {
       SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
       PROXY_INTERNAL_URL: "http://proxy:3002",
       PROXY_INTERNAL_TOKEN: "a".repeat(32),
+      METRICS_TOKEN: "m".repeat(32),
       OIDC_PROVIDER: undefined,
       OIDC_LABEL: undefined,
       PASSWORD_AUTH_ENABLED: true,

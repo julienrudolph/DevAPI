@@ -92,6 +92,18 @@ Docker-Compose-Konfiguration:
 npm run verify
 ```
 
+## Betriebszustand und Metriken
+
+Die Container unterscheiden zwischen:
+
+- `/health`: Prozess läuft
+- `/ready`: benötigte interne Abhängigkeiten sind erreichbar
+- `/metrics`: Prometheus-Textformat, geschützt durch `METRICS_TOKEN`
+
+API- und Proxy-Logs werden als strukturierte JSON-Logs ausgegeben. Header,
+Bodies, Ziel-URLs, Tokens und persönliche Variablen werden nicht als
+strukturierte Logfelder erfasst.
+
 Bei Pushes auf `main` und in Pull Requests führt GitHub Actions dieselben
 Prüfungen mit der in `.nvmrc` festgelegten Node.js-Version aus. Zusätzlich
 werden Produktionsabhängigkeiten auf bekannte Schwachstellen hoher oder

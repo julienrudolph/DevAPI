@@ -163,6 +163,7 @@ fi
 jwt_secret="$(random_secret 48)"
 postgres_password="$(random_secret 32)"
 proxy_token="$(random_secret 48)"
+metrics_token="$(random_secret 48)"
 now="$(date +%s)"
 expires="$((now + 315360000))"
 anon_key="$(sign_jwt "$jwt_secret" "$now" "$expires")"
@@ -181,6 +182,7 @@ umask 077
   printf 'JWT_SECRET=%s\n' "$jwt_secret"
   printf 'SUPABASE_PUBLISHABLE_KEY=%s\n' "$anon_key"
   printf 'PROXY_INTERNAL_TOKEN=%s\n' "$proxy_token"
+  printf 'METRICS_TOKEN=%s\n' "$metrics_token"
   printf 'EXECUTION_RATE_WINDOW_MS=60000\n'
   printf 'EXECUTION_RATE_PER_USER=60\n'
   printf 'EXECUTION_RATE_PER_WORKSPACE=300\n'

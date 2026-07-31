@@ -44,6 +44,34 @@ const workspaceRepository: WorkspaceRepository = {
 };
 
 describe("request API authentication", () => {
+  it("distinguishes liveness, readiness, and protected metrics", async () => {
+    const app = buildApp({
+      authenticate: async () => null,
+      requests: repository,
+      workspaces: workspaceRepository,
+      readiness: async () => ({ supabase: true, proxy: false }),
+      metricsToken: "metrics-secret",
+    });
+
+    expect((await app.inject({ method: "GET", url: "/health" })).statusCode).toBe(
+      200,
+    );
+    expect((await app.inject({ method: "GET", url: "/ready" })).statusCode).toBe(
+      503,
+    );
+    expect(
+      (await app.inject({ method: "GET", url: "/metrics" })).statusCode,
+    ).toBe(401);
+    const metrics = await app.inject({
+      method: "GET",
+      url: "/metrics",
+      headers: { authorization: "Bearer metrics-secret" },
+    });
+    expect(metrics.statusCode).toBe(200);
+    expect(metrics.body).toContain("devapi_api_http_requests_total");
+    await app.close();
+  });
+
   it("serves only validated public client configuration", async () => {
     const app = buildApp({
       authenticate: async () => null,

@@ -13,6 +13,23 @@ const transport: Transport = async () => ({
 });
 
 describe("proxy API", () => {
+  it("protects operational metrics", async () => {
+    const app = buildProxyApp({ metricsToken: "metrics-secret" });
+    expect((await app.inject({ method: "GET", url: "/ready" })).statusCode).toBe(
+      200,
+    );
+    expect(
+      (await app.inject({ method: "GET", url: "/metrics" })).statusCode,
+    ).toBe(401);
+    const metrics = await app.inject({
+      method: "GET",
+      url: "/metrics",
+      headers: { authorization: "Bearer metrics-secret" },
+    });
+    expect(metrics.body).toContain("devapi_proxy_http_requests_total");
+    await app.close();
+  });
+
   it.each([
     ["ENOTFOUND", "TARGET_DNS_FAILED"],
     ["ECONNREFUSED", "TARGET_CONNECTION_REFUSED"],

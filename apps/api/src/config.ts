@@ -13,6 +13,10 @@ const apiConfigSchema = z.object({
   SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
   PROXY_INTERNAL_URL: z.string().url(),
   PROXY_INTERNAL_TOKEN: z.string().min(32),
+  METRICS_TOKEN: z.preprocess(
+    emptyStringToUndefined,
+    z.string().min(32).optional(),
+  ),
   PUBLIC_SUPABASE_URL: z.string().url(),
   OIDC_PROVIDER: z.preprocess(
     emptyStringToUndefined,

@@ -187,19 +187,52 @@ Backup-Dateien enthalten Anmelde- und Workspace-Daten und müssen
 verschlüsselt, zugriffsgeschützt und regelmäßig durch eine Wiederherstellung
 in einer getrennten Testumgebung geprüft werden.
 
-## Aktualisierung
+## Betriebszustand und geschützte Metriken
 
-Vorher Datenbank sichern und neue Image-Versionen sowie Migrationen in einer
-getrennten Installation testen:
+`/api/health` ist ein Liveness-Endpunkt. `/api/ready` prüft zusätzlich, ob
+Auth/PostgREST und der Request-Proxy erreichbar sind. Die Docker-Healthchecks
+verwenden den Readiness-Endpunkt.
+
+API und Proxy liefern Prometheus-Metriken nur mit `METRICS_TOKEN`. Die
+Metriken verwenden feste Routenmuster und enthalten keine Nutzer-IDs,
+Ziel-URLs, Header oder Bodies:
+
+Bei einer bestehenden Installation kann `METRICS_TOKEN` als neues zufälliges
+Secret in `.env.selfhosted` ergänzt werden. Fehlt es während eines Upgrades,
+wird vorübergehend `PROXY_INTERNAL_TOKEN` verwendet, damit die Dienste nicht
+ausfallen. Neue Installationen erzeugen immer ein separates Secret.
 
 ```bash
-git pull --ff-only
-npm run compose:selfhosted:config
-npm run compose:selfhosted:up
+docker compose \
+  --env-file .env.selfhosted \
+  -f compose.yaml \
+  -f compose.selfhosted.yaml \
+  -f compose.npm-proxy.yaml \
+  exec -T api node -e \
+  "fetch('http://127.0.0.1:3001/metrics',{headers:{authorization:'Bearer '+process.env.METRICS_TOKEN}}).then(r=>r.text()).then(console.log)"
 ```
 
-Die Image-Tags sind bewusst festgeschrieben. Einzelne Supabase-Komponenten
-nicht unabhängig und ungeprüft auf `latest` setzen.
+## Kontrollierte Updates und Rollback
+
+Deployments erfolgen auf einen expliziten Git-Tag oder Commit. Das Skript
+verweigert einen unsauberen Arbeitsstand, verhindert parallele Deployments,
+erstellt vorab einen PostgreSQL-Dump und wartet auf die Readiness-Checks:
+
+```bash
+./scripts/deploy-selfhosted-version.sh <Git-Tag-oder-Commit>
+```
+
+Bei einem Fehler stellt es den vorherigen Anwendungsstand wieder her.
+Datenbankmigrationen werden bewusst nicht rückwärts ausgeführt. Das
+Pre-Deployment-Backup bleibt erhalten.
+
+Ein bewusstes Rollback verwendet dasselbe Skript mit dem vorherigen Commit.
+Vorher muss bestätigt sein, dass die ältere Anwendung mit dem bereits
+migrierten Schema kompatibel ist. Eine Datenbankwiederherstellung ist ein
+separater, potenziell datenverlierender Vorgang.
+
+Die Image-Tags sind festgeschrieben. Einzelne Supabase-Komponenten dürfen
+nicht unabhängig und ungeprüft auf `latest` gesetzt werden.
 
 ## Offline-Abgrenzung
 

@@ -40,6 +40,7 @@ POSTGRES_PASSWORD=${randomBytes(32).toString("base64url")}
 JWT_SECRET=${jwtSecret}
 SUPABASE_PUBLISHABLE_KEY=${anonKey}
 PROXY_INTERNAL_TOKEN=${randomBytes(48).toString("base64url")}
+METRICS_TOKEN=${randomBytes(48).toString("base64url")}
 
 OIDC_PROVIDER=
 OIDC_LABEL=Mit Firmenkonto anmelden
