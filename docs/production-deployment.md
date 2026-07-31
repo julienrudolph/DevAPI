@@ -11,6 +11,11 @@ Der schlanke Supabase-Stack aus `compose.local.yaml` bleibt bewusst eine
 Entwicklungsumgebung. Er verwendet unter anderem Mail-Capture und ersetzt keine
 vollständige, gehärtete Supabase-Installation.
 
+Wenn bereits Nginx Proxy Manager vorhanden ist, kann dieser Caddy vollständig
+ersetzen. Dafür steht das Overlay `compose.npm-proxy.yaml` zur Verfügung. Die
+Schritt-für-Schritt-Anleitung befindet sich in
+[nginx-proxy-manager.md](nginx-proxy-manager.md).
+
 ## Voraussetzungen
 
 - ein Server mit aktueller Docker Engine und Docker Compose

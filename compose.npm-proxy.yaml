@@ -1,0 +1,14 @@
+services:
+  web:
+    expose:
+      - "8080"
+    networks:
+      backend:
+      npm_proxy:
+        aliases:
+          - devapi-web
+
+networks:
+  npm_proxy:
+    external: true
+    name: ${NPM_NETWORK:-botnet}

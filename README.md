@@ -260,6 +260,55 @@ docker compose \
 
 Der Befehl darf keine Warnung über fehlende Variablen ausgeben.
 
+### Alternative: vorhandener Nginx Proxy Manager
+
+Wenn auf dem Server bereits Nginx Proxy Manager läuft, wird Caddy nicht
+benötigt. Das Overlay `compose.npm-proxy.yaml` verbindet ausschließlich den
+Web-Container zusätzlich mit dem vorhandenen externen Docker-Netzwerk. API und
+Request-Proxy bleiben im privaten DevAPI-Netz und veröffentlichen keine Ports.
+
+Für ein Nginx-Proxy-Manager-Netz namens `botnet` bleibt in
+`.env.production`:
+
+```text
+NPM_NETWORK=botnet
+```
+
+Das Netzwerk und die Mitgliedschaft des Nginx Proxy Managers prüfen:
+
+```bash
+docker network inspect botnet
+```
+
+Danach DevAPI ohne Caddy starten:
+
+```bash
+npm run compose:npm-proxy:config
+npm run compose:npm-proxy:up
+```
+
+Im Nginx Proxy Manager einen Proxy Host anlegen:
+
+| Feld | Wert |
+|---|---|
+| Domain Names | `devapi.example.de` |
+| Scheme | `http` |
+| Forward Hostname / IP | `devapi-web` |
+| Forward Port | `8080` |
+| Block Common Exploits | aktiv |
+| Websockets Support | aktiv |
+
+Unter **SSL** das Zertifikat auswählen beziehungsweise anfordern, **Force
+SSL** und **HTTP/2 Support** aktivieren. HSTS erst aktivieren, nachdem HTTPS
+zuverlässig funktioniert. Die öffentliche Supabase Site URL und Redirect-URL
+müssen weiterhin `https://devapi.example.de` verwenden.
+
+Wichtig: Nicht gleichzeitig `compose.production.yaml` verwenden. Dieses
+Overlay startet Caddy und würde die öffentlichen Ports 80 und 443 belegen.
+Die ausführliche Einbindung einschließlich Firewall- und Update-Hinweisen
+steht in
+[`docs/nginx-proxy-manager.md`](docs/nginx-proxy-manager.md).
+
 ### 6. Anwendung starten
 
 Mit npm:
