@@ -28,11 +28,16 @@
     "typecheck": "npm run build --workspace @api-client/contracts && npm run typecheck --workspaces --if-present",
     "test": "npm run build --workspace @api-client/contracts && npm run test --workspaces --if-present",
     "test:database": "sh scripts/test-database.sh",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium",
     "check": "npm run typecheck && npm run test && npm run build",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "verify": "npm run check && npm run compose:config:ci"
   },
   "engines": {
     "node": ">=22.22.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
   }
 }

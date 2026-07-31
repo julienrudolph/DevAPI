@@ -37,3 +37,46 @@ jobs:
 
       - name: Produktionsabhängigkeiten prüfen
         run: npm run audit:prod
+
+  end-to-end:
+    name: Kritische Browserabläufe
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Repository laden
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Chromium installieren
+        run: npx playwright install --with-deps chromium
+
+      - name: Lokale Konfiguration erzeugen
+        run: npm run compose:env
+
+      - name: Stack starten
+        run: npm run compose:up
+
+      - name: End-to-End-Tests
+        run: npm run test:e2e
+
+      - name: Diagnoseartefakte speichern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
+      - name: Stack stoppen
+        if: always()
+        run: npm run compose:down

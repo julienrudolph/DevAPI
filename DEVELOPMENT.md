@@ -281,6 +281,22 @@ werden alle Testdaten mit `ROLLBACK` verworfen. Ein Fehler bricht den Lauf
 sofort ab. Die Tests prüfen nicht nur den Erfolgsfall, sondern auch
 Editor-/Owner-Grenzen und Cross-Tenant-Zugriffe.
 
+Die kritischen Benutzerabläufe werden mit Playwright gegen den vollständigen
+lokalen Compose-Stack geprüft:
+
+```bash
+npm run test:e2e:install
+npm run compose:up
+npm run test:e2e
+```
+
+Der Test legt isolierte Konten und Workspaces mit eindeutigen Namen an. Er
+prüft Registrierung, Request-Ausführung, einen parallelen Versionskonflikt,
+Viewer-Rechte und die Mandantentrennung. Screenshots, Traces und HTML-Berichte
+bei Fehlern liegen in den ignorierten Ordnern `test-results/` und
+`playwright-report/`. Mit `E2E_BASE_URL` kann ein anderer Testserver angegeben
+werden; dieser muss Passwortregistrierung aktiviert haben.
+
 Neue Logik benötigt Tests auf der passenden Ebene:
 
 - Schema und pure Fachlogik: Unit-Test
@@ -288,6 +304,7 @@ Neue Logik benötigt Tests auf der passenden Ebene:
 - API und Repository-Zusammenspiel: Integrationstest
 - RLS und Mandantentrennung: Datenbank-Negativtest
 - Proxy-Schutz: Sicherheits- und Umgehungstest
+- Kritische, komponentenübergreifende Benutzerabläufe: Playwright-End-to-End-Test
 
 ## 9. Typischer Änderungsablauf
 

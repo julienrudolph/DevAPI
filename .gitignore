@@ -9,6 +9,8 @@ coverage/
 !.env.selfhosted.example
 *.local
 *.log
+playwright-report/
+test-results/
 .DS_Store
 .vite/
 .turbo/

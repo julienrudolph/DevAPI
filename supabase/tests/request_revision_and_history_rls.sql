@@ -79,8 +79,10 @@ begin
     );
     raise exception 'Stale request version was accepted';
   exception
-    when serialization_failure then
-      null;
+    when raise_exception then
+      if sqlerrm <> 'REQUEST_VERSION_CONFLICT' then
+        raise;
+      end if;
   end;
 end;
 $$;
