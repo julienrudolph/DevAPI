@@ -85,11 +85,15 @@ vi.mock("./collection-create-form", () => ({
   CollectionCreateForm: () => null,
 }));
 vi.mock("./navigation-create-form", () => ({
-  FolderCreateForm: () => null,
-  RequestCreateForm: () => null,
+  FolderCreateForm: ({ parentFolderId }: { parentFolderId?: string }) => (
+    <form aria-label={`Ordner anlegen ${parentFolderId ?? "Collection"}`} />
+  ),
+  RequestCreateForm: ({ folderId }: { folderId?: string }) => (
+    <form aria-label={`Request anlegen ${folderId ?? "Collection"}`} />
+  ),
 }));
 vi.mock("./workspace-create-form", () => ({
-  WorkspaceCreateForm: () => null,
+  WorkspaceCreateForm: () => <form aria-label="Workspace anlegen" />,
 }));
 
 const workspaceId = "85e52968-22cc-483d-b6a6-bdc169e46ede";
@@ -179,6 +183,46 @@ function renderWorkspace() {
 }
 
 describe("WorkspacePage", () => {
+  it("switches workspaces and exposes creation after onboarding", async () => {
+    const user = userEvent.setup();
+    const secondWorkspaceId = "45d80ec6-6136-41d9-b62c-953e3fe94456";
+    vi.mocked(useWorkspaces).mockReturnValue({
+      data: [
+        {
+          id: workspaceId,
+          teamId: "ca310ca9-7dd9-4c67-9e03-c73cb38ca475",
+          name: "Platform Engineering",
+          role: "editor",
+        },
+        {
+          id: secondWorkspaceId,
+          teamId: "43cf6729-5634-43b7-8510-6164a1d6ef46",
+          name: "Customer API",
+          role: "owner",
+        },
+      ],
+      isPending: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useWorkspaces>);
+    renderWorkspace();
+
+    await user.selectOptions(
+      screen.getByLabelText("Workspace auswählen"),
+      secondWorkspaceId,
+    );
+    expect(
+      screen.getByLabelText("Workspace auswählen"),
+    ).toHaveValue(secondWorkspaceId);
+
+    await user.click(
+      screen.getByRole("button", { name: "Workspace erstellen" }),
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Workspace erstellen" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Workspace anlegen")).toBeInTheDocument();
+  });
+
   it("collapses and expands collections", async () => {
     const user = userEvent.setup();
     renderWorkspace();
@@ -213,6 +257,29 @@ describe("WorkspacePage", () => {
     expect(
       screen.queryByRole("button", { name: "POST Create customer" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("creates requests and subfolders inside nested folders", async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Request in Mutations erstellen",
+      }),
+    );
+    expect(
+      screen.getByLabelText(`Request anlegen ${folderId}`),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Unterordner in Mutations erstellen",
+      }),
+    );
+    expect(
+      screen.getByLabelText(`Ordner anlegen ${folderId}`),
+    ).toBeInTheDocument();
   });
 
   it("keeps unsaved drafts mounted while switching request tabs", async () => {

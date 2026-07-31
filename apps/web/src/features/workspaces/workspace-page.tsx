@@ -128,6 +128,7 @@ export function WorkspacePage() {
   const [showingHistory, setShowingHistory] = useState(false);
   const [showingOpenApiImport, setShowingOpenApiImport] = useState(false);
   const [managingTeam, setManagingTeam] = useState(false);
+  const [creatingWorkspace, setCreatingWorkspace] = useState(false);
   const [creatingCollection, setCreatingCollection] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [movingRequest, setMovingRequest] = useState(false);
@@ -137,9 +138,19 @@ export function WorkspacePage() {
   const [managementError, setManagementError] = useState<string>();
   const [creatingChild, setCreatingChild] = useState<{
     collectionId: string;
+    parentFolderId: string | null;
     kind: "folder" | "request";
   }>();
   const searchInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (
+      activeWorkspace &&
+      routeWorkspaceId !== activeWorkspace.id
+    ) {
+      navigate(`/workspaces/${activeWorkspace.id}`, { replace: true });
+    }
+  }, [activeWorkspace, navigate, routeWorkspaceId]);
+
   useEffect(() => {
     setActiveRequestId(undefined);
     setOpenRequestIds([]);
@@ -153,6 +164,7 @@ export function WorkspacePage() {
     setDestinationCollectionId(undefined);
     setDestinationFolderId("");
     setManagementError(undefined);
+    setCreatingWorkspace(false);
   }, [activeWorkspace?.id]);
 
   useEffect(() => {
@@ -357,34 +369,44 @@ export function WorkspacePage() {
   return (
     <div className="workspace-layout">
       <aside className="sidebar" aria-label="Workspace-Navigation">
-        <label className="workspace-select">
-          <span className="workspace-select-control">
-            <span className="eyebrow">Workspace</span>
-            <span className="sr-only">Workspace auswählen</span>
-            <select
-              value={activeWorkspace.id}
-              onChange={(event) => {
-                if (
-                  hasDirtyRequests &&
-                  !window.confirm(
-                    "In offenen Tabs gibt es ungespeicherte Änderungen. Möchtest du den Workspace wirklich wechseln?",
-                  )
-                ) {
-                  event.target.value = activeWorkspace.id;
-                  return;
-                }
-                navigate(`/workspaces/${event.target.value}`);
-              }}
-            >
-              {workspaces.data?.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </option>
-              ))}
-            </select>
-          </span>
-          <ChevronDown aria-hidden="true" size={16} />
-        </label>
+        <div className="workspace-switcher">
+          <label className="workspace-select">
+            <span className="workspace-select-control">
+              <span className="eyebrow">Workspace</span>
+              <select
+                aria-label="Workspace auswählen"
+                value={activeWorkspace.id}
+                onChange={(event) => {
+                  if (
+                    hasDirtyRequests &&
+                    !window.confirm(
+                      "In offenen Tabs gibt es ungespeicherte Änderungen. Möchtest du den Workspace wirklich wechseln?",
+                    )
+                  ) {
+                    return;
+                  }
+                  navigate(`/workspaces/${event.target.value}`);
+                }}
+              >
+                {workspaces.data?.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>
+                    {workspace.name}
+                  </option>
+                ))}
+              </select>
+            </span>
+            <ChevronDown aria-hidden="true" size={16} />
+          </label>
+          <button
+            aria-label="Workspace erstellen"
+            className="icon-button workspace-create-button"
+            onClick={() => setCreatingWorkspace(true)}
+            title="Workspace erstellen"
+            type="button"
+          >
+            <Plus aria-hidden="true" size={17} />
+          </button>
+        </div>
 
         <div className="sidebar-heading">
           <span>Collections</span>
@@ -512,6 +534,7 @@ export function WorkspacePage() {
                           event.stopPropagation();
                           setCreatingChild({
                             collectionId: collection.id,
+                            parentFolderId: null,
                             kind: "request",
                           });
                         }}
@@ -526,6 +549,7 @@ export function WorkspacePage() {
                           event.stopPropagation();
                           setCreatingChild({
                             collectionId: collection.id,
+                            parentFolderId: null,
                             kind: "folder",
                           });
                         }}
@@ -541,6 +565,7 @@ export function WorkspacePage() {
                   hidden={collapsedCollectionIds.has(collection.id)}
                 >
                   {creatingChild?.collectionId === collection.id &&
+                  creatingChild.parentFolderId === null &&
                   creatingChild.kind === "folder" ? (
                     <FolderCreateForm
                       collectionId={collection.id}
@@ -549,6 +574,7 @@ export function WorkspacePage() {
                     />
                   ) : null}
                   {creatingChild?.collectionId === collection.id &&
+                  creatingChild.parentFolderId === null &&
                   creatingChild.kind === "request" ? (
                     <RequestCreateForm
                       collectionId={collection.id}
@@ -561,7 +587,9 @@ export function WorkspacePage() {
                     (folder) => (
                       <FolderTreeNode
                         activeRequestId={activeRequestId}
+                        canEdit={canEdit}
                         collapsedFolderIds={collapsedFolderIds}
+                        creatingChild={creatingChild}
                         folder={folder}
                         foldersByParent={foldersByParent}
                         key={folder.id}
@@ -574,7 +602,10 @@ export function WorkspacePage() {
                           })
                         }
                         onSelectRequest={selectRequest}
+                        onStartCreating={setCreatingChild}
+                        onStopCreating={() => setCreatingChild(undefined)}
                         requestsByFolder={requestsByFolder}
+                        workspaceId={activeWorkspace.id}
                       />
                     ),
                   )}
@@ -1011,28 +1042,74 @@ export function WorkspacePage() {
           </section>
         </div>
       ) : null}
+      {creatingWorkspace ? (
+        <div className="modal-backdrop" role="presentation">
+          <section
+            aria-labelledby="create-workspace-title"
+            aria-modal="true"
+            className="conflict-dialog workspace-create-dialog"
+            role="dialog"
+          >
+            <h2 id="create-workspace-title">Workspace erstellen</h2>
+            <p>
+              Lege einen weiteren gemeinsamen Workspace mit einem eigenen Team
+              an.
+            </p>
+            <WorkspaceCreateForm />
+            <div className="dialog-actions">
+              <button
+                className="button secondary"
+                onClick={() => setCreatingWorkspace(false)}
+                type="button"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
 
 interface FolderTreeNodeProps {
   activeRequestId: string | undefined;
+  canEdit: boolean;
   collapsedFolderIds: Set<string>;
+  creatingChild:
+    | {
+        collectionId: string;
+        parentFolderId: string | null;
+        kind: "folder" | "request";
+      }
+    | undefined;
   folder: FolderSummary;
   foldersByParent: Map<string, FolderSummary[]>;
   requestsByFolder: Map<string, RequestSummary[]>;
   onSelectRequest: (requestId: string) => void;
+  onStartCreating: (value: {
+    collectionId: string;
+    parentFolderId: string | null;
+    kind: "folder" | "request";
+  }) => void;
+  onStopCreating: () => void;
   onToggleFolder: (folderId: string) => void;
+  workspaceId: string;
 }
 
 function FolderTreeNode({
   activeRequestId,
+  canEdit,
   collapsedFolderIds,
+  creatingChild,
   folder,
   foldersByParent,
   requestsByFolder,
   onSelectRequest,
+  onStartCreating,
+  onStopCreating,
   onToggleFolder,
+  workspaceId,
 }: FolderTreeNodeProps) {
   const collapsed = collapsedFolderIds.has(folder.id);
   return (
@@ -1052,18 +1129,74 @@ function FolderTreeNode({
           <FolderClosed aria-hidden="true" size={14} />
           <span>{folder.name}</span>
         </button>
+        {canEdit ? (
+          <span className="tree-actions">
+            <button
+              aria-label={`Request in ${folder.name} erstellen`}
+              className="icon-button compact"
+              onClick={() =>
+                onStartCreating({
+                  collectionId: folder.collectionId,
+                  parentFolderId: folder.id,
+                  kind: "request",
+                })
+              }
+              type="button"
+            >
+              <FilePlus2 aria-hidden="true" size={14} />
+            </button>
+            <button
+              aria-label={`Unterordner in ${folder.name} erstellen`}
+              className="icon-button compact"
+              onClick={() =>
+                onStartCreating({
+                  collectionId: folder.collectionId,
+                  parentFolderId: folder.id,
+                  kind: "folder",
+                })
+              }
+              type="button"
+            >
+              <FolderPlus aria-hidden="true" size={14} />
+            </button>
+          </span>
+        ) : null}
       </div>
       <div className="tree-children" hidden={collapsed}>
+        {creatingChild?.parentFolderId === folder.id &&
+        creatingChild.kind === "folder" ? (
+          <FolderCreateForm
+            collectionId={folder.collectionId}
+            onClose={onStopCreating}
+            parentFolderId={folder.id}
+            workspaceId={workspaceId}
+          />
+        ) : null}
+        {creatingChild?.parentFolderId === folder.id &&
+        creatingChild.kind === "request" ? (
+          <RequestCreateForm
+            collectionId={folder.collectionId}
+            folderId={folder.id}
+            onClose={onStopCreating}
+            onCreated={onSelectRequest}
+            workspaceId={workspaceId}
+          />
+        ) : null}
         {(foldersByParent.get(folder.id) ?? []).map((child) => (
           <FolderTreeNode
             activeRequestId={activeRequestId}
+            canEdit={canEdit}
             collapsedFolderIds={collapsedFolderIds}
+            creatingChild={creatingChild}
             folder={child}
             foldersByParent={foldersByParent}
             key={child.id}
             onSelectRequest={onSelectRequest}
+            onStartCreating={onStartCreating}
+            onStopCreating={onStopCreating}
             onToggleFolder={onToggleFolder}
             requestsByFolder={requestsByFolder}
+            workspaceId={workspaceId}
           />
         ))}
         {(requestsByFolder.get(folder.id) ?? []).map((request) => (

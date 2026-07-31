@@ -1,4 +1,5 @@
 import { Agent, request } from "undici";
+import { STATUS_CODES } from "node:http";
 import type { LookupFunction } from "node:net";
 
 import type {
@@ -34,7 +35,7 @@ export const undiciTransport: Transport = async ({
 
     return {
       status: response.statusCode,
-      statusText: "",
+      statusText: STATUS_CODES[response.statusCode] ?? "",
       headers: response.headers,
       body: closeAfter(response.body, agent),
     };

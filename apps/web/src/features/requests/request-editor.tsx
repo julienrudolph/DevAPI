@@ -26,6 +26,7 @@ import {
 } from "react-hook-form";
 
 import { RequestConflictError } from "./request-api";
+import { RequestExecutionError } from "./request-execution-api";
 import { formatCurl, parseCurl } from "./curl";
 import {
   useExecuteRequest,
@@ -552,10 +553,41 @@ function LoadedRequestEditor({
             <div className="response-empty">Request wird ausgeführt …</div>
           ) : execution.isError ? (
             <div className="response-error" role="alert">
-              {execution.error.message}
+              <strong>Request konnte nicht ausgeführt werden</strong>
+              <p>{execution.error.message}</p>
+              {execution.error instanceof RequestExecutionError ? (
+                <code>Fehlercode: {execution.error.code}</code>
+              ) : null}
             </div>
           ) : execution.data ? (
             <div className="response-result">
+              {execution.data.status >= 400 ||
+              isHtmlResponse(execution.data.headers, execution.data.body) ? (
+                <div
+                  className={`response-notice ${
+                    execution.data.status >= 400 ? "error" : ""
+                  }`}
+                  role={execution.data.status >= 400 ? "alert" : "status"}
+                >
+                  <strong>
+                    {execution.data.status >= 400
+                      ? `HTTP ${execution.data.status}: Die Ziel-API meldet einen Fehler`
+                      : "HTML-Antwort empfangen"}
+                  </strong>
+                  <p>{describeHttpStatus(execution.data.status)}</p>
+                  {isHtmlResponse(
+                    execution.data.headers,
+                    execution.data.body,
+                  ) ? (
+                    <p>
+                      Der Server hat HTML zurückgegeben. Das ist häufig eine
+                      Fehlerseite eines Webservers, Reverse Proxys oder einer
+                      falsch adressierten Route. Der HTML-Quelltext wird unten
+                      sicher als Text angezeigt und nicht ausgeführt.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="response-toolbar">
                 <div aria-label="Response-Ansicht" className="response-tabs">
                   <button
@@ -813,6 +845,51 @@ function formatResponseBody(body: string): string {
   } catch {
     return body;
   }
+}
+
+export function isHtmlResponse(
+  headers: Record<string, string>,
+  body: string,
+): boolean {
+  const contentType = Object.entries(headers).find(
+    ([name]) => name.toLocaleLowerCase() === "content-type",
+  )?.[1];
+  if (contentType?.toLocaleLowerCase().includes("text/html")) return true;
+  return /^\s*(?:<!doctype\s+html|<html[\s>])/i.test(body);
+}
+
+export function describeHttpStatus(status: number): string {
+  const descriptions: Record<number, string> = {
+    400: "Die Ziel-API lehnt den Request als ungültig ab. Prüfe URL, Parameter, Header und Body.",
+    401: "Die Ziel-API verlangt eine gültige Authentifizierung. Prüfe Authorization-Header oder den Authentifizierungs-Tab.",
+    403: "Die Ziel-API hat den Request verstanden, erlaubt deinem Benutzer oder Token den Zugriff aber nicht.",
+    404: "Die angeforderte Route wurde auf dem Zielserver nicht gefunden. Prüfe insbesondere Pfad und Basis-URL.",
+    405: "Die verwendete HTTP-Methode ist für diese Route nicht erlaubt.",
+    408: "Die Ziel-API hat den Request wegen einer Zeitüberschreitung beendet.",
+    409: "Die Ziel-API meldet einen Konflikt mit dem aktuellen Zustand der Ressource.",
+    413: "Der gesendete Request ist für die Ziel-API zu groß.",
+    415: "Die Ziel-API unterstützt den gesendeten Content-Type nicht.",
+    422: "Der Request ist syntaktisch gültig, enthält aber fachlich ungültige Daten.",
+    429: "Die Ziel-API hat ihr Anfragelimit erreicht. Warte kurz und versuche es erneut.",
+    500: "Auf der Ziel-API ist ein interner Fehler aufgetreten.",
+    502: "Ein Gateway oder Reverse Proxy hat vom nachgelagerten Zielserver keine gültige Antwort erhalten.",
+    503: "Die Ziel-API ist momentan nicht verfügbar oder wird gewartet.",
+    504: "Ein Gateway oder Reverse Proxy hat beim Warten auf den Zielserver das Zeitlimit erreicht.",
+  };
+  if (descriptions[status]) return descriptions[status];
+  if (status >= 500) {
+    return "Die Ziel-API oder ein vorgeschalteter Server hat einen internen Fehler gemeldet.";
+  }
+  if (status >= 400) {
+    return "Die Ziel-API hat den Request abgelehnt. Prüfe Response-Body und Header für weitere Details.";
+  }
+  if (status >= 300) {
+    return "Die Ziel-API meldet eine Weiterleitung. Ohne gültiges Location-Ziel kann sie nicht automatisch verfolgt werden.";
+  }
+  if (status >= 200) {
+    return "Die Ziel-API hat den Request erfolgreich beantwortet.";
+  }
+  return "Die Ziel-API hat eine informative Zwischenantwort geliefert.";
 }
 
 function formatResponseHeaders(headers: Record<string, string>): string {

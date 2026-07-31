@@ -15,15 +15,20 @@ interface CreateFormProps {
   onClose: () => void;
 }
 
+interface FolderCreateFormProps extends CreateFormProps {
+  parentFolderId?: string | null;
+}
+
 export function FolderCreateForm({
   collectionId,
   workspaceId,
   onClose,
-}: CreateFormProps) {
+  parentFolderId = null,
+}: FolderCreateFormProps) {
   const mutation = useCreateFolder(workspaceId);
   const { formState, handleSubmit, register } = useForm<CreateFolder>({
     resolver: zodResolver(createFolderSchema),
-    defaultValues: { collectionId, parentFolderId: null, name: "" },
+    defaultValues: { collectionId, parentFolderId, name: "" },
   });
 
   return (
@@ -51,11 +56,13 @@ export function FolderCreateForm({
 }
 
 interface RequestCreateFormProps extends CreateFormProps {
+  folderId?: string | null;
   onCreated: (requestId: string) => void;
 }
 
 export function RequestCreateForm({
   collectionId,
+  folderId = null,
   workspaceId,
   onClose,
   onCreated,
@@ -66,7 +73,7 @@ export function RequestCreateForm({
       resolver: zodResolver(createRequestSummarySchema),
       defaultValues: {
         collectionId,
-        folderId: null,
+        folderId,
         name: "",
         method: "GET",
         url: "https://",

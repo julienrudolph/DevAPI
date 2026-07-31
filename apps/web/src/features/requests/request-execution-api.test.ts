@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  executionErrorMessage,
   executeRequest,
   RequestExecutionError,
 } from "./request-execution-api";
@@ -109,6 +110,74 @@ describe("request execution API", () => {
         "session-token",
       ),
     ).rejects.toBeInstanceOf(RequestExecutionError);
+  });
+
+  it("explains DNS failures with actionable guidance", () => {
+    expect(executionErrorMessage("TARGET_DNS_FAILED")).toContain(
+      "Schreibweise der Domain",
+    );
+  });
+
+  it("rejects malformed URLs before calling the API", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      executeRequest(
+        {
+          requestId,
+          request: {
+            name: "Invalid",
+            method: "GET",
+            url: "keine gültige URL",
+            queryParams: [],
+            headers: [],
+            body: { type: "none" },
+          },
+          auth: { type: "none" },
+          variables: [],
+        },
+        "session-token",
+      ),
+    ).rejects.toMatchObject({
+      code: "INVALID_URL",
+      message: expect.stringContaining("URL ist ungültig"),
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("explains a non-JSON response from the DevAPI backend", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("<html>Gateway error</html>", {
+          status: 502,
+          headers: { "content-type": "text/html" },
+        }),
+      ),
+    );
+
+    await expect(
+      executeRequest(
+        {
+          requestId,
+          request: {
+            name: "Health",
+            method: "GET",
+            url: "https://api.example.com",
+            queryParams: [],
+            headers: [],
+            body: { type: "none" },
+          },
+          auth: { type: "none" },
+          variables: [],
+        },
+        "session-token",
+      ),
+    ).rejects.toMatchObject({
+      code: "INVALID_RESPONSE",
+      message: expect.stringContaining("unerwartete Antwort"),
+    });
   });
 
   it.each([

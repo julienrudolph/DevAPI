@@ -86,6 +86,48 @@ werden:
 npm run make:windows
 ```
 
+### Windows-Installer Schritt für Schritt
+
+Auf einem Windows-10- oder Windows-11-Rechner werden benötigt:
+
+- Git
+- die in `.nvmrc` festgelegte Node.js-Version, derzeit Node.js 22
+- npm aus dieser Node.js-Installation
+
+In PowerShell:
+
+```powershell
+git clone <REPOSITORY-URL> DevAPI
+Set-Location DevAPI
+npm ci
+npm run verify
+npm run make:windows
+```
+
+Der Build verwendet keine Supabase-Cloudressourcen und benötigt keine
+Verbindung zur produktiven Datenbank. Er bündelt ausschließlich Web-Frontend
+und Electron-Client. Die erzeugten Dateien liegen anschließend unter:
+
+```text
+apps/desktop/out/make/squirrel.windows/x64/Relay-Setup.exe
+apps/desktop/out/make/zip/win32/x64/
+```
+
+Nach der Installation fragt Relay beim ersten Start nach der öffentlichen
+HTTPS-Adresse des DevAPI-Servers, beispielsweise:
+
+```text
+https://devapi.example.de
+```
+
+Die Adresse enthält keinen zusätzlichen Pfad. Der Desktop-Client verwendet
+danach dieselben Konten, Teams und Workspaces wie die Web-Anwendung.
+
+Der aktuelle Installer ist nicht digital signiert. Windows SmartScreen kann
+deshalb eine Warnung anzeigen. Für interne Tests kann der Build verwendet
+werden; vor einer allgemeinen Verteilung sind Code-Signing und ein Test auf
+einer sauberen Windows-VM erforderlich.
+
 Der aktuelle Forge-Stack ist ausschließlich Build-Werkzeug. Der
 Produktionsabhängigkeits-Audit enthält keine bekannten Schwachstellen. Vor
 jedem Release müssen trotzdem der vollständige Buildwerkzeug-Audit und die

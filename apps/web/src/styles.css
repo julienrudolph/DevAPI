@@ -125,6 +125,23 @@ button {
   padding: 11px 12px;
 }
 
+.workspace-switcher {
+  align-items: stretch;
+  display: flex;
+  gap: 7px;
+}
+
+.workspace-switcher .workspace-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.workspace-create-button {
+  align-self: stretch;
+  height: auto;
+  min-width: 38px;
+}
+
 .workspace-select-control {
   display: block;
   min-width: 0;
@@ -146,6 +163,10 @@ button {
 .workspace-select strong,
 .workspace-select span {
   display: block;
+}
+
+.workspace-create-dialog .creation-form {
+  margin-top: 16px;
 }
 
 .eyebrow {
@@ -599,9 +620,43 @@ button {
 
 .response-error {
   background: #fff0ee;
+  border: 1px solid #efc5c0;
   border-radius: 8px;
   margin: 16px;
   padding: 14px;
+}
+
+.response-error strong,
+.response-error p,
+.response-notice p {
+  display: block;
+  margin: 0;
+}
+
+.response-error p,
+.response-notice p {
+  margin-top: 6px;
+}
+
+.response-error code {
+  display: inline-block;
+  font-size: 11px;
+  margin-top: 9px;
+}
+
+.response-notice {
+  background: #f3f7fb;
+  border: 1px solid #ccdae7;
+  border-radius: 8px;
+  color: #29455e;
+  margin: 12px 16px 0;
+  padding: 12px 14px;
+}
+
+.response-notice.error {
+  background: #fff7ed;
+  border-color: #f0d2a9;
+  color: #7c4312;
 }
 
 .workbench-empty {

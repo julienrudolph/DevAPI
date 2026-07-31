@@ -20,6 +20,80 @@ export interface ProxyAppOptions {
   authenticate?: ProxyAuthenticator;
 }
 
+type TargetFailure = {
+  code: string;
+  message: string;
+  status: number;
+};
+
+export function classifyTargetFailure(error: unknown): TargetFailure {
+  const codes = errorCodes(error);
+  if (codes.some((code) => ["ENOTFOUND", "EAI_AGAIN"].includes(code))) {
+    return {
+      code: "TARGET_DNS_FAILED",
+      message:
+        "Der Hostname konnte nicht aufgelöst werden. Prüfe Domain und Schreibweise der URL.",
+      status: 502,
+    };
+  }
+  if (codes.includes("ECONNREFUSED")) {
+    return {
+      code: "TARGET_CONNECTION_REFUSED",
+      message:
+        "Der Zielserver hat die Verbindung abgelehnt. Prüfe Host, Port und ob der Dienst erreichbar ist.",
+      status: 502,
+    };
+  }
+  if (
+    codes.some((code) =>
+      ["ENETUNREACH", "EHOSTUNREACH", "UND_ERR_CONNECT_TIMEOUT"].includes(
+        code,
+      ),
+    )
+  ) {
+    return {
+      code: "TARGET_UNREACHABLE",
+      message:
+        "Der Zielserver ist aus dem Servernetz nicht erreichbar. Prüfe URL, Port, Firewall und DNS.",
+      status: 502,
+    };
+  }
+  if (
+    codes.some(
+      (code) =>
+        code.startsWith("ERR_TLS_") ||
+        code.startsWith("CERT_") ||
+        code.includes("CERTIFICATE"),
+    )
+  ) {
+    return {
+      code: "TARGET_TLS_FAILED",
+      message:
+        "Die sichere TLS-Verbindung zum Zielserver konnte nicht geprüft werden. Prüfe Zertifikat und Hostnamen.",
+      status: 502,
+    };
+  }
+  return {
+    code: "TARGET_REQUEST_FAILED",
+    message:
+      "Der Zielserver konnte nicht erreicht werden. Prüfe URL, DNS, Port und Erreichbarkeit vom DevAPI-Server.",
+    status: 502,
+  };
+}
+
+function errorCodes(error: unknown): string[] {
+  const codes: string[] = [];
+  let current: unknown = error;
+  const visited = new Set<unknown>();
+  while (current && typeof current === "object" && !visited.has(current)) {
+    visited.add(current);
+    const candidate = current as { cause?: unknown; code?: unknown };
+    if (typeof candidate.code === "string") codes.push(candidate.code);
+    current = candidate.cause;
+  }
+  return codes;
+}
+
 export function buildProxyApp(options: ProxyAppOptions = {}) {
   const transport = options.transport ?? undiciTransport;
   const authenticate =
@@ -78,9 +152,10 @@ export function buildProxyApp(options: ProxyAppOptions = {}) {
           message: "Das Ziel hat nicht rechtzeitig geantwortet.",
         });
       }
-      return reply.code(502).send({
-        code: "TARGET_REQUEST_FAILED",
-        message: "Der Request konnte nicht sicher ausgeführt werden.",
+      const failure = classifyTargetFailure(error);
+      return reply.code(failure.status).send({
+        code: failure.code,
+        message: failure.message,
       });
     }
   });

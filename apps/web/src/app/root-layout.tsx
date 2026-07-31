@@ -1,4 +1,4 @@
-import { Braces, CircleUserRound, Settings } from "lucide-react";
+import { Braces, CircleUserRound } from "lucide-react";
 import { Outlet } from "react-router";
 
 import { useAuth } from "../features/auth/auth-context";
@@ -20,9 +20,6 @@ export function RootLayout() {
           <span>Relay</span>
         </a>
         <div className="topbar-actions">
-          <button className="icon-button" type="button" aria-label="Einstellungen">
-            <Settings aria-hidden="true" size={18} />
-          </button>
           <button
             className="profile-button"
             onClick={signOut}

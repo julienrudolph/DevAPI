@@ -8,7 +8,12 @@ import {
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { countMatches, RequestEditor } from "./request-editor";
+import {
+  countMatches,
+  describeHttpStatus,
+  isHtmlResponse,
+  RequestEditor,
+} from "./request-editor";
 import { RequestConflictError } from "./request-api";
 import {
   useExecuteRequest,
@@ -83,6 +88,18 @@ describe("RequestEditor", () => {
   it("counts case-insensitive response search matches", () => {
     expect(countMatches("Alpha alpha ALPHA", "alpha")).toBe(3);
     expect(countMatches("Alpha", " ")).toBe(0);
+  });
+
+  it("recognizes HTML responses and explains common HTTP errors", () => {
+    expect(
+      isHtmlResponse(
+        { "content-type": "text/html; charset=utf-8" },
+        "<h1>Nicht gefunden</h1>",
+      ),
+    ).toBe(true);
+    expect(isHtmlResponse({}, "<!doctype html><html></html>")).toBe(true);
+    expect(describeHttpStatus(404)).toContain("Pfad und Basis-URL");
+    expect(describeHttpStatus(502)).toContain("Gateway");
   });
 
   it("loads the persisted request and marks local edits as dirty", async () => {
@@ -188,6 +205,35 @@ describe("RequestEditor", () => {
     expect(screen.getByText("201 Created")).toBeInTheDocument();
     expect(screen.getByText("37 ms")).toBeInTheDocument();
     expect(screen.getByText(/cus_123/)).toBeInTheDocument();
+  });
+
+  it("shows HTML error responses safely with an HTTP explanation", () => {
+    vi.mocked(useExecuteRequest).mockReturnValue({
+      mutateAsync: executeAsync,
+      isPending: false,
+      isError: false,
+      data: {
+        status: 404,
+        statusText: "Not Found",
+        headers: { "content-type": "text/html; charset=utf-8" },
+        body: "<!doctype html><html><body>Route fehlt</body></html>",
+        durationMs: 21,
+      },
+    } as unknown as ReturnType<typeof useExecuteRequest>);
+
+    render(
+      <RequestEditor
+        requestId={request.id}
+        workspaceId={request.workspaceId}
+      />,
+    );
+
+    expect(
+      screen.getByText("HTTP 404: Die Ziel-API meldet einen Fehler"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Pfad und Basis-URL/)).toBeInTheDocument();
+    expect(screen.getByText(/HTML-Quelltext/)).toBeInTheDocument();
+    expect(screen.getByText(/Route fehlt/)).toBeInTheDocument();
   });
 
   it("adds query parameters to the persisted draft", async () => {
