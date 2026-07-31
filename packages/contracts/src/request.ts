@@ -27,6 +27,14 @@ export const requestBodySchema = z.discriminatedUnion("type", [
     type: z.literal("text"),
     content: z.string().max(1_048_576),
   }),
+  z.object({
+    type: z.literal("form-urlencoded"),
+    content: z.string().max(1_048_576),
+  }),
+  z.object({
+    type: z.literal("multipart"),
+    content: z.string().max(1_048_576),
+  }),
 ]).superRefine((body, context) => {
   if (body.type === "json") {
       try {

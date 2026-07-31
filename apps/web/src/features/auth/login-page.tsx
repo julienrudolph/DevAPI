@@ -98,6 +98,27 @@ export function LoginPage() {
     }
   }
 
+  async function resetPassword() {
+    if (!client) return;
+    const validEmail = await trigger("email");
+    if (!validEmail) return;
+    setSubmitting(true);
+    const redirectTo = window.devapiDesktop
+      ? "devapi://auth/callback?next=password-reset"
+      : new URL("/auth/confirm?next=/auth/password", window.location.origin)
+          .toString();
+    const { error } = await client.auth.resetPasswordForEmail(
+      getValues("email"),
+      { redirectTo },
+    );
+    setSubmitting(false);
+    setMessage(
+      error
+        ? "Die Wiederherstellungs-E-Mail konnte nicht versendet werden. Prüfe, ob SMTP auf dem Server eingerichtet ist."
+        : "Prüfe dein Postfach, um ein neues Passwort festzulegen.",
+    );
+  }
+
   async function signInWithOidc() {
     if (!client || !env?.oidcProvider) return;
     setSubmitting(true);
@@ -220,6 +241,16 @@ export function LoginPage() {
               >
                 {mode === "signup" ? "Konto erstellen" : "Anmelden"}
               </button>
+              {mode === "signin" ? (
+                <button
+                  className="revision-link login-forgot-password"
+                  disabled={submitting}
+                  onClick={() => void resetPassword()}
+                  type="button"
+                >
+                  Passwort vergessen?
+                </button>
+              ) : null}
             </>
           ) : null}
           {env?.magicLinkAuthEnabled && mode === "signin" ? (

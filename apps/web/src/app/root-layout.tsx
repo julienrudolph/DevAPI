@@ -12,6 +12,9 @@ export function RootLayout() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Zum Hauptinhalt
+      </a>
       <header className="topbar">
         <a className="brand" href="/" aria-label="Relay Startseite">
           <span className="brand-mark">
@@ -31,7 +34,7 @@ export function RootLayout() {
           </button>
         </div>
       </header>
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <Outlet />
       </main>
     </div>

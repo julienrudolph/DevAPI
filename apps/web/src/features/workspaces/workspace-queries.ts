@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { WorkspaceSummary } from "@api-client/contracts";
+import type {
+  WorkspaceSummary,
+  WorkspaceTree,
+} from "@api-client/contracts";
 
 import { useAuth } from "../auth/auth-context";
 import {
@@ -14,6 +17,11 @@ import {
   updateCollection,
   updateFolder,
 } from "./workspace-api";
+import { fetchRequest } from "../requests/request-api";
+import {
+  createWorkspaceExport,
+  downloadWorkspaceExport,
+} from "../export/workspace-export";
 
 export const workspaceKeys = {
   all: ["workspaces"] as const,
@@ -27,6 +35,27 @@ export function useWorkspaces() {
     queryKey: workspaceKeys.all,
     queryFn: () => fetchWorkspaces(accessToken!),
     enabled: accessToken !== null,
+  });
+}
+
+export function useExportWorkspace() {
+  const { accessToken } = useAuth();
+  return useMutation({
+    mutationFn: async ({
+      tree,
+      workspace,
+    }: {
+      tree: WorkspaceTree;
+      workspace: WorkspaceSummary;
+    }) => {
+      const requests = await Promise.all(
+        tree.requests.map(({ id }) => fetchRequest(id, accessToken!)),
+      );
+      downloadWorkspaceExport(
+        workspace.name,
+        createWorkspaceExport(workspace, tree, requests),
+      );
+    },
   });
 }
 

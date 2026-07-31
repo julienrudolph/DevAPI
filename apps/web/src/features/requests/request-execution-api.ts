@@ -87,6 +87,7 @@ export async function executeRequest(
   const auth = requestAuthSchema.parse(input.auth);
   let executionPayload: z.infer<typeof executeSavedRequestSchema>;
   try {
+    const preparedBody = prepareRequestBody(draft.body, input.variables);
     executionPayload =
       executeSavedRequestSchema.parse({
         requestId: input.requestId,
@@ -106,12 +107,9 @@ export async function executeRequest(
             value: resolveVariables(header.value, input.variables),
           })),
           auth,
-          draft.body.type,
+          preparedBody.contentType,
         ),
-        body:
-          draft.body.type === "none"
-            ? undefined
-            : resolveVariables(draft.body.content, input.variables),
+        body: preparedBody.value,
       });
   } catch (error) {
     if (error instanceof TypeError) {
@@ -163,13 +161,13 @@ export async function executeRequest(
 function executionHeaders(
   headers: RequestDraft["headers"],
   auth: RequestAuth,
-  bodyType: RequestDraft["body"]["type"],
+  defaultContentType?: string,
 ): RequestDraft["headers"] {
   const enabledHeaders = headers.filter(
     (header) => header.enabled && header.key.trim().length > 0,
   );
   const withDefaultContentType =
-    bodyType === "json" &&
+    defaultContentType &&
     !enabledHeaders.some(
       (header) => header.key.trim().toLowerCase() === "content-type",
     )
@@ -178,7 +176,7 @@ function executionHeaders(
           {
             id: crypto.randomUUID(),
             key: "Content-Type",
-            value: "application/json",
+            value: defaultContentType,
             enabled: true,
           },
         ]
@@ -203,6 +201,55 @@ function executionHeaders(
       enabled: true,
     },
   ];
+}
+
+export function prepareRequestBody(
+  body: RequestDraft["body"],
+  variables: EnvironmentVariable[],
+): { value?: string; contentType?: string } {
+  if (body.type === "none") return {};
+  const content = resolveVariables(body.content, variables);
+  if (body.type === "json") {
+    return { value: content, contentType: "application/json" };
+  }
+  if (body.type === "text") return { value: content };
+
+  const entries = parseFormLines(content);
+  if (body.type === "form-urlencoded") {
+    const encoded = new URLSearchParams();
+    for (const [key, value] of entries) encoded.append(key, value);
+    return {
+      value: encoded.toString(),
+      contentType: "application/x-www-form-urlencoded",
+    };
+  }
+
+  const boundary = `----RelayFormBoundary${crypto.randomUUID().replaceAll("-", "")}`;
+  const value = entries
+    .map(
+      ([key, entryValue]) =>
+        `--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${entryValue}\r\n`,
+    )
+    .join("") + `--${boundary}--\r\n`;
+  return {
+    value,
+    contentType: `multipart/form-data; boundary=${boundary}`,
+  };
+}
+
+function parseFormLines(content: string): [string, string][] {
+  return content
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0)
+    .map((line) => {
+      const separator = line.indexOf("=");
+      const key = (separator < 0 ? line : line.slice(0, separator)).trim();
+      const value = separator < 0 ? "" : line.slice(separator + 1);
+      if (!key || /[\"\r\n]/.test(key)) {
+        throw new Error("Formularfeldname ist ungültig.");
+      }
+      return [key, value];
+    });
 }
 
 function encodeBasicCredentials(username: string, password: string): string {

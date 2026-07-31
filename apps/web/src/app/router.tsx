@@ -6,6 +6,7 @@ import { ProtectedRoute } from "../features/auth/protected-route";
 import { InvitationAcceptPage } from "../features/invitations/invitation-accept-page";
 import { WorkspacePage } from "../features/workspaces/workspace-page";
 import { RootLayout } from "./root-layout";
+import { UpdatePasswordPage } from "../features/auth/update-password-page";
 
 const router = createBrowserRouter([
   {
@@ -19,6 +20,10 @@ const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
+      {
+        path: "/auth/password",
+        element: <UpdatePasswordPage />,
+      },
       {
         path: "/",
         element: <RootLayout />,

@@ -15,7 +15,7 @@ export function readAuthConfirmation(
   const tokenHash = params.get("token_hash");
   const type = params.get("type");
 
-  if (!tokenHash || type !== "email") return null;
+  if (!tokenHash || (type !== "email" && type !== "recovery")) return null;
   return { tokenHash, type };
 }
 
@@ -46,7 +46,10 @@ export function AuthConfirmPage() {
           setError(true);
           return;
         }
-        navigate("/", { replace: true });
+        navigate(
+          confirmation.type === "recovery" ? "/auth/password" : "/",
+          { replace: true },
+        );
       });
 
     return () => {

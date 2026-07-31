@@ -25,6 +25,12 @@ Ohne SMTP sind keine Passwort-Wiederherstellung, E-Mail-Bestätigung,
 Einladungsmails oder Sicherheitsbenachrichtigungen möglich. Dieser Zustand ist
 nicht als endgültige öffentliche Produktionskonfiguration vorgesehen.
 
+Bei konfiguriertem SMTP kann auf der Anmeldeseite über
+`Passwort vergessen?` ein Wiederherstellungslink angefordert werden. Nach
+Bestätigung wird eine neue Sitzung erzeugt und ein Passwort mit mindestens
+zwölf Zeichen verlangt. In der Desktop-App läuft der PKCE-Rückweg über
+`devapi://auth/callback`.
+
 ## Unterstützte Verfahren
 
 Die Anwendung verwendet Supabase Auth als gemeinsame Sitzungs- und

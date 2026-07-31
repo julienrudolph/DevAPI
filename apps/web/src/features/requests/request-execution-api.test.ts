@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   executionErrorMessage,
   executeRequest,
+  prepareRequestBody,
   RequestExecutionError,
 } from "./request-execution-api";
 
@@ -10,6 +11,28 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("request execution API", () => {
   const requestId = "fa7596b3-0041-4fe8-9ddf-956e7a107014";
+
+  it("serializes URL-encoded and multipart form fields", () => {
+    expect(
+      prepareRequestBody(
+        { type: "form-urlencoded", content: "name=Max Mustermann\nactive=true" },
+        [],
+      ),
+    ).toEqual({
+      value: "name=Max+Mustermann&active=true",
+      contentType: "application/x-www-form-urlencoded",
+    });
+
+    const multipart = prepareRequestBody(
+      { type: "multipart", content: "name=Max\nnote=Hallo" },
+      [],
+    );
+    expect(multipart.contentType).toMatch(
+      /^multipart\/form-data; boundary=----RelayFormBoundary/,
+    );
+    expect(multipart.value).toContain('name="name"\r\n\r\nMax');
+    expect(multipart.value).toContain('name="note"\r\n\r\nHallo');
+  });
 
   it("sends enabled parameters and headers through the authenticated API", async () => {
     const fetchMock = vi.fn().mockResolvedValue(

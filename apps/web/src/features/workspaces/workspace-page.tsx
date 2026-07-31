@@ -9,6 +9,7 @@ import {
   ArrowUp,
   Clock3,
   Copy,
+  Download,
   FileUp,
   FilePlus2,
   FolderClosed,
@@ -51,6 +52,7 @@ import { NavigationMutationError } from "./workspace-api";
 import {
   useDeleteCollection,
   useDeleteFolder,
+  useExportWorkspace,
   useUpdateCollection,
   useUpdateFolder,
   useWorkspaces,
@@ -125,6 +127,7 @@ export function WorkspacePage() {
   const deleteFolder = useDeleteFolder(activeWorkspace?.id ?? "");
   const updateCollection = useUpdateCollection(activeWorkspace?.id ?? "");
   const updateFolder = useUpdateFolder(activeWorkspace?.id ?? "");
+  const exportWorkspace = useExportWorkspace();
   const canEdit =
     activeWorkspace?.role === "owner" || activeWorkspace?.role === "editor";
   const [activeRequestId, setActiveRequestId] = useState<string>();
@@ -854,6 +857,38 @@ export function WorkspacePage() {
               OpenAPI importieren
             </button>
           ) : null}
+          <button
+            className="history-link"
+            disabled={exportWorkspace.isPending || !tree.data}
+            onClick={async () => {
+              if (!tree.data) return;
+              if (
+                hasDirtyRequests &&
+                !window.confirm(
+                  "Der Export enthält nur gespeicherte Versionen. Trotzdem fortfahren?",
+                )
+              ) {
+                return;
+              }
+              setManagementError(undefined);
+              try {
+                await exportWorkspace.mutateAsync({
+                  workspace: activeWorkspace,
+                  tree: tree.data,
+                });
+              } catch {
+                setManagementError(
+                  "Der Workspace konnte nicht exportiert werden.",
+                );
+              }
+            }}
+            type="button"
+          >
+            <Download aria-hidden="true" size={16} />
+            {exportWorkspace.isPending
+              ? "Export wird erstellt …"
+              : "Workspace exportieren"}
+          </button>
           <button
             className="history-link"
             onClick={() => setShowingHistory(true)}

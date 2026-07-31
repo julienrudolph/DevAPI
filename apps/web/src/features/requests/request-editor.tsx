@@ -397,7 +397,9 @@ function LoadedRequestEditor({
                     const type = event.target.value as
                       | "none"
                       | "json"
-                      | "text";
+                      | "text"
+                      | "form-urlencoded"
+                      | "multipart";
                     setValue(
                       "body",
                       type === "none"
@@ -414,8 +416,16 @@ function LoadedRequestEditor({
                   <option value="none">Kein Body</option>
                   <option value="json">JSON</option>
                   <option value="text">Text</option>
+                  <option value="form-urlencoded">Form URL-encoded</option>
+                  <option value="multipart">Form-Data (nur Textfelder)</option>
                 </select>
               </label>
+              {bodyType === "form-urlencoded" || bodyType === "multipart" ? (
+                <p className="security-hint">
+                  Ein Feld pro Zeile im Format <code>name=wert</code>. Dateien
+                  werden in dieser Version nicht unterstützt.
+                </p>
+              ) : null}
               {bodyType !== "none" ? (
                 <Controller
                   control={control}

@@ -66,8 +66,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const subscribe = window.devapiDesktop?.onAuthCallback;
     if (!client || !subscribe) return;
     return subscribe((callbackUrl) => {
-      const code = new URL(callbackUrl).searchParams.get("code");
-      if (code) void client.auth.exchangeCodeForSession(code);
+      const params = new URL(callbackUrl).searchParams;
+      const code = params.get("code");
+      if (code) {
+        void client.auth.exchangeCodeForSession(code).then(({ error }) => {
+          if (!error && params.get("next") === "password-reset") {
+            window.location.assign(
+              new URL("/auth/password", window.location.origin),
+            );
+          }
+        });
+      }
     });
   }, [client]);
 

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { useCreateRequest } from "../workspaces/workspace-queries";
 import { parseOpenApi, type OpenApiImport } from "./openapi";
+import { parsePostmanCollection } from "./postman";
 
 export function OpenApiImportDialog({
   collections,
@@ -41,8 +42,11 @@ export function OpenApiImportDialog({
             <FileUp aria-hidden="true" size={18} />
           </span>
           <div>
-            <h2 id="openapi-import-title">OpenAPI importieren</h2>
-            <p>OpenAPI 3.x als JSON oder YAML. Externe Referenzen werden nicht geladen.</p>
+            <h2 id="openapi-import-title">API-Definition importieren</h2>
+            <p>
+              OpenAPI 3.x als JSON/YAML oder Postman Collection 2.x als JSON.
+              Externe Referenzen und Dateianhänge werden nicht geladen.
+            </p>
           </div>
         </div>
         {!parsed ? (
@@ -133,7 +137,16 @@ export function OpenApiImportDialog({
               disabled={!source.trim()}
               onClick={() => {
                 try {
-                  const next = parseOpenApi(source);
+                  let next: OpenApiImport;
+                  try {
+                    next = parseOpenApi(source);
+                  } catch (openApiError) {
+                    try {
+                      next = parsePostmanCollection(source);
+                    } catch {
+                      throw openApiError;
+                    }
+                  }
                   setParsed(next);
                   setSelectedIds(
                     new Set(next.requests.map(({ importId }) => importId)),

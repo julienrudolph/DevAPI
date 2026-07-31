@@ -26,6 +26,10 @@ const updateCollectionMutation = vi.hoisted(() => vi.fn());
 const updateFolderMutation = vi.hoisted(() => vi.fn());
 
 vi.mock("./workspace-queries", () => ({
+  useExportWorkspace: vi.fn(() => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  })),
   useDeleteCollection: vi.fn(() => ({
     mutateAsync: deleteCollectionMutation,
     isPending: false,

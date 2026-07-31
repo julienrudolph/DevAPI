@@ -11,7 +11,9 @@ verbindlichen Architektur- und Sicherheitsregeln stehen in
 Das Projekt befindet sich im Aufbau. Der interne MVP umfasst inzwischen
 gemeinsame Team-Workspaces, Rollen und Einladungen, den REST-Request-Editor,
 Umgebungsvariablen, die abgesicherte Proxy-Ausführung, Konflikterkennung,
-Revisionen und eine datensparsame Ausführungshistorie.
+Revisionen und eine datensparsame Ausführungshistorie. OpenAPI- und
+Postman-Import, redigierter Workspace-Export sowie JSON-, Text-,
+URL-encoded- und textbasierte Form-Data-Bodies sind ebenfalls enthalten.
 
 ## Voraussetzungen
 

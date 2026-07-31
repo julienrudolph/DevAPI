@@ -1393,9 +1393,36 @@ h1 {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
+textarea:focus-visible,
 a:focus-visible {
   outline: 3px solid rgb(34 108 73 / 28%);
   outline-offset: 2px;
+}
+
+.skip-link {
+  background: #ffffff;
+  border: 2px solid #20734f;
+  border-radius: 6px;
+  color: #164e38;
+  left: 12px;
+  padding: 8px 12px;
+  position: fixed;
+  top: 8px;
+  transform: translateY(-160%);
+  z-index: 1000;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (max-width: 850px) {

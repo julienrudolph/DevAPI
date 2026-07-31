@@ -3,6 +3,14 @@ import { describe, expect, it } from "vitest";
 import { readAuthConfirmation } from "./auth-confirm-page";
 
 describe("readAuthConfirmation", () => {
+  it("accepts password recovery confirmations", () => {
+    expect(
+      readAuthConfirmation(
+        new URLSearchParams("token_hash=secret&type=recovery"),
+      ),
+    ).toEqual({ tokenHash: "secret", type: "recovery" });
+  });
+
   it("liest einen gültigen E-Mail-Token", () => {
     expect(
       readAuthConfirmation(
