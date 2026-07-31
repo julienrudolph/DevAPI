@@ -158,18 +158,79 @@ stehen, nicht auf einem beliebigen Zwischenstand.
 
 ### 3. Supabase vorbereiten
 
-Ein produktives Supabase-Projekt erstellen und anschließend:
+Die Produktionskonfiguration verwendet standardmäßig ein Projekt auf der
+Supabase-Plattform. Beim Erstellen dieses Projekts stellt Supabase bereits
+PostgreSQL, Auth und die API bereit. Auf dem DevAPI-Server muss deshalb kein
+zusätzlicher PostgreSQL- oder Supabase-Container gestartet werden.
 
-1. Alle Dateien aus `supabase/migrations` in aufsteigender
-   Dateinamen-Reihenfolge anwenden.
-2. Unter den Auth-URL-Einstellungen
-   `https://devapi.example.de` als Site URL hinterlegen.
-3. `https://devapi.example.de/auth/confirm` als erlaubte Redirect-URL
-   hinterlegen.
-4. Unter Auth → Providers → Email die Passwort-Anmeldung aktivieren.
-5. Für einen Testserver ohne SMTP `Confirm Email` deaktivieren.
-6. Optional den Custom-OIDC-Provider einrichten.
-7. Den öffentlichen Publishable Key notieren.
+Soll Supabase einschließlich PostgreSQL stattdessen vollständig auf demselben
+Server betrieben werden, ist dafür ein eigener produktionsgeeigneter
+Self-Hosting-Stack erforderlich. `compose.local.yaml` startet zwar lokale
+Supabase-Dienste für Entwicklung und Tests, ist aber nicht als öffentlich
+erreichbare Produktionsdatenbank gehärtet. Dieser alternative Betriebsweg ist
+noch nicht Bestandteil der folgenden Anleitung.
+
+1. Unter [database.new](https://database.new/) ein Supabase-Projekt erstellen.
+   Das dabei vergebene Datenbankpasswort sicher aufbewahren.
+2. Die **Project ID** beziehungsweise **Project Reference** notieren. Sie steht
+   in der Dashboard-URL hinter `/project/`, zum Beispiel:
+
+   ```text
+   https://supabase.com/dashboard/project/abcdefghijklmnopqrst
+                                          ^^^^^^^^^^^^^^^^^^^^
+                                          Project Reference
+   ```
+
+3. Die Migrationen mit der Supabase CLI einspielen. Diese Befehle werden in
+   einem Terminal im Wurzelordner des geklonten DevAPI-Projekts ausgeführt –
+   dort, wo `README.md`, `compose.yaml` und der Ordner `supabase/` liegen:
+
+   ```bash
+   cd /pfad/zu/DevAPI
+   npx supabase init
+   npx supabase login
+   npx supabase link --project-ref <PROJECT_REFERENCE>
+   npx supabase db push --dry-run
+   npx supabase db push
+   ```
+
+   Auf einem Server ohne grafischen Browser kann stattdessen
+   `npx supabase login --no-browser` verwendet werden. `link` fragt
+   gegebenenfalls nach dem Datenbankpasswort des Supabase-Projekts.
+
+   `db push --dry-run` zeigt zuerst nur an, was ausgeführt würde. Der
+   anschließende Befehl wendet alle noch fehlenden Dateien aus
+   `supabase/migrations` automatisch in aufsteigender Reihenfolge an.
+   „Aufsteigend“ bezieht sich auf den Zeitstempel am Anfang des Dateinamens:
+
+   ```text
+   20260728170000_initial_requests.sql
+   20260729133000_harden_request_rpc.sql
+   20260729150000_workspace_navigation.sql
+   ...
+   ```
+
+   Die kleinste beziehungsweise älteste Nummer wird zuerst ausgeführt. Die
+   Dateien nicht einzeln im SQL Editor einfügen; die CLI führt zusätzlich eine
+   Migrationshistorie und überspringt bereits angewendete Migrationen.
+
+4. Im Supabase Dashboard das Projekt öffnen und zu
+   **Authentication → URL Configuration** wechseln.
+5. Unter **Site URL** `https://devapi.example.de` eintragen.
+6. Unter **Redirect URLs** über **Add URL**
+   `https://devapi.example.de/auth/confirm` ergänzen und speichern.
+7. Unter **Authentication → Sign In / Providers → Email** die
+   E-Mail-/Passwort-Anmeldung aktivieren.
+8. Für einen internen Testserver ohne SMTP dort **Confirm Email**
+   deaktivieren.
+9. Optional den Custom-OIDC-Provider einrichten.
+10. Unter **Project Settings → API Keys** den öffentlichen Publishable Key
+    notieren.
+
+Die CLI kann ebenso auf einem administrativen Rechner ausgeführt werden. Es
+muss lediglich derselbe Repository-Stand vorhanden sein und eine Verbindung
+zur Supabase-Plattform bestehen. Sie muss nicht zwingend auf dem
+Anwendungsserver laufen.
 
 Für einen öffentlichen Produktivbetrieb sollte `Confirm Email` aktiviert und
 ein SMTP-Dienst eingerichtet werden. Ohne Bestätigung behandelt Supabase die

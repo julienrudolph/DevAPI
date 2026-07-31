@@ -61,15 +61,42 @@ ausgegeben.
 
 ## Supabase vorbereiten
 
-Vor dem Rollout:
+Der dokumentierte Produktionsweg setzt ein Projekt auf der
+Supabase-Plattform voraus. Dieses Projekt enthält bereits PostgreSQL, Auth und
+die Daten-API; auf dem Anwendungsserver ist kein eigener Datenbankcontainer
+erforderlich.
 
-1. Alle Dateien aus `supabase/migrations` in Reihenfolge anwenden.
-2. `https://devapi.example.de/auth/confirm` als erlaubte Redirect-URL
-   hinterlegen.
-3. `https://devapi.example.de` als Site URL konfigurieren.
-4. produktives SMTP aktivieren und Anmeldung sowie Einladung testen.
-5. optional den Custom-OIDC-Provider serverseitig konfigurieren.
-6. Row Level Security und Cross-Tenant-Negativtests gegen Staging ausführen.
+Die lokale Supabase-Erweiterung `compose.local.yaml` ist nur für Entwicklung
+und Tests bestimmt. Ein vollständig selbst gehosteter Produktionsbetrieb
+benötigt einen separaten gehärteten Supabase-Stack und ist nicht mit dem
+nachfolgend beschriebenen Hosted-Supabase-Deployment gleichzusetzen.
+
+Die folgenden Befehle im Wurzelordner des DevAPI-Repositories ausführen:
+
+```bash
+npx supabase init
+npx supabase login
+npx supabase link --project-ref <PROJECT_REFERENCE>
+npx supabase db push --dry-run
+npx supabase db push
+```
+
+`PROJECT_REFERENCE` steht in der URL des geöffneten Supabase-Projekts hinter
+`/project/`. Auf einem Server ohne Browser kann
+`npx supabase login --no-browser` verwendet werden. Die CLI sortiert die
+Dateien aus `supabase/migrations` anhand ihres vorangestellten Zeitstempels und
+wendet nur noch nicht registrierte Migrationen an.
+
+Danach im Supabase Dashboard:
+
+1. **Authentication → URL Configuration** öffnen.
+2. `https://devapi.example.de` als **Site URL** konfigurieren.
+3. `https://devapi.example.de/auth/confirm` unter **Redirect URLs** ergänzen.
+4. Unter **Authentication → Sign In / Providers → Email** die
+   Passwort-Anmeldung konfigurieren.
+5. produktives SMTP aktivieren und Anmeldung sowie Einladung testen.
+6. optional den Custom-OIDC-Provider serverseitig konfigurieren.
+7. Row Level Security und Cross-Tenant-Negativtests gegen Staging ausführen.
 
 Provider-Secrets gehören nur in Supabase beziehungsweise dessen Secret Store.
 
