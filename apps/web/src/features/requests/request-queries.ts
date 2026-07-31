@@ -4,7 +4,11 @@ import type { UpdateRequest } from "@api-client/contracts";
 import { useAuth } from "../auth/auth-context";
 import { executionHistoryKeys } from "../history/execution-history-queries";
 import { workspaceKeys } from "../workspaces/workspace-queries";
-import { fetchRequest, updateRequest } from "./request-api";
+import {
+  deleteRequest,
+  fetchRequest,
+  updateRequest,
+} from "./request-api";
 import { executeRequest } from "./request-execution-api";
 import { createRequest } from "../workspaces/workspace-api";
 
@@ -30,6 +34,28 @@ export function useUpdateRequest(workspaceId: string, requestId: string) {
     onSuccess: (request) => {
       queryClient.setQueryData(requestKeys.detail(requestId), request);
       void queryClient.invalidateQueries({
+        queryKey: workspaceKeys.tree(workspaceId),
+      });
+    },
+  });
+}
+
+export function useDeleteRequest(workspaceId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { requestId: string; expectedVersion: number }) =>
+      deleteRequest(
+        input.requestId,
+        { expectedVersion: input.expectedVersion },
+        accessToken!,
+      ),
+    onSuccess: async (_, input) => {
+      queryClient.removeQueries({
+        queryKey: requestKeys.detail(input.requestId),
+        exact: true,
+      });
+      await queryClient.invalidateQueries({
         queryKey: workspaceKeys.tree(workspaceId),
       });
     },

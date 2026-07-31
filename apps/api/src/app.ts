@@ -6,22 +6,27 @@ import {
   createRequestSummarySchema,
   createTeamInvitationSchema,
   createWorkspaceSchema,
+  collectionIdParamsSchema,
+  deleteNavigationItemSchema,
+  deleteRequestSchema,
   executeRequestSchema,
   executeSavedRequestSchema,
   environmentIdParamsSchema,
   environmentVariableIdParamsSchema,
+  folderIdParamsSchema,
   requestIdParamsSchema,
   restoreRequestRevisionSchema,
   teamIdParamsSchema,
   teamMemberParamsSchema,
   updateEnvironmentVariableSchema,
+  updateNavigationItemSchema,
   updateRequestSchema,
   updateTeamMemberSchema,
   upsertEnvironmentVariableSchema,
   workspaceIdParamsSchema,
   type PublicClientConfig,
 } from "@api-client/contracts";
-import Fastify from "fastify";
+import Fastify, { type FastifyReply } from "fastify";
 
 import type {
   AuthenticatedUser,
@@ -39,7 +44,12 @@ import {
   type RequestExecutor,
 } from "./domain/request-executor.js";
 import type { RequestRepository } from "./domain/request-repository.js";
-import type { WorkspaceRepository } from "./domain/workspace-repository.js";
+import type {
+  DeleteNavigationItemResult,
+  UpdateCollectionResult,
+  UpdateFolderResult,
+  WorkspaceRepository,
+} from "./domain/workspace-repository.js";
 
 export interface ApiDependencies {
   authenticate: Authenticator;
@@ -583,7 +593,9 @@ export function buildApp(dependencies: ApiDependencies) {
         userId: user.user.id,
         accessToken: user.user.accessToken,
       });
-      return reply.code(201).send(workspace);
+      return workspace
+        ? reply.code(201).send(workspace)
+        : reply.code(403).send({ code: "FORBIDDEN" });
     } catch {
       return reply.code(500).send({ code: "WORKSPACE_CREATE_FAILED" });
     }
@@ -651,6 +663,150 @@ export function buildApp(dependencies: ApiDependencies) {
         : reply.code(403).send({ code: "FORBIDDEN" });
     } catch {
       return reply.code(500).send({ code: "FOLDER_CREATE_FAILED" });
+    }
+  });
+
+  app.delete("/v1/collections/:collectionId", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const params = collectionIdParamsSchema.safeParse(request.params);
+    const body = deleteNavigationItemSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.workspaces.deleteCollection) {
+      return reply.code(503).send({ code: "COLLECTION_DELETE_UNAVAILABLE" });
+    }
+    try {
+      const result = await dependencies.workspaces.deleteCollection({
+        itemId: params.data.collectionId,
+        expectedVersion: body.data.expectedVersion,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return sendNavigationDeleteResult(reply, result, "COLLECTION");
+    } catch {
+      return reply.code(500).send({ code: "COLLECTION_DELETE_FAILED" });
+    }
+  });
+
+  app.delete("/v1/folders/:folderId", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const params = folderIdParamsSchema.safeParse(request.params);
+    const body = deleteNavigationItemSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.workspaces.deleteFolder) {
+      return reply.code(503).send({ code: "FOLDER_DELETE_UNAVAILABLE" });
+    }
+    try {
+      const result = await dependencies.workspaces.deleteFolder({
+        itemId: params.data.folderId,
+        expectedVersion: body.data.expectedVersion,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return sendNavigationDeleteResult(reply, result, "FOLDER");
+    } catch {
+      return reply.code(500).send({ code: "FOLDER_DELETE_FAILED" });
+    }
+  });
+
+  app.patch("/v1/collections/:collectionId", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const params = collectionIdParamsSchema.safeParse(request.params);
+    const body = updateNavigationItemSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.workspaces.updateCollection) {
+      return reply.code(503).send({ code: "COLLECTION_UPDATE_UNAVAILABLE" });
+    }
+    try {
+      const result = await dependencies.workspaces.updateCollection({
+        ...body.data,
+        itemId: params.data.collectionId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return sendNavigationUpdateResult(reply, result, "COLLECTION");
+    } catch {
+      return reply.code(500).send({ code: "COLLECTION_UPDATE_FAILED" });
+    }
+  });
+
+  app.patch("/v1/folders/:folderId", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const params = folderIdParamsSchema.safeParse(request.params);
+    const body = updateNavigationItemSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.workspaces.updateFolder) {
+      return reply.code(503).send({ code: "FOLDER_UPDATE_UNAVAILABLE" });
+    }
+    try {
+      const result = await dependencies.workspaces.updateFolder({
+        ...body.data,
+        itemId: params.data.folderId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return sendNavigationUpdateResult(reply, result, "FOLDER");
+    } catch {
+      return reply.code(500).send({ code: "FOLDER_UPDATE_FAILED" });
     }
   });
 
@@ -882,6 +1038,57 @@ export function buildApp(dependencies: ApiDependencies) {
     }
   });
 
+  app.delete("/v1/requests/:requestId", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const params = requestIdParamsSchema.safeParse(request.params);
+    const body = deleteRequestSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({
+        code: "INVALID_REQUEST",
+        message: "Die Löschanfrage ist ungültig.",
+      });
+    }
+    if (!dependencies.requests.remove) {
+      return reply.code(503).send({ code: "REQUEST_DELETE_UNAVAILABLE" });
+    }
+    try {
+      const result = await dependencies.requests.remove({
+        requestId: params.data.requestId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+        expectedVersion: body.data.expectedVersion,
+      });
+      if (result.kind === "forbidden") {
+        return reply.code(403).send({ code: "FORBIDDEN" });
+      }
+      if (result.kind === "not-found") {
+        return reply.code(404).send({ code: "NOT_FOUND" });
+      }
+      if (result.kind === "conflict") {
+        return reply.code(409).send(result.conflict);
+      }
+      return reply.code(204).send();
+    } catch {
+      return reply.code(500).send({
+        code: "REQUEST_DELETE_FAILED",
+        message: "Der Request konnte nicht gelöscht werden.",
+      });
+    }
+  });
+
   return app;
 }
 
@@ -889,6 +1096,51 @@ type AuthenticationResult =
   | { kind: "authenticated"; user: AuthenticatedUser }
   | { kind: "unauthorized" }
   | { kind: "unavailable" };
+
+function sendNavigationDeleteResult(
+  reply: FastifyReply,
+  result: DeleteNavigationItemResult,
+  resource: "COLLECTION" | "FOLDER",
+) {
+  if (result.kind === "deleted") return reply.code(204).send();
+  if (result.kind === "forbidden") {
+    return reply.code(403).send({ code: "FORBIDDEN" });
+  }
+  if (result.kind === "not-found") {
+    return reply.code(404).send({ code: "NOT_FOUND" });
+  }
+  if (result.kind === "conflict") {
+    return reply.code(409).send({
+      code: `${resource}_VERSION_CONFLICT`,
+      message: "Das Element wurde zwischenzeitlich geändert.",
+    });
+  }
+  return reply.code(409).send({
+    code: `${resource}_NOT_EMPTY`,
+    message:
+      resource === "COLLECTION"
+        ? "Die Collection enthält noch Requests oder Ordner."
+        : "Der Ordner enthält noch Requests oder Unterordner.",
+  });
+}
+
+function sendNavigationUpdateResult(
+  reply: FastifyReply,
+  result: UpdateCollectionResult | UpdateFolderResult,
+  resource: "COLLECTION" | "FOLDER",
+) {
+  if (result.kind === "updated") return reply.code(200).send(result.item);
+  if (result.kind === "forbidden") {
+    return reply.code(403).send({ code: "FORBIDDEN" });
+  }
+  if (result.kind === "not-found") {
+    return reply.code(404).send({ code: "NOT_FOUND" });
+  }
+  return reply.code(409).send({
+    code: `${resource}_VERSION_CONFLICT`,
+    message: "Das Element wurde zwischenzeitlich geändert.",
+  });
+}
 
 async function authenticateSafely(
   authenticate: Authenticator,

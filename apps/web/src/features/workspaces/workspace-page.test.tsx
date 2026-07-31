@@ -19,8 +19,29 @@ import {
 import { useEnvironments } from "../environments/environment-queries";
 
 const shortcutSubmission = vi.fn();
+const deleteRequestMutation = vi.hoisted(() => vi.fn());
+const deleteCollectionMutation = vi.hoisted(() => vi.fn());
+const deleteFolderMutation = vi.hoisted(() => vi.fn());
+const updateCollectionMutation = vi.hoisted(() => vi.fn());
+const updateFolderMutation = vi.hoisted(() => vi.fn());
 
 vi.mock("./workspace-queries", () => ({
+  useDeleteCollection: vi.fn(() => ({
+    mutateAsync: deleteCollectionMutation,
+    isPending: false,
+  })),
+  useDeleteFolder: vi.fn(() => ({
+    mutateAsync: deleteFolderMutation,
+    isPending: false,
+  })),
+  useUpdateCollection: vi.fn(() => ({
+    mutateAsync: updateCollectionMutation,
+    isPending: false,
+  })),
+  useUpdateFolder: vi.fn(() => ({
+    mutateAsync: updateFolderMutation,
+    isPending: false,
+  })),
   useWorkspaces: vi.fn(),
   useWorkspaceTree: vi.fn(),
 }));
@@ -60,6 +81,10 @@ vi.mock("../requests/request-editor", () => ({
   ),
 }));
 vi.mock("../requests/request-queries", () => ({
+  useDeleteRequest: vi.fn(() => ({
+    mutateAsync: deleteRequestMutation,
+    isPending: false,
+  })),
   useDuplicateRequest: vi.fn(() => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -93,18 +118,32 @@ vi.mock("./navigation-create-form", () => ({
   ),
 }));
 vi.mock("./workspace-create-form", () => ({
-  WorkspaceCreateForm: () => <form aria-label="Workspace anlegen" />,
+  WorkspaceCreateForm: ({ teamId }: { teamId?: string }) => (
+    <form aria-label="Workspace anlegen" data-team-id={teamId} />
+  ),
 }));
 
 const workspaceId = "85e52968-22cc-483d-b6a6-bdc169e46ede";
 const collectionId = "95da6097-0742-4164-9c9a-75dc64d2cd8f";
+const secondCollectionId = "75b3525f-d1d4-4ef9-a2b6-b5f2ee9a8eb0";
 const folderId = "e8f8b5cb-9d47-4265-b34a-599ed8ea8b21";
+const secondFolderId = "3b55891d-b9c0-4c36-af89-587a77545a0a";
 const firstRequestId = "fa7596b3-0041-4fe8-9ddf-956e7a107014";
 const secondRequestId = "a5acefdb-0b49-43d7-83dc-f3ec414aa501";
 
 beforeEach(() => {
   localStorage.clear();
   shortcutSubmission.mockReset();
+  deleteRequestMutation.mockReset();
+  deleteRequestMutation.mockResolvedValue(undefined);
+  deleteCollectionMutation.mockReset();
+  deleteCollectionMutation.mockResolvedValue(undefined);
+  deleteFolderMutation.mockReset();
+  deleteFolderMutation.mockResolvedValue(undefined);
+  updateCollectionMutation.mockReset();
+  updateCollectionMutation.mockResolvedValue(undefined);
+  updateFolderMutation.mockReset();
+  updateFolderMutation.mockResolvedValue(undefined);
   vi.mocked(useWorkspaces).mockReturnValue({
     data: [
       {
@@ -128,6 +167,13 @@ beforeEach(() => {
           position: 0,
           version: 1,
         },
+        {
+          id: secondCollectionId,
+          workspaceId,
+          name: "Internal",
+          position: 1,
+          version: 1,
+        },
       ],
       folders: [
         {
@@ -137,6 +183,16 @@ beforeEach(() => {
           parentFolderId: null,
           name: "Mutations",
           position: 0,
+          version: 1,
+        },
+        {
+          id: secondFolderId,
+          workspaceId,
+          collectionId,
+          parentFolderId: null,
+          name: "Queries",
+          position: 1,
+          version: 1,
         },
       ],
       requests: [
@@ -220,7 +276,10 @@ describe("WorkspacePage", () => {
     expect(
       screen.getByRole("dialog", { name: "Workspace erstellen" }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Workspace anlegen")).toBeInTheDocument();
+    expect(screen.getByLabelText("Workspace anlegen")).toHaveAttribute(
+      "data-team-id",
+      "43cf6729-5634-43b7-8510-6164a1d6ef46",
+    );
   });
 
   it("collapses and expands collections", async () => {
@@ -257,6 +316,73 @@ describe("WorkspacePage", () => {
     expect(
       screen.queryByRole("button", { name: "POST Create customer" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("deletes empty collections and folders only after confirmation", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderWorkspace();
+
+    await user.click(
+      screen.getByRole("button", { name: "Customers löschen" }),
+    );
+    expect(deleteCollectionMutation).toHaveBeenCalledWith({
+      collectionId,
+      expectedVersion: 1,
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Mutations löschen" }),
+    );
+    expect(deleteFolderMutation).toHaveBeenCalledWith({
+      folderId,
+      expectedVersion: 1,
+    });
+  });
+
+  it("renames and reorders collections and folders with their versions", async () => {
+    const user = userEvent.setup();
+    const prompt = vi.spyOn(window, "prompt")
+      .mockReturnValueOnce("Customer API")
+      .mockReturnValueOnce("Write operations");
+    renderWorkspace();
+
+    await user.click(
+      screen.getByRole("button", { name: "Customers umbenennen" }),
+    );
+    expect(updateCollectionMutation).toHaveBeenCalledWith({
+      collectionId,
+      expectedVersion: 1,
+      name: "Customer API",
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Customers nach unten" }),
+    );
+    expect(updateCollectionMutation).toHaveBeenCalledWith({
+      collectionId,
+      expectedVersion: 1,
+      targetPosition: 1,
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Mutations umbenennen" }),
+    );
+    expect(updateFolderMutation).toHaveBeenCalledWith({
+      folderId,
+      expectedVersion: 1,
+      name: "Write operations",
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Mutations nach unten" }),
+    );
+    expect(updateFolderMutation).toHaveBeenCalledWith({
+      folderId,
+      expectedVersion: 1,
+      targetPosition: 1,
+    });
+    expect(prompt).toHaveBeenCalledTimes(2);
   });
 
   it("creates requests and subfolders inside nested folders", async () => {
@@ -372,6 +498,25 @@ describe("WorkspacePage", () => {
     expect(
       await screen.findByText("Kein Request ausgewählt"),
     ).toBeInTheDocument();
+  });
+
+  it("confirms deletion, sends the loaded version and closes its tab", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderWorkspace();
+
+    await user.click(screen.getByRole("button", { name: "Löschen" }));
+
+    await waitFor(() =>
+      expect(deleteRequestMutation).toHaveBeenCalledWith({
+        requestId: firstRequestId,
+        expectedVersion: 1,
+      }),
+    );
+    expect(
+      screen.queryByRole("tab", { name: /List customers/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Kein Request ausgewählt")).toBeInTheDocument();
   });
 
   it("reorders request ids without dropping tabs", () => {

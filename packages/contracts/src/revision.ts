@@ -9,7 +9,7 @@ export const requestRevisionSchema = z.object({
   version: z.number().int().positive(),
   name: z.string().min(1),
   method: httpMethodSchema,
-  changeType: z.enum(["update", "overwrite", "restore"]),
+  changeType: z.enum(["update", "overwrite", "restore", "delete"]),
   createdBy: z.object({
     id: z.string().uuid(),
     displayName: z.string().min(1),

@@ -866,6 +866,12 @@ h1 {
   color: #ffffff;
 }
 
+.button.danger {
+  background: #ffffff;
+  border-color: #e4c5c2;
+  color: #9b332e;
+}
+
 .editor {
   padding: 24px 28px 30px;
 }

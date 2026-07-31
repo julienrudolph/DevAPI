@@ -11,6 +11,7 @@ const changeTypeLabels = {
   update: "Bearbeitung",
   overwrite: "Überschreiben",
   restore: "Wiederherstellung",
+  delete: "Löschen",
 } as const;
 
 export function RevisionDialog({

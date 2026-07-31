@@ -5,8 +5,12 @@ import {
   createFolder,
   createRequest,
   createWorkspace,
+  deleteCollection,
+  deleteFolder,
   fetchWorkspaces,
   fetchWorkspaceTree,
+  updateCollection,
+  updateFolder,
 } from "./workspace-api";
 
 afterEach(() => {
@@ -90,6 +94,34 @@ describe("workspace API client", () => {
     });
   });
 
+  it("creates another workspace in an existing team", async () => {
+    const teamId = "76a26d02-fc07-4cd7-9b6a-1e2c15fc127b";
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "85e52968-22cc-483d-b6a6-bdc169e46ede",
+          teamId,
+          name: "Private APIs",
+          role: "owner",
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createWorkspace(
+      { teamId, workspaceName: "Private APIs" },
+      "session-token",
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/workspaces",
+      expect.objectContaining({
+        body: JSON.stringify({ teamId, workspaceName: "Private APIs" }),
+      }),
+    );
+  });
+
   it("creates a versioned collection in the selected workspace", async () => {
     const workspaceId = "85e52968-22cc-483d-b6a6-bdc169e46ede";
     const fetchMock = vi.fn().mockResolvedValue(
@@ -136,6 +168,7 @@ describe("workspace API client", () => {
             parentFolderId: null,
             name: "Customers",
             position: 0,
+            version: 1,
           }),
           { status: 201, headers: { "content-type": "application/json" } },
         ),
@@ -186,5 +219,69 @@ describe("workspace API client", () => {
       `/api/v1/workspaces/${workspaceId}/requests`,
       expect.objectContaining({ method: "POST" }),
     );
+  });
+
+  it("sends versions when deleting navigation items", async () => {
+    const collectionId = "95da6097-0742-4164-9c9a-75dc64d2cd8f";
+    const folderId = "cc0814af-eeb4-45ad-8686-0784a67ea823";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await deleteCollection(collectionId, 2, "session-token");
+    await deleteFolder(folderId, 3, "session-token");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      `/api/v1/collections/${collectionId}`,
+      expect.objectContaining({
+        method: "DELETE",
+        body: JSON.stringify({ expectedVersion: 2 }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      `/api/v1/folders/${folderId}`,
+      expect.objectContaining({
+        method: "DELETE",
+        body: JSON.stringify({ expectedVersion: 3 }),
+      }),
+    );
+  });
+
+  it("validates renamed and reordered navigation responses", async () => {
+    const workspaceId = "85e52968-22cc-483d-b6a6-bdc169e46ede";
+    const collectionId = "95da6097-0742-4164-9c9a-75dc64d2cd8f";
+    const folderId = "cc0814af-eeb4-45ad-8686-0784a67ea823";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        id: collectionId,
+        workspaceId,
+        name: "Renamed",
+        position: 1,
+        version: 2,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        id: folderId,
+        workspaceId,
+        collectionId,
+        parentFolderId: null,
+        name: "Folder",
+        position: 0,
+        version: 2,
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(updateCollection(
+      collectionId,
+      { expectedVersion: 1, name: "Renamed" },
+      "session-token",
+    )).resolves.toMatchObject({ name: "Renamed", version: 2 });
+    await expect(updateFolder(
+      folderId,
+      { expectedVersion: 1, targetPosition: 0 },
+      "session-token",
+    )).resolves.toMatchObject({ position: 0, version: 2 });
   });
 });

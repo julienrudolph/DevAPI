@@ -97,6 +97,57 @@ describe("workspace routes", () => {
     await app.close();
   });
 
+  it("creates another workspace in an existing team", async () => {
+    let receivedTeamId: string | undefined;
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: requestRepository,
+      workspaces: {
+        ...emptyWorkspaceRepository,
+        create: async (command) => {
+          receivedTeamId = "teamId" in command ? command.teamId : undefined;
+          return workspace;
+        },
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/workspaces",
+      headers: { authorization: "Bearer verified-token" },
+      payload: {
+        teamId: workspace.teamId,
+        workspaceName: "Internal API",
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(receivedTeamId).toBe(workspace.teamId);
+    await app.close();
+  });
+
+  it("maps denied workspace creation to 403", async () => {
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: requestRepository,
+      workspaces: {
+        ...emptyWorkspaceRepository,
+        create: async () => null,
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/workspaces",
+      headers: { authorization: "Bearer verified-token" },
+      payload: {
+        teamId: workspace.teamId,
+        workspaceName: "Forbidden",
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
+    await app.close();
+  });
+
   it("maps denied collection creation to 403", async () => {
     const app = buildApp({
       authenticate: async () => user,
@@ -122,6 +173,7 @@ describe("workspace routes", () => {
       parentFolderId: null,
       name: "Customers",
       position: 0,
+      version: 1,
     };
     const app = buildApp({
       authenticate: async () => user,
@@ -174,6 +226,113 @@ describe("workspace routes", () => {
     });
     expect(response.statusCode).toBe(201);
     expect(response.json()).toEqual(createdRequest);
+    await app.close();
+  });
+
+  it("deletes an empty collection with optimistic locking", async () => {
+    const collectionId = "95da6097-0742-4164-9c9a-75dc64d2cd8f";
+    let receivedVersion: number | undefined;
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: requestRepository,
+      workspaces: {
+        ...emptyWorkspaceRepository,
+        deleteCollection: async (command) => {
+          receivedVersion = command.expectedVersion;
+          return { kind: "deleted" };
+        },
+      },
+    });
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/v1/collections/${collectionId}`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { expectedVersion: 2 },
+    });
+    expect(response.statusCode).toBe(204);
+    expect(receivedVersion).toBe(2);
+    await app.close();
+  });
+
+  it("explains why a non-empty folder cannot be deleted", async () => {
+    const folderId = "cc0814af-eeb4-45ad-8686-0784a67ea823";
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: requestRepository,
+      workspaces: {
+        ...emptyWorkspaceRepository,
+        deleteFolder: async () => ({ kind: "not-empty" }),
+      },
+    });
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/v1/folders/${folderId}`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { expectedVersion: 1 },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      code: "FOLDER_NOT_EMPTY",
+      message: "Der Ordner enthält noch Requests oder Unterordner.",
+    });
+    await app.close();
+  });
+
+  it("renames a collection through the versioned repository operation", async () => {
+    const collectionId = "95da6097-0742-4164-9c9a-75dc64d2cd8f";
+    const renamed = {
+      id: collectionId,
+      workspaceId: workspace.id,
+      name: "Renamed",
+      position: 0,
+      version: 2,
+    };
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: requestRepository,
+      workspaces: {
+        ...emptyWorkspaceRepository,
+        updateCollection: async (command) => {
+          expect(command).toMatchObject({
+            itemId: collectionId,
+            expectedVersion: 1,
+            name: "Renamed",
+          });
+          return { kind: "updated", item: renamed };
+        },
+      },
+    });
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/v1/collections/${collectionId}`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { expectedVersion: 1, name: "Renamed" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(renamed);
+    await app.close();
+  });
+
+  it("maps stale folder reordering to HTTP 409", async () => {
+    const folderId = "cc0814af-eeb4-45ad-8686-0784a67ea823";
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: requestRepository,
+      workspaces: {
+        ...emptyWorkspaceRepository,
+        updateFolder: async () => ({ kind: "conflict" }),
+      },
+    });
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/v1/folders/${folderId}`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { expectedVersion: 1, targetPosition: 0 },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      code: "FOLDER_VERSION_CONFLICT",
+    });
     await app.close();
   });
 

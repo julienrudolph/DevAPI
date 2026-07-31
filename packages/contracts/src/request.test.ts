@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   apiRequestSchema,
   canEdit,
+  deleteRequestSchema,
   requestAuthSchema,
   requestDraftSchema,
 } from "./index.js";
@@ -69,6 +70,15 @@ describe("apiRequestSchema", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+});
+
+describe("deleteRequestSchema", () => {
+  it("requires a positive expected version", () => {
+    expect(deleteRequestSchema.safeParse({ expectedVersion: 1 }).success)
+      .toBe(true);
+    expect(deleteRequestSchema.safeParse({ expectedVersion: 0 }).success)
+      .toBe(false);
   });
 });
 

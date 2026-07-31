@@ -7,8 +7,12 @@ import {
   createFolder,
   createRequest,
   createWorkspace,
+  deleteCollection,
+  deleteFolder,
   fetchWorkspaces,
   fetchWorkspaceTree,
+  updateCollection,
+  updateFolder,
 } from "./workspace-api";
 
 export const workspaceKeys = {
@@ -78,6 +82,88 @@ export function useCreateRequest(workspaceId: string) {
   return useMutation({
     mutationFn: (input: Parameters<typeof createRequest>[1]) =>
       createRequest(workspaceId, input, accessToken!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceKeys.tree(workspaceId),
+      });
+    },
+  });
+}
+
+export function useDeleteCollection(workspaceId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { collectionId: string; expectedVersion: number }) =>
+      deleteCollection(input.collectionId, input.expectedVersion, accessToken!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceKeys.tree(workspaceId),
+      });
+    },
+  });
+}
+
+export function useDeleteFolder(workspaceId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { folderId: string; expectedVersion: number }) =>
+      deleteFolder(input.folderId, input.expectedVersion, accessToken!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceKeys.tree(workspaceId),
+      });
+    },
+  });
+}
+
+export function useUpdateCollection(workspaceId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      collectionId: string;
+      expectedVersion: number;
+      name?: string;
+      targetPosition?: number;
+    }) =>
+      updateCollection(
+        input.collectionId,
+        {
+          expectedVersion: input.expectedVersion,
+          name: input.name,
+          targetPosition: input.targetPosition,
+        },
+        accessToken!,
+      ),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceKeys.tree(workspaceId),
+      });
+    },
+  });
+}
+
+export function useUpdateFolder(workspaceId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      folderId: string;
+      expectedVersion: number;
+      name?: string;
+      targetPosition?: number;
+    }) =>
+      updateFolder(
+        input.folderId,
+        {
+          expectedVersion: input.expectedVersion,
+          name: input.name,
+          targetPosition: input.targetPosition,
+        },
+        accessToken!,
+      ),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: workspaceKeys.tree(workspaceId),

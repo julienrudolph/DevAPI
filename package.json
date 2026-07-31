@@ -27,6 +27,7 @@
     "make:windows": "npm run build --workspace @api-client/web && npm run make --workspace @api-client/desktop -- --platform=win32 --arch=x64",
     "typecheck": "npm run build --workspace @api-client/contracts && npm run typecheck --workspaces --if-present",
     "test": "npm run build --workspace @api-client/contracts && npm run test --workspaces --if-present",
+    "test:database": "sh scripts/test-database.sh",
     "check": "npm run typecheck && npm run test && npm run build",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "verify": "npm run check && npm run compose:config:ci"

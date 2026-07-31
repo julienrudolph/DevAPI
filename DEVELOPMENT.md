@@ -268,6 +268,19 @@ npm test --workspace @api-client/web -- \
   src/features/requests/request-editor.test.tsx
 ```
 
+RLS- und Datenbanktests laufen gegen den gestarteten lokalen Compose-Stack:
+
+```bash
+npm run compose:up
+npm run test:database
+```
+
+Die SQL-Tests verwenden feste, ausschließlich für Integrationstests
+reservierte UUIDs und laufen vollständig innerhalb einer Transaktion. Am Ende
+werden alle Testdaten mit `ROLLBACK` verworfen. Ein Fehler bricht den Lauf
+sofort ab. Die Tests prüfen nicht nur den Erfolgsfall, sondern auch
+Editor-/Owner-Grenzen und Cross-Tenant-Zugriffe.
+
 Neue Logik benötigt Tests auf der passenden Ebene:
 
 - Schema und pure Fachlogik: Unit-Test

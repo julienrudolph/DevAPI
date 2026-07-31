@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  deleteRequest,
   fetchRequest,
   RequestConflictError,
   updateRequest,
@@ -83,5 +84,23 @@ describe("request API client", () => {
       "session-token",
     );
     await expect(promise).rejects.toBeInstanceOf(RequestConflictError);
+  });
+
+  it("deletes the loaded version explicitly", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, {
+      status: 204,
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      deleteRequest(request.id, { expectedVersion: 2 }, "session-token"),
+    ).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/v1/requests/${request.id}`,
+      expect.objectContaining({
+        method: "DELETE",
+        body: JSON.stringify({ expectedVersion: 2 }),
+      }),
+    );
   });
 });

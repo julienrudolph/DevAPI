@@ -9,12 +9,14 @@ import { useNavigate } from "react-router";
 
 import { useCreateWorkspace } from "./workspace-queries";
 
-export function WorkspaceCreateForm() {
+export function WorkspaceCreateForm({ teamId }: { teamId?: string }) {
   const navigate = useNavigate();
   const mutation = useCreateWorkspace();
   const { formState, handleSubmit, register } = useForm<CreateWorkspace>({
     resolver: zodResolver(createWorkspaceSchema),
-    defaultValues: { teamName: "", workspaceName: "" },
+    defaultValues: teamId
+      ? { teamId, workspaceName: "" }
+      : { teamName: "", workspaceName: "" },
   });
 
   async function submit(input: CreateWorkspace) {
@@ -24,11 +26,19 @@ export function WorkspaceCreateForm() {
 
   return (
     <form className="creation-form" onSubmit={handleSubmit(submit)}>
-      <label htmlFor="team-name">Teamname</label>
-      <input id="team-name" {...register("teamName")} />
-      {formState.errors.teamName ? (
-        <p className="field-error">{formState.errors.teamName.message}</p>
-      ) : null}
+      {teamId ? (
+        <input type="hidden" {...register("teamId")} />
+      ) : (
+        <>
+          <label htmlFor="team-name">Teamname</label>
+          <input id="team-name" {...register("teamName")} />
+          {"teamName" in formState.errors && formState.errors.teamName ? (
+            <p className="field-error">
+              {formState.errors.teamName.message}
+            </p>
+          ) : null}
+        </>
+      )}
       <label htmlFor="workspace-name">Workspace-Name</label>
       <input id="workspace-name" {...register("workspaceName")} />
       {formState.errors.workspaceName ? (

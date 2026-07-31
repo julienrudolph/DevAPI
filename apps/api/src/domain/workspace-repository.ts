@@ -19,9 +19,8 @@ export interface WorkspaceTreeCommand extends AuthenticatedRepositoryCommand {
   workspaceId: string;
 }
 
-export interface CreateWorkspaceCommand
-  extends AuthenticatedRepositoryCommand,
-    CreateWorkspace {}
+export type CreateWorkspaceCommand =
+  AuthenticatedRepositoryCommand & CreateWorkspace;
 
 export interface CreateCollectionCommand
   extends AuthenticatedRepositoryCommand,
@@ -41,13 +40,54 @@ export interface CreateRequestCommand
   workspaceId: string;
 }
 
+export interface DeleteNavigationItemCommand
+  extends AuthenticatedRepositoryCommand {
+  itemId: string;
+  expectedVersion: number;
+}
+
+export type DeleteNavigationItemResult =
+  | { kind: "deleted" }
+  | { kind: "conflict" }
+  | { kind: "not-empty" }
+  | { kind: "forbidden" }
+  | { kind: "not-found" };
+
+export interface UpdateNavigationItemCommand
+  extends AuthenticatedRepositoryCommand {
+  itemId: string;
+  expectedVersion: number;
+  name?: string;
+  targetPosition?: number;
+}
+
+export type UpdateCollectionResult =
+  | { kind: "updated"; item: CollectionSummary }
+  | Exclude<DeleteNavigationItemResult, { kind: "deleted" | "not-empty" }>;
+
+export type UpdateFolderResult =
+  | { kind: "updated"; item: FolderSummary }
+  | Exclude<DeleteNavigationItemResult, { kind: "deleted" | "not-empty" }>;
+
 export interface WorkspaceRepository {
   list(command: AuthenticatedRepositoryCommand): Promise<WorkspaceSummary[]>;
   getTree(command: WorkspaceTreeCommand): Promise<WorkspaceTree | null>;
-  create(command: CreateWorkspaceCommand): Promise<WorkspaceSummary>;
+  create(command: CreateWorkspaceCommand): Promise<WorkspaceSummary | null>;
   createCollection(
     command: CreateCollectionCommand,
   ): Promise<CollectionSummary | null>;
   createFolder(command: CreateFolderCommand): Promise<FolderSummary | null>;
   createRequest(command: CreateRequestCommand): Promise<RequestSummary | null>;
+  deleteCollection?(
+    command: DeleteNavigationItemCommand,
+  ): Promise<DeleteNavigationItemResult>;
+  deleteFolder?(
+    command: DeleteNavigationItemCommand,
+  ): Promise<DeleteNavigationItemResult>;
+  updateCollection?(
+    command: UpdateNavigationItemCommand,
+  ): Promise<UpdateCollectionResult>;
+  updateFolder?(
+    command: UpdateNavigationItemCommand,
+  ): Promise<UpdateFolderResult>;
 }

@@ -17,6 +17,11 @@ import type {
   CreateFolderCommand,
   CreateRequestCommand,
   CreateWorkspaceCommand,
+  DeleteNavigationItemCommand,
+  DeleteNavigationItemResult,
+  UpdateCollectionResult,
+  UpdateFolderResult,
+  UpdateNavigationItemCommand,
   WorkspaceRepository,
   WorkspaceTreeCommand,
 } from "../domain/workspace-repository.js";
@@ -62,6 +67,7 @@ const folderRowSchema = z
     parent_folder_id: z.string().uuid().nullable(),
     name: z.string(),
     position: z.number().int(),
+    version: z.number().int(),
   })
   .transform((row) => ({
     id: row.id,
@@ -70,6 +76,7 @@ const folderRowSchema = z
     parentFolderId: row.parent_folder_id,
     name: row.name,
     position: row.position,
+    version: row.version,
   }))
   .pipe(folderSummarySchema);
 
@@ -136,7 +143,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       client
         .from("folders")
         .select(
-          "id, workspace_id, collection_id, parent_folder_id, name, position",
+          "id, workspace_id, collection_id, parent_folder_id, name, position, version",
         )
         .eq("workspace_id", command.workspaceId)
         .order("position"),
@@ -146,6 +153,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
           "id, workspace_id, collection_id, folder_id, name, method, url, version",
         )
         .eq("workspace_id", command.workspaceId)
+        .is("deleted_at", null)
         .order("name"),
     ]);
     if (collections.error || folders.error || requests.error) {
@@ -160,13 +168,24 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
     };
   }
 
-  async create(command: CreateWorkspaceCommand): Promise<WorkspaceSummary> {
+  async create(
+    command: CreateWorkspaceCommand,
+  ): Promise<WorkspaceSummary | null> {
     const client = this.client(command.accessToken);
-    const { data, error } = await client.rpc("create_team_workspace", {
-      p_team_name: command.teamName,
-      p_workspace_name: command.workspaceName,
-    });
-    if (error) throw new Error("WORKSPACE_CREATE_FAILED", { cause: error });
+    const { data, error } =
+      "teamId" in command
+        ? await client.rpc("create_workspace_in_team", {
+            p_team_id: command.teamId,
+            p_workspace_name: command.workspaceName,
+          })
+        : await client.rpc("create_team_workspace", {
+            p_team_name: command.teamName,
+            p_workspace_name: command.workspaceName,
+          });
+    if (error) {
+      if (error.code === "42501") return null;
+      throw new Error("WORKSPACE_CREATE_FAILED", { cause: error });
+    }
     const rows = parseRows(data, z.object({
       id: z.string().uuid(),
       team_id: z.string().uuid(),
@@ -219,7 +238,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
         updated_by: command.userId,
       })
       .select(
-        "id, workspace_id, collection_id, parent_folder_id, name, position",
+        "id, workspace_id, collection_id, parent_folder_id, name, position, version",
       )
       .maybeSingle();
     if (error) {
@@ -259,6 +278,87 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
     return data ? requestRowSchema.parse(data) : null;
   }
 
+  async deleteCollection(
+    command: DeleteNavigationItemCommand,
+  ): Promise<DeleteNavigationItemResult> {
+    return this.deleteNavigationItem(
+      "delete_empty_collection",
+      "p_collection_id",
+      command,
+    );
+  }
+
+  async deleteFolder(
+    command: DeleteNavigationItemCommand,
+  ): Promise<DeleteNavigationItemResult> {
+    return this.deleteNavigationItem(
+      "delete_empty_folder",
+      "p_folder_id",
+      command,
+    );
+  }
+
+  async updateCollection(
+    command: UpdateNavigationItemCommand,
+  ): Promise<UpdateCollectionResult> {
+    const client = this.client(command.accessToken);
+    const { data, error } = await client.rpc("update_collection_navigation", {
+      p_collection_id: command.itemId,
+      p_expected_version: command.expectedVersion,
+      p_name: command.name,
+      p_target_position: command.targetPosition,
+    });
+    if (!error) {
+      return {
+        kind: "updated",
+        item: collectionRowSchema.parse(normalizeRpcRow(data)),
+      };
+    }
+    return mapNavigationUpdateError(error);
+  }
+
+  async updateFolder(
+    command: UpdateNavigationItemCommand,
+  ): Promise<UpdateFolderResult> {
+    const client = this.client(command.accessToken);
+    const { data, error } = await client.rpc("update_folder_navigation", {
+      p_folder_id: command.itemId,
+      p_expected_version: command.expectedVersion,
+      p_name: command.name,
+      p_target_position: command.targetPosition,
+    });
+    if (!error) {
+      return {
+        kind: "updated",
+        item: folderRowSchema.parse(normalizeRpcRow(data)),
+      };
+    }
+    return mapNavigationUpdateError(error);
+  }
+
+  private async deleteNavigationItem(
+    functionName: "delete_empty_collection" | "delete_empty_folder",
+    idParameter: "p_collection_id" | "p_folder_id",
+    command: DeleteNavigationItemCommand,
+  ): Promise<DeleteNavigationItemResult> {
+    const client = this.client(command.accessToken);
+    const { error } = await client.rpc(functionName, {
+      [idParameter]: command.itemId,
+      p_expected_version: command.expectedVersion,
+    });
+    if (!error) return { kind: "deleted" };
+    if (error.code === "40001") return { kind: "conflict" };
+    if (error.code === "42501") return { kind: "forbidden" };
+    if (error.code === "P0002") return { kind: "not-found" };
+    if (
+      error.message.includes("COLLECTION_NOT_EMPTY") ||
+      error.message.includes("FOLDER_NOT_EMPTY")
+    ) {
+      return { kind: "not-empty" };
+    }
+    throw new Error("NAVIGATION_DELETE_FAILED", { cause: error });
+  }
+
   private client(accessToken: string) {
     return createUserSupabaseClient(
       this.supabaseUrl,
@@ -275,4 +375,20 @@ function parseRows<T>(
   const rows = z.array(schema).safeParse(value);
   if (!rows.success) throw new Error("INVALID_DATABASE_RESPONSE");
   return rows.data;
+}
+
+function normalizeRpcRow(value: unknown): unknown {
+  return Array.isArray(value) && value.length === 1 ? value[0] : value;
+}
+
+function mapNavigationUpdateError(error: {
+  code: string;
+}): Exclude<
+  UpdateCollectionResult,
+  { kind: "updated" }
+> {
+  if (error.code === "40001") return { kind: "conflict" };
+  if (error.code === "42501") return { kind: "forbidden" };
+  if (error.code === "P0002") return { kind: "not-found" };
+  throw new Error("NAVIGATION_UPDATE_FAILED", { cause: error });
 }

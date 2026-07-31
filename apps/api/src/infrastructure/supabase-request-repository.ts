@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import type {
   RequestRepository,
+  DeletePersistedRequestCommand,
   FindPersistedRequestCommand,
   UpdatePersistedRequestCommand,
 } from "../domain/request-repository.js";
@@ -166,6 +167,24 @@ export class SupabaseRequestRepository implements RequestRepository {
     return this.mapWriteError(error, command);
   }
 
+  async remove(
+    command: DeletePersistedRequestCommand,
+  ): Promise<UpdateResult> {
+    const client = createUserSupabaseClient(
+      this.supabaseUrl,
+      this.publishableKey,
+      command.accessToken,
+    );
+    const { data, error } = await client.rpc("soft_delete_request", {
+      p_request_id: command.requestId,
+      p_expected_version: command.expectedVersion,
+    });
+    if (!error) {
+      return { kind: "updated", request: parseDatabaseRequest(data) };
+    }
+    return this.mapWriteError(error, command);
+  }
+
   private async mapWriteError(
     error: PostgrestError,
     command: FindPersistedRequestCommand & { expectedVersion: number },
@@ -210,6 +229,7 @@ export class SupabaseRequestRepository implements RequestRepository {
       .from("requests")
       .select("*")
       .eq("id", requestId)
+      .is("deleted_at", null)
       .maybeSingle();
     if (error) throw new Error("REQUEST_CONFLICT_READ_FAILED", { cause: error });
     return data === null ? null : parseDatabaseRequest(data);

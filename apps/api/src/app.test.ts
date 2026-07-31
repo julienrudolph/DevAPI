@@ -235,4 +235,73 @@ describe("request API authentication", () => {
     expect(response.statusCode).toBe(status);
     await app.close();
   });
+
+  it("soft-deletes only the expected request version", async () => {
+    let expectedVersion: number | undefined;
+    const app = buildApp({
+      authenticate: async () => ({
+        id: userId,
+        accessToken: "verified-token",
+      }),
+      requests: {
+        find: async () => updated,
+        update: async () => ({ kind: "updated", request: updated }),
+        remove: async (command) => {
+          expectedVersion = command.expectedVersion;
+          return { kind: "updated", request: updated };
+        },
+      },
+      workspaces: workspaceRepository,
+    });
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/v1/requests/${requestId}`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { expectedVersion: 3 },
+    });
+    expect(response.statusCode).toBe(204);
+    expect(expectedVersion).toBe(3);
+    await app.close();
+  });
+
+  it("returns the current request when deletion detects a conflict", async () => {
+    const app = buildApp({
+      authenticate: async () => ({
+        id: userId,
+        accessToken: "verified-token",
+      }),
+      requests: {
+        find: async () => updated,
+        update: async () => ({ kind: "updated", request: updated }),
+        remove: async () => ({
+          kind: "conflict",
+          conflict: {
+            code: "REQUEST_VERSION_CONFLICT",
+            message: "Der Request wurde zwischenzeitlich geändert.",
+            expectedVersion: 2,
+            currentVersion: 3,
+            current: updated,
+            updatedBy: {
+              id: updated.updatedBy,
+              displayName: "Teammitglied",
+            },
+            updatedAt: updated.updatedAt,
+          },
+        }),
+      },
+      workspaces: workspaceRepository,
+    });
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/v1/requests/${requestId}`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { expectedVersion: 2 },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      code: "REQUEST_VERSION_CONFLICT",
+      currentVersion: 3,
+    });
+    await app.close();
+  });
 });

@@ -4,8 +4,10 @@ import {
   createFolderSchema,
   createRequestSummarySchema,
   createWorkspaceSchema,
+  deleteNavigationItemSchema,
   folderSummarySchema,
   requestSummarySchema,
+  updateNavigationItemSchema,
   workspaceSummarySchema,
   workspaceTreeSchema,
   type WorkspaceSummary,
@@ -17,8 +19,15 @@ import {
   type CreateRequestSummary,
   type FolderSummary,
   type RequestSummary,
+  type UpdateNavigationItem,
 } from "@api-client/contracts";
 import { z } from "zod";
+
+export class NavigationMutationError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
 
 export async function fetchWorkspaces(
   accessToken: string,
@@ -98,6 +107,111 @@ export async function createRequest(
   });
   if (!response.ok) throw new Error(`REQUEST_CREATE_${response.status}`);
   return requestSummarySchema.parse(await response.json());
+}
+
+export async function deleteCollection(
+  collectionId: string,
+  expectedVersion: number,
+  accessToken: string,
+): Promise<void> {
+  return deleteNavigationItem(
+    `/api/v1/collections/${collectionId}`,
+    expectedVersion,
+    accessToken,
+  );
+}
+
+export async function deleteFolder(
+  folderId: string,
+  expectedVersion: number,
+  accessToken: string,
+): Promise<void> {
+  return deleteNavigationItem(
+    `/api/v1/folders/${folderId}`,
+    expectedVersion,
+    accessToken,
+  );
+}
+
+export async function updateCollection(
+  collectionId: string,
+  input: UpdateNavigationItem,
+  accessToken: string,
+): Promise<CollectionSummary> {
+  return updateNavigationItem(
+    `/api/v1/collections/${collectionId}`,
+    input,
+    accessToken,
+    collectionSummarySchema,
+  );
+}
+
+export async function updateFolder(
+  folderId: string,
+  input: UpdateNavigationItem,
+  accessToken: string,
+): Promise<FolderSummary> {
+  return updateNavigationItem(
+    `/api/v1/folders/${folderId}`,
+    input,
+    accessToken,
+    folderSummarySchema,
+  );
+}
+
+async function deleteNavigationItem(
+  url: string,
+  expectedVersion: number,
+  accessToken: string,
+): Promise<void> {
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(
+      deleteNavigationItemSchema.parse({ expectedVersion }),
+    ),
+  });
+  if (response.ok) return;
+  const payload: unknown = await response.json().catch(() => undefined);
+  const code =
+    payload &&
+    typeof payload === "object" &&
+    "code" in payload &&
+    typeof payload.code === "string"
+      ? payload.code
+      : `NAVIGATION_DELETE_${response.status}`;
+  throw new NavigationMutationError(code);
+}
+
+async function updateNavigationItem<T>(
+  url: string,
+  input: UpdateNavigationItem,
+  accessToken: string,
+  schema: z.ZodType<T>,
+): Promise<T> {
+  const response = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(updateNavigationItemSchema.parse(input)),
+  });
+  if (!response.ok) {
+    const payload: unknown = await response.json().catch(() => undefined);
+    const code =
+      payload &&
+      typeof payload === "object" &&
+      "code" in payload &&
+      typeof payload.code === "string"
+        ? payload.code
+        : `NAVIGATION_UPDATE_${response.status}`;
+    throw new NavigationMutationError(code);
+  }
+  return schema.parse(await response.json());
 }
 
 export async function fetchWorkspaceTree(

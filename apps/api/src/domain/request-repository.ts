@@ -28,6 +28,12 @@ export interface FindPersistedRequestCommand {
   accessToken: string;
 }
 
+export interface DeletePersistedRequestCommand
+  extends FindPersistedRequestCommand {
+  userId: string;
+  expectedVersion: number;
+}
+
 export interface RequestRepository {
   find(command: FindPersistedRequestCommand): Promise<ApiRequest | null>;
   listRevisions?(
@@ -36,6 +42,9 @@ export interface RequestRepository {
   restore?(
     command: FindPersistedRequestCommand &
       RestoreRequestRevision & { userId: string },
+  ): Promise<UpdateResult>;
+  remove?(
+    command: DeletePersistedRequestCommand,
   ): Promise<UpdateResult>;
   update(command: UpdatePersistedRequestCommand): Promise<UpdateResult>;
 }

@@ -82,6 +82,10 @@ export const updateRequestSchema = requestDraftSchema.extend({
   folderId: z.string().uuid().nullable().optional(),
 });
 
+export const deleteRequestSchema = z.object({
+  expectedVersion: z.number().int().positive(),
+});
+
 export const requestIdParamsSchema = z.object({
   requestId: z.string().uuid(),
 });
@@ -90,3 +94,4 @@ export type ApiRequest = z.infer<typeof apiRequestSchema>;
 export type RequestDraft = z.infer<typeof requestDraftSchema>;
 export type RequestAuth = z.infer<typeof requestAuthSchema>;
 export type UpdateRequest = z.infer<typeof updateRequestSchema>;
+export type DeleteRequest = z.infer<typeof deleteRequestSchema>;
