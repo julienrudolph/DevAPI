@@ -102,9 +102,12 @@ button {
 }
 
 .workspace-layout {
+  --workspace-sidebar-width: clamp(19rem, 19vw, 24rem);
+
   display: grid;
-  grid-template-columns: 268px minmax(0, 1fr);
+  grid-template-columns: var(--workspace-sidebar-width) minmax(0, 1fr);
   min-height: calc(100vh - 64px);
+  width: 100%;
 }
 
 .sidebar {
@@ -112,6 +115,8 @@ button {
   border-right: 1px solid #dfe5df;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow-x: hidden;
   padding: 18px 14px;
 }
 
@@ -331,6 +336,7 @@ button {
 
 .tree-actions {
   display: flex;
+  flex-shrink: 0;
   gap: 2px;
   margin-left: auto;
 }
