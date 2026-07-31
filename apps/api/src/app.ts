@@ -37,6 +37,10 @@ import type {
   ExecutionHistoryRepository,
   RecordExecutionCommand,
 } from "./domain/execution-history-repository.js";
+import {
+  InMemoryExecutionLimiter,
+  type ExecutionLimiter,
+} from "./domain/execution-limiter.js";
 import type { InvitationRepository } from "./domain/invitation-repository.js";
 import type { TeamMemberRepository } from "./domain/team-member-repository.js";
 import {
@@ -60,11 +64,21 @@ export interface ApiDependencies {
   invitations?: InvitationRepository;
   teamMembers?: TeamMemberRepository;
   executionHistory?: ExecutionHistoryRepository;
+  executionLimiter?: ExecutionLimiter;
   publicConfig?: PublicClientConfig;
 }
 
 export function buildApp(dependencies: ApiDependencies) {
   const app = Fastify({ logger: false });
+  const executionLimiter =
+    dependencies.executionLimiter ??
+    new InMemoryExecutionLimiter({
+      windowMs: 60_000,
+      maxPerUserPerWindow: 60,
+      maxPerWorkspacePerWindow: 300,
+      maxConcurrentPerUser: 3,
+      maxConcurrentPerWorkspace: 10,
+    });
 
   app.get("/health", async () => ({ status: "ok" }));
 
@@ -466,6 +480,30 @@ export function buildApp(dependencies: ApiDependencies) {
     if (!visibleRequest) {
       return reply.code(404).send({ code: "REQUEST_NOT_FOUND" });
     }
+    const limit = executionLimiter.acquire({
+      userId: user.user.id,
+      workspaceId: visibleRequest.workspaceId,
+    });
+    if (limit.kind === "rejected") {
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil(limit.retryAfterMs / 1_000),
+      );
+      return reply
+        .header("Retry-After", retryAfterSeconds)
+        .code(429)
+        .send({
+          code:
+            limit.reason === "rate"
+              ? "EXECUTION_RATE_LIMITED"
+              : "EXECUTION_CONCURRENCY_LIMITED",
+          message:
+            limit.reason === "rate"
+              ? "Zu viele Requests in kurzer Zeit. Warte kurz und versuche es erneut."
+              : "Es laufen bereits zu viele Requests. Warte auf deren Abschluss.",
+          retryAfterSeconds,
+        });
+    }
     const { requestId, ...executionInput } = input.data;
     const startedAt = Date.now();
     try {
@@ -511,6 +549,8 @@ export function buildApp(dependencies: ApiDependencies) {
         code: "PROXY_REQUEST_FAILED",
         message: "Der Request konnte nicht sicher ausgeführt werden.",
       });
+    } finally {
+      limit.release();
     }
   });
 

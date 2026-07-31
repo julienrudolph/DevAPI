@@ -61,6 +61,24 @@ MAGIC_LINK_AUTH_ENABLED=false
 Provider-Secrets gehören niemals ins Frontend. Details enthält
 `docs/authentication.md`.
 
+## Ausführungslimits
+
+Der Server begrenzt ausgeführte Requests standardmäßig auf:
+
+- 60 Starts pro Minute und Nutzer
+- 300 Starts pro Minute und Workspace
+- 3 gleichzeitig laufende Requests pro Nutzer
+- 10 gleichzeitig laufende Requests pro Workspace
+- 50 gleichzeitig laufende Requests im isolierten Proxy insgesamt
+
+Bei Überschreitung antwortet die API mit HTTP `429` und einem
+`Retry-After`-Header. Die Werte können über
+`EXECUTION_RATE_*`, `EXECUTION_CONCURRENCY_*` und
+`PROXY_MAX_CONCURRENT_REQUESTS` angepasst werden. Die nutzer- und
+workspacebezogenen Zähler liegen im Speicher des API-Prozesses und sind damit
+für den vorgesehenen einzelnen Self-Hosted-API-Container geeignet. Mehrere
+API-Replikate benötigen später einen gemeinsamen verteilten Limiter.
+
 Alle Prüfungen:
 
 ```bash

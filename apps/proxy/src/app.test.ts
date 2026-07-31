@@ -61,4 +61,56 @@ describe("proxy API", () => {
     });
     await app.close();
   });
+
+  it("rejects excess global concurrency without starting another transport", async () => {
+    let releaseTransport!: () => void;
+    let markTransportStarted!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      releaseTransport = resolve;
+    });
+    const transportStarted = new Promise<void>((resolve) => {
+      markTransportStarted = resolve;
+    });
+    let started = 0;
+    const blockingTransport: Transport = async () => {
+      started += 1;
+      markTransportStarted();
+      await gate;
+      return transport({
+        url: new URL("https://1.1.1.1"),
+        address: "1.1.1.1",
+        method: "GET",
+        headers: {},
+        signal: new AbortController().signal,
+      });
+    };
+    const app = buildProxyApp({
+      transport: blockingTransport,
+      authenticate: () => true,
+      maxConcurrentRequests: 1,
+    });
+    const first = app
+      .inject({
+        method: "POST",
+        url: "/v1/execute",
+        headers: { authorization: "Bearer test" },
+        payload: { method: "GET", url: "https://1.1.1.1", headers: [] },
+      })
+      .then((response) => response);
+    await transportStarted;
+
+    const second = await app.inject({
+      method: "POST",
+      url: "/v1/execute",
+      headers: { authorization: "Bearer test" },
+      payload: { method: "GET", url: "https://1.1.1.1", headers: [] },
+    });
+    expect(second.statusCode).toBe(429);
+    expect(second.json()).toMatchObject({ code: "PROXY_CAPACITY_LIMITED" });
+    expect(started).toBe(1);
+
+    releaseTransport();
+    expect((await first).statusCode).toBe(200);
+    await app.close();
+  });
 });

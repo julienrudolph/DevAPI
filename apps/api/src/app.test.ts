@@ -1,5 +1,5 @@
 import type { ApiRequest, RequestDraft } from "@api-client/contracts";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "./app.js";
 import type { RequestRepository } from "./domain/request-repository.js";
@@ -106,6 +106,79 @@ describe("request API authentication", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ status: 200, durationMs: 18 });
+    await app.close();
+  });
+
+  it("rejects rate-limited executions before reaching the proxy", async () => {
+    const execute = vi.fn();
+    const app = buildApp({
+      authenticate: async () => ({
+        id: userId,
+        accessToken: "verified-token",
+      }),
+      requests: repository,
+      workspaces: workspaceRepository,
+      executor: { execute },
+      executionLimiter: {
+        acquire: () => ({
+          kind: "rejected",
+          reason: "rate",
+          retryAfterMs: 2_500,
+        }),
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/execute",
+      headers: { authorization: "Bearer verified-token" },
+      payload: {
+        requestId,
+        method: "GET",
+        url: "https://api.example.com/health",
+        headers: [],
+      },
+    });
+    expect(response.statusCode).toBe(429);
+    expect(response.headers["retry-after"]).toBe("3");
+    expect(response.json()).toMatchObject({
+      code: "EXECUTION_RATE_LIMITED",
+      retryAfterSeconds: 3,
+    });
+    expect(execute).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("releases concurrency capacity after proxy failures", async () => {
+    const release = vi.fn();
+    const app = buildApp({
+      authenticate: async () => ({
+        id: userId,
+        accessToken: "verified-token",
+      }),
+      requests: repository,
+      workspaces: workspaceRepository,
+      executor: {
+        execute: async () => {
+          throw new Error("upstream failed");
+        },
+      },
+      executionLimiter: {
+        acquire: () => ({ kind: "accepted", release }),
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/execute",
+      headers: { authorization: "Bearer verified-token" },
+      payload: {
+        requestId,
+        method: "GET",
+        url: "https://api.example.com/health",
+        headers: [],
+      },
+    });
+    expect(response.statusCode).toBe(502);
+    expect(release).toHaveBeenCalledOnce();
     await app.close();
   });
 

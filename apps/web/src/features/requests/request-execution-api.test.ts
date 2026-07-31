@@ -118,6 +118,15 @@ describe("request execution API", () => {
     );
   });
 
+  it("explains execution limits without exposing server internals", () => {
+    expect(executionErrorMessage("EXECUTION_RATE_LIMITED")).toContain(
+      "zu viele Requests",
+    );
+    expect(executionErrorMessage("PROXY_CAPACITY_LIMITED")).toContain(
+      "ausgelastet",
+    );
+  });
+
   it("rejects malformed URLs before calling the API", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

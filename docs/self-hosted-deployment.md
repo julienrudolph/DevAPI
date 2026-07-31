@@ -152,6 +152,14 @@ PostgreSQL liegt als Bind-Mount unter
 alle 24 Stunden einen konsistenten Custom-Format-Dump unter
 `<DEVAPI_DATA_DIR>/backups` und entfernt Dumps nach 30 Tagen.
 
+Die Request-Ausführung besitzt standardmäßig Limits pro Nutzer, Workspace und
+Proxy. Sie können in `.env.selfhosted` über
+`EXECUTION_RATE_WINDOW_MS`, `EXECUTION_RATE_PER_USER`,
+`EXECUTION_RATE_PER_WORKSPACE`, `EXECUTION_CONCURRENCY_PER_USER`,
+`EXECUTION_CONCURRENCY_PER_WORKSPACE` und
+`PROXY_MAX_CONCURRENT_REQUESTS` angepasst werden. Erhöhungen sollten erst nach
+Beobachtung von CPU, Arbeitsspeicher, Netzwerk und Antwortgrößen erfolgen.
+
 Die Intervalle stehen in `.env.selfhosted`:
 
 ```text

@@ -8,6 +8,7 @@ import { SupabaseEnvironmentRepository } from "./infrastructure/supabase-environ
 import { SupabaseExecutionHistoryRepository } from "./infrastructure/supabase-execution-history-repository.js";
 import { SupabaseInvitationRepository } from "./infrastructure/supabase-invitation-repository.js";
 import { SupabaseTeamMemberRepository } from "./infrastructure/supabase-team-member-repository.js";
+import { InMemoryExecutionLimiter } from "./domain/execution-limiter.js";
 
 const config = readApiConfig();
 const app = buildApp({
@@ -37,6 +38,13 @@ const app = buildApp({
     config.PROXY_INTERNAL_URL,
     config.PROXY_INTERNAL_TOKEN,
   ),
+  executionLimiter: new InMemoryExecutionLimiter({
+    windowMs: config.EXECUTION_RATE_WINDOW_MS,
+    maxPerUserPerWindow: config.EXECUTION_RATE_PER_USER,
+    maxPerWorkspacePerWindow: config.EXECUTION_RATE_PER_WORKSPACE,
+    maxConcurrentPerUser: config.EXECUTION_CONCURRENCY_PER_USER,
+    maxConcurrentPerWorkspace: config.EXECUTION_CONCURRENCY_PER_WORKSPACE,
+  }),
   environments: new SupabaseEnvironmentRepository(
     config.SUPABASE_URL,
     config.SUPABASE_PUBLISHABLE_KEY,

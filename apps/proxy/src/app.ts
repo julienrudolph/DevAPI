@@ -18,6 +18,7 @@ import { UnsafeTargetError } from "./security/target-policy.js";
 export interface ProxyAppOptions {
   transport?: Transport;
   authenticate?: ProxyAuthenticator;
+  maxConcurrentRequests?: number;
 }
 
 type TargetFailure = {
@@ -98,6 +99,8 @@ export function buildProxyApp(options: ProxyAppOptions = {}) {
   const transport = options.transport ?? undiciTransport;
   const authenticate =
     options.authenticate ?? createServiceTokenAuthenticator();
+  const maxConcurrentRequests = options.maxConcurrentRequests ?? 50;
+  let activeExecutions = 0;
   const app = Fastify({
     logger: false,
     bodyLimit: 1_100_000,
@@ -117,7 +120,18 @@ export function buildProxyApp(options: ProxyAppOptions = {}) {
         message: "Der auszuführende Request ist ungültig.",
       });
     }
+    if (activeExecutions >= maxConcurrentRequests) {
+      return reply
+        .header("Retry-After", 1)
+        .code(429)
+        .send({
+          code: "PROXY_CAPACITY_LIMITED",
+          message:
+            "Der Request-Proxy ist ausgelastet. Warte kurz und versuche es erneut.",
+        });
+    }
 
+    activeExecutions += 1;
     try {
       const result = await executeHttpRequest(input.data, { transport });
       return reply.code(200).send(result);
@@ -157,6 +171,8 @@ export function buildProxyApp(options: ProxyAppOptions = {}) {
         code: failure.code,
         message: failure.message,
       });
+    } finally {
+      activeExecutions = Math.max(0, activeExecutions - 1);
     }
   });
 

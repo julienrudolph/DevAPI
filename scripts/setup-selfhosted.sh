@@ -180,7 +180,13 @@ umask 077
   printf 'POSTGRES_PASSWORD=%s\n' "$postgres_password"
   printf 'JWT_SECRET=%s\n' "$jwt_secret"
   printf 'SUPABASE_PUBLISHABLE_KEY=%s\n' "$anon_key"
-  printf 'PROXY_INTERNAL_TOKEN=%s\n\n' "$proxy_token"
+  printf 'PROXY_INTERNAL_TOKEN=%s\n' "$proxy_token"
+  printf 'EXECUTION_RATE_WINDOW_MS=60000\n'
+  printf 'EXECUTION_RATE_PER_USER=60\n'
+  printf 'EXECUTION_RATE_PER_WORKSPACE=300\n'
+  printf 'EXECUTION_CONCURRENCY_PER_USER=3\n'
+  printf 'EXECUTION_CONCURRENCY_PER_WORKSPACE=10\n'
+  printf 'PROXY_MAX_CONCURRENT_REQUESTS=50\n\n'
   printf 'PASSWORD_AUTH_ENABLED=true\n'
   printf 'PASSWORD_SIGNUP_ENABLED=true\n'
   printf 'MAGIC_LINK_AUTH_ENABLED=false\n'

@@ -49,6 +49,12 @@ const executionErrorMessages: Record<string, string> = {
     "Der interne Request-Proxy hat keine gültige Antwort geliefert. Prüfe den Proxy-Container und dessen Logs.",
   PROXY_UNAVAILABLE:
     "Der Request-Proxy ist momentan nicht verfügbar. Prüfe den Serverstatus und versuche es erneut.",
+  EXECUTION_RATE_LIMITED:
+    "Du hast in kurzer Zeit zu viele Requests gesendet. Warte kurz und versuche es erneut.",
+  EXECUTION_CONCURRENCY_LIMITED:
+    "Es laufen bereits zu viele Requests. Warte auf deren Abschluss und versuche es erneut.",
+  PROXY_CAPACITY_LIMITED:
+    "Der Request-Proxy ist momentan ausgelastet. Warte kurz und versuche es erneut.",
   AUTHENTICATION_UNAVAILABLE:
     "Die Anmeldung konnte serverseitig nicht geprüft werden. Melde dich gegebenenfalls erneut an.",
   UNAUTHORIZED: "Deine Sitzung ist abgelaufen. Melde dich erneut an.",

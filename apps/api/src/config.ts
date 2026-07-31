@@ -28,6 +28,15 @@ const apiConfigSchema = z.object({
   PASSWORD_AUTH_ENABLED: booleanStringSchema.default(true),
   PASSWORD_SIGNUP_ENABLED: booleanStringSchema.default(true),
   MAGIC_LINK_AUTH_ENABLED: booleanStringSchema.default(false),
+  EXECUTION_RATE_WINDOW_MS: z.coerce.number().int().min(1_000).default(60_000),
+  EXECUTION_RATE_PER_USER: z.coerce.number().int().min(1).default(60),
+  EXECUTION_RATE_PER_WORKSPACE: z.coerce.number().int().min(1).default(300),
+  EXECUTION_CONCURRENCY_PER_USER: z.coerce.number().int().min(1).default(3),
+  EXECUTION_CONCURRENCY_PER_WORKSPACE: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .default(10),
   API_HOST: z.string().min(1).default("127.0.0.1"),
   API_PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
 });
