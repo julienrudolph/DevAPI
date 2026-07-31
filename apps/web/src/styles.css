@@ -102,7 +102,7 @@ button {
 }
 
 .workspace-layout {
-  --workspace-sidebar-width: clamp(19rem, 19vw, 24rem);
+  --workspace-sidebar-width: clamp(16.75rem, 18vw, 22rem);
 
   display: grid;
   grid-template-columns: var(--workspace-sidebar-width) minmax(0, 1fr);
@@ -306,6 +306,7 @@ button {
 .tree-parent {
   font-weight: 650;
   padding-left: 0;
+  position: relative;
 }
 
 .tree-toggle {
@@ -335,10 +336,25 @@ button {
 }
 
 .tree-actions {
+  align-items: center;
+  background: linear-gradient(90deg, rgb(249 250 248 / 0%), #f9faf8 18px);
   display: flex;
   flex-shrink: 0;
   gap: 2px;
-  margin-left: auto;
+  opacity: 0;
+  padding-left: 18px;
+  pointer-events: none;
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  transition: opacity 120ms ease;
+  z-index: 1;
+}
+
+.tree-parent:hover .tree-actions,
+.tree-parent:focus-within .tree-actions {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .tree-children {
