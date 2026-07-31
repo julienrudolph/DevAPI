@@ -1,0 +1,97 @@
+name: Desktop release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "desktop-v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build-sign-test:
+    runs-on: windows-2025
+    environment: windows-signing
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify source
+        run: npm run check
+
+      - name: Prepare signing certificate
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_BASE64)) {
+            throw "WINDOWS_CERTIFICATE_BASE64 is not configured."
+          }
+          $certificatePath = Join-Path $env:RUNNER_TEMP "relay-signing.pfx"
+          [IO.File]::WriteAllBytes(
+            $certificatePath,
+            [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64)
+          )
+          "WINDOWS_CERTIFICATE_FILE=$certificatePath" >> $env:GITHUB_ENV
+
+      - name: Build signed Windows installer
+        env:
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: npm run make:windows
+
+      - name: Verify signatures
+        shell: pwsh
+        run: |
+          $installer = "apps/desktop/out/make/squirrel.windows/x64/Relay-Setup.exe"
+          $application = "apps/desktop/out/Relay-win32-x64/Relay.exe"
+          foreach ($file in @($installer, $application)) {
+            $signature = Get-AuthenticodeSignature $file
+            if ($signature.Status -ne "Valid") {
+              throw "Invalid Authenticode signature for $file: $($signature.Status)"
+            }
+          }
+
+      - name: Test installer
+        shell: pwsh
+        run: |
+          $installer = Resolve-Path "apps/desktop/out/make/squirrel.windows/x64/Relay-Setup.exe"
+          Start-Process -FilePath $installer -ArgumentList "--silent" -Wait
+          $installed = Join-Path $env:LOCALAPPDATA "relay\Relay.exe"
+          if (-not (Test-Path $installed)) {
+            throw "Relay.exe was not installed at $installed"
+          }
+
+      - name: Create SHA-256 checksums
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem "apps/desktop/out/make" -Recurse -File
+          $lines = foreach ($file in $files) {
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($file.Name)"
+          }
+          $lines | Set-Content "apps/desktop/out/make/SHA256SUMS.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: relay-windows-${{ github.ref_name }}
+          path: |
+            apps/desktop/out/make/**
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Remove signing certificate
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:WINDOWS_CERTIFICATE_FILE) {
+            Remove-Item $env:WINDOWS_CERTIFICATE_FILE -Force -ErrorAction SilentlyContinue
+          }

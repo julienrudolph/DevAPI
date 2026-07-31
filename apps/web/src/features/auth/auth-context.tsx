@@ -62,6 +62,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, [client]);
 
+  useEffect(() => {
+    const subscribe = window.devapiDesktop?.onAuthCallback;
+    if (!client || !subscribe) return;
+    return subscribe((callbackUrl) => {
+      const code = new URL(callbackUrl).searchParams.get("code");
+      if (code) void client.auth.exchangeCodeForSession(code);
+    });
+  }, [client]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       client,

@@ -5,15 +5,17 @@ import type { PublicClientConfig } from "@api-client/contracts";
 let client: SupabaseClient | undefined;
 
 export function getSupabaseClient(config: PublicClientConfig): SupabaseClient {
+  const desktop = window.devapiDesktop;
   client ??= createClient(
     config.supabaseUrl,
     config.supabasePublishableKey,
     {
       auth: {
-        detectSessionInUrl: true,
         persistSession: true,
         autoRefreshToken: true,
         flowType: "pkce",
+        storage: desktop?.sessionStorage,
+        detectSessionInUrl: !desktop,
       },
     },
   );

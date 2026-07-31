@@ -36,7 +36,9 @@ export function LoginPage() {
     typeof location.state.from === "string"
       ? location.state.from
       : "/";
-  const redirectTo = new URL(from, window.location.origin).toString();
+  const redirectTo = window.devapiDesktop
+    ? "devapi://auth/callback"
+    : new URL(from, window.location.origin).toString();
 
   if (user) {
     return <Navigate replace to={from} />;
@@ -102,10 +104,25 @@ export function LoginPage() {
     // Supabase unterstützt `custom:*` zur Laufzeit; der veröffentlichte
     // Provider-Union-Type enthält die neue Custom-OIDC-Form noch nicht.
     const provider = env.oidcProvider as Provider;
-    const { error } = await client.auth.signInWithOAuth({
+    const { data, error } = await client.auth.signInWithOAuth({
       provider,
-      options: { redirectTo },
+      options: {
+        redirectTo,
+        skipBrowserRedirect: Boolean(window.devapiDesktop),
+      },
     });
+    if (!error && data.url && window.devapiDesktop?.openAuthUrl) {
+      try {
+        await window.devapiDesktop.openAuthUrl(data.url);
+        setSubmitting(false);
+        setMessage(
+          "Die Anmeldung wurde im Systembrowser geöffnet. Kehre danach zu Relay zurück.",
+        );
+      } catch {
+        setSubmitting(false);
+        setMessage("Der Systembrowser konnte nicht sicher geöffnet werden.");
+      }
+    }
     if (error) {
       setSubmitting(false);
       setMessage("Die OIDC-Anmeldung konnte nicht gestartet werden.");

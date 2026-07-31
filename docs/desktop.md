@@ -25,6 +25,9 @@ Der Main Process stellt nur diese Bridge bereit:
 
 - aktuelle Serveradresse lesen
 - validierte Serveradresse speichern
+- verschlüsselte Supabase-Sitzung lesen, speichern und entfernen
+- validierte Auth-URLs im Systembrowser öffnen
+- `devapi://auth/callback` an den Renderer übergeben
 - Betriebssystemplattform lesen
 
 Dateisystem, Shell, Prozesse und allgemeine Netzwerkfunktionen werden nicht an
@@ -44,6 +47,10 @@ den Renderer weitergegeben.
 - Electron-Fuses deaktivieren `RunAsNode`, Node-Optionen und Inspect-Argumente
 - ASAR-Integritätsprüfung und ausschließliches Laden aus ASAR
 - Berechtigungsanfragen werden standardmäßig abgelehnt
+- Supabase-Sitzungen werden mit Electron `safeStorage` verschlüsselt
+- externe Auth-URLs müssen zum konfigurierten Server und dessen
+  `/auth/v1/authorize`-Endpunkt gehören
+- Deep Links akzeptieren ausschließlich `devapi://auth/callback`
 
 HTTP zu `localhost` ist nur im nicht paketierten Entwicklungsbetrieb erlaubt.
 
@@ -64,6 +71,9 @@ DEVAPI_SERVER_URL=http://localhost:8080 npm run dev:desktop
 Ohne `DEVAPI_SERVER_URL` zeigt die Anwendung beim ersten Start die
 Serverauswahl. Die Einstellung liegt im Electron-`userData`-Verzeichnis mit
 restriktiven Dateirechten, soweit das Betriebssystem dies unterstützt.
+Die Auth-Sitzung wird getrennt in `auth-session.bin` abgelegt und über den
+Betriebssystem-Schlüsselspeicher verschlüsselt. Ist sichere Verschlüsselung
+nicht verfügbar, wird keine Sitzung dauerhaft gespeichert.
 
 ## Build
 
@@ -123,10 +133,41 @@ https://devapi.example.de
 Die Adresse enthält keinen zusätzlichen Pfad. Der Desktop-Client verwendet
 danach dieselben Konten, Teams und Workspaces wie die Web-Anwendung.
 
+Passwort-Anmeldungen funktionieren vollständig innerhalb der App. OIDC wird
+im Systembrowser geöffnet und mittels PKCE über `devapi://auth/callback` an
+Relay zurückgegeben. Magic Links können denselben Callback verwenden, sofern
+der Mailclient benutzerdefinierte Protokolle an Windows weiterleitet.
+
 Der aktuelle Installer ist nicht digital signiert. Windows SmartScreen kann
 deshalb eine Warnung anzeigen. Für interne Tests kann der Build verwendet
 werden; vor einer allgemeinen Verteilung sind Code-Signing und ein Test auf
 einer sauberen Windows-VM erforderlich.
+
+### Signierter Release-Build
+
+Der Workflow `.github/workflows/desktop-release.yml` läuft isoliert in der
+geschützten GitHub-Umgebung `windows-signing`. Dort müssen diese Secrets
+hinterlegt werden:
+
+```text
+WINDOWS_CERTIFICATE_BASE64
+WINDOWS_CERTIFICATE_PASSWORD
+```
+
+`WINDOWS_CERTIFICATE_BASE64` enthält die Base64-kodierte PFX-Datei. Der
+Workflow baut und signiert Anwendung sowie Installer, prüft beide
+Authenticode-Signaturen, installiert Relay unbeaufsichtigt auf einem frischen
+Windows-Runner und erzeugt `SHA256SUMS.txt`. Zertifikat und Passwort werden
+nicht als Artefakt gespeichert. Die Umgebung sollte verpflichtende Freigaben
+besitzen und nur für vertrauenswürdige Tags beziehungsweise manuelle Starts
+verwendet werden.
+
+Ein Release-Build kann manuell gestartet oder durch einen Tag ausgelöst
+werden:
+
+```text
+desktop-v0.1.0
+```
 
 Der aktuelle Forge-Stack ist ausschließlich Build-Werkzeug. Der
 Produktionsabhängigkeits-Audit enthält keine bekannten Schwachstellen. Vor
@@ -137,14 +178,7 @@ werden.
 
 ## Noch offen vor einer verteilbaren Windows-Version
 
-- Deep-Link `devapi://auth/callback`
-- PKCE-/OIDC-Callback über den Systembrowser
-- Magic-Link-Weiterleitung über den öffentlichen Web-Callback
-- verschlüsselte Sessionablage
-- Windows-Icon und Anwendungsmetadaten
-- Code-Signing-Zertifikat und isolierter Signing-Job
-- Installer-Test auf sauberer Windows-VM
-- Releaseartefakte und SHA-256-Prüfsummen
+- reales Code-Signing-Zertifikat in der geschützten CI-Umgebung hinterlegen
 - Updatekanal erst nach funktionierender Signierung
 
 Die lokale Ausführung von Requests gegen `localhost` oder private Netzwerke ist
