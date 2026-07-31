@@ -179,13 +179,45 @@ docker compose \
   -f compose.yaml \
   -f compose.selfhosted.yaml \
   -f compose.npm-proxy.yaml \
-  exec -T db pg_dump -U postgres -d postgres -Fc \
+  exec -T db pg_dump -U supabase_admin -d postgres -Fc \
   > devapi-$(date +%F).dump
 ```
 
 Backup-Dateien enthalten Anmelde- und Workspace-Daten und müssen
 verschlüsselt, zugriffsgeschützt und regelmäßig durch eine Wiederherstellung
 in einer getrennten Testumgebung geprüft werden.
+
+### Wiederherstellungsprobe
+
+Die Probe legt im bestehenden PostgreSQL-Cluster eine temporäre, getrennte
+Datenbank an, restauriert den Dump, prüft zentrale Auth- und
+Workspace-Tabellen und entfernt die Testdatenbank anschließend wieder:
+
+```bash
+./scripts/verify-database-backup.sh \
+  /absoluter/pfad/zu/devapi-20260731T120000Z.dump
+```
+
+Sie verändert die produktive Datenbank nicht. Eine erfolgreiche Probe zeigt
+zusätzlich die wiederhergestellten Anzahlen von Nutzern, Teams, Workspaces,
+Requests und Revisionen.
+
+### Produktive Wiederherstellung
+
+Eine echte Wiederherstellung ersetzt den aktuellen Datenbankinhalt. Das
+Skript prüft den Dump zuerst, erstellt ein Notfall-Backup des aktuellen
+Zustands, stoppt abhängige Dienste und verlangt eine ausdrückliche
+Bestätigung:
+
+```bash
+./scripts/restore-selfhosted-backup.sh \
+  /absoluter/pfad/zu/devapi-20260731T120000Z.dump \
+  --confirm-data-loss
+```
+
+Schlägt das Einspielen fehl, wird automatisch das unmittelbar zuvor erzeugte
+Notfall-Backup restauriert. Nach Abschluss wartet das Skript auf die
+Readiness-Checks aller Dienste.
 
 ## Betriebszustand und geschützte Metriken
 

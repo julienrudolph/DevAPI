@@ -47,7 +47,7 @@ backup_file="$backup_dir/pre-deploy-$(date -u +%Y%m%dT%H%M%SZ)-${previous_commit
 
 echo "Erstelle Sicherung: $backup_file"
 "${compose[@]}" exec -T db \
-  pg_dump -U postgres -d postgres -Fc >"$backup_file"
+  pg_dump -U supabase_admin -d postgres -Fc >"$backup_file"
 chmod 600 "$backup_file"
 
 echo "Deploye $target_commit"
