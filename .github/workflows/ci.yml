@@ -38,6 +38,48 @@ jobs:
       - name: Produktionsabhängigkeiten prüfen
         run: npm run audit:prod
 
+  desktop-windows:
+    name: Windows-Desktop-Paket
+    runs-on: windows-2025
+    timeout-minutes: 20
+
+    steps:
+      - name: Repository laden
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Abhängigkeiten reproduzierbar installieren
+        run: npm ci
+
+      - name: Gemeinsame Verträge bauen
+        run: npm run build --workspace @api-client/contracts
+
+      - name: Web-Anwendung bauen
+        run: npm run build --workspace @api-client/web
+
+      - name: Unsigniertes Windows-Paket bauen
+        run: npm run package --workspace @api-client/desktop -- --platform=win32 --arch=x64
+
+      - name: Paketinhalt prüfen
+        shell: pwsh
+        run: |
+          $application = "apps/desktop/out/Relay-win32-x64/Relay.exe"
+          $archive = "apps/desktop/out/Relay-win32-x64/resources/app.asar"
+          foreach ($file in @($application, $archive)) {
+            if (-not (Test-Path $file)) {
+              throw "Erwartete Paketdatei fehlt: $file"
+            }
+          }
+          $productName = (Get-Item $application).VersionInfo.ProductName
+          if ($productName -ne "Relay") {
+            throw "Unerwarteter Produktname: $productName"
+          }
+
   end-to-end:
     name: Kritische Browserabläufe
     runs-on: ubuntu-24.04
@@ -63,6 +105,23 @@ jobs:
 
       - name: Stack starten
         run: npm run compose:up
+
+      - name: Datenbank-, RLS- und Parallelitätstests
+        run: npm run test:database
+
+      - name: Kontrollierter Lasttest
+        run: npm run test:load
+
+      - name: Backup erstellen und Wiederherstellung prüfen
+        run: |
+          docker compose \
+            --env-file .env.compose \
+            -f compose.yaml \
+            -f compose.local.yaml \
+            exec -T db \
+            pg_dump -U supabase_admin -d postgres -Fc \
+            > /tmp/devapi-ci.dump
+          ./scripts/verify-database-backup.sh --local /tmp/devapi-ci.dump
 
       - name: End-to-End-Tests
         run: npm run test:e2e

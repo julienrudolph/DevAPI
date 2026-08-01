@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { Navigate, useLocation } from "react-router";
 import { z } from "zod";
 
+import { Button, Input } from "../../components/ui";
 import { useAuth } from "./auth-context";
 import { DesktopServerSetup } from "./desktop-server-setup";
 
@@ -159,15 +160,14 @@ export function LoginPage() {
 
         {env?.oidcProvider ? (
           <>
-            <button
-              className="button oidc-button"
+            <Button
+              className="oidc-button"
               disabled={submitting}
               onClick={signInWithOidc}
-              type="button"
             >
               <Building2 aria-hidden="true" size={17} />
               {env.oidcLabel ?? "Mit Firmenkonto anmelden"}
-            </button>
+            </Button>
             <div className="login-divider">
               <span>oder</span>
             </div>
@@ -176,51 +176,50 @@ export function LoginPage() {
 
         {env?.passwordAuthEnabled && env.passwordSignupEnabled ? (
           <div className="auth-mode-switch" role="group" aria-label="Anmeldemodus">
-            <button
+            <Button
               aria-pressed={mode === "signin"}
               className={mode === "signin" ? "active" : undefined}
               onClick={() => {
                 setMode("signin");
                 setMessage(undefined);
               }}
-              type="button"
+              variant="ghost"
             >
               Anmelden
-            </button>
-            <button
+            </Button>
+            <Button
               aria-pressed={mode === "signup"}
               className={mode === "signup" ? "active" : undefined}
               onClick={() => {
                 setMode("signup");
                 setMessage(undefined);
               }}
-              type="button"
+              variant="ghost"
             >
               Registrieren
-            </button>
+            </Button>
           </div>
         ) : null}
 
         {env?.passwordAuthEnabled || env?.magicLinkAuthEnabled ? (
         <form onSubmit={handleSubmit(submitCredentials)}>
           <label htmlFor="email">E-Mail-Adresse</label>
-          <div className="login-input">
-            <Mail aria-hidden="true" size={17} />
-            <input
+            <Input
               autoComplete="email"
+              className="login-input"
+              contentBefore={<Mail aria-hidden="true" size={17} />}
               id="email"
               placeholder="name@unternehmen.de"
               type="email"
               {...register("email")}
             />
-          </div>
           {formState.errors.email ? (
             <p className="field-error">{formState.errors.email.message}</p>
           ) : null}
           {env?.passwordAuthEnabled ? (
             <>
               <label htmlFor="password">Passwort</label>
-              <input
+              <Input
                 autoComplete={
                   mode === "signup" ? "new-password" : "current-password"
                 }
@@ -234,13 +233,14 @@ export function LoginPage() {
                   {formState.errors.password.message}
                 </p>
               ) : null}
-              <button
-                className="button primary login-submit"
+              <Button
+                className="login-submit"
                 disabled={submitting || configurationError}
                 type="submit"
+                variant="primary"
               >
                 {mode === "signup" ? "Konto erstellen" : "Anmelden"}
-              </button>
+              </Button>
               {mode === "signin" ? (
                 <button
                   className="revision-link login-forgot-password"
@@ -254,16 +254,14 @@ export function LoginPage() {
             </>
           ) : null}
           {env?.magicLinkAuthEnabled && mode === "signin" ? (
-            <button
-              className={`button login-submit ${
-                env.passwordAuthEnabled ? "secondary" : "primary"
-              }`}
+            <Button
+              className="login-submit"
               disabled={submitting || configurationError}
               onClick={() => void sendMagicLink()}
-              type="button"
+              variant={env.passwordAuthEnabled ? "secondary" : "primary"}
             >
               Anmeldelink senden
-            </button>
+            </Button>
           ) : null}
         </form>
         ) : null}

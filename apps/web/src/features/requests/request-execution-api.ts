@@ -245,7 +245,7 @@ function parseFormLines(content: string): [string, string][] {
       const separator = line.indexOf("=");
       const key = (separator < 0 ? line : line.slice(0, separator)).trim();
       const value = separator < 0 ? "" : line.slice(separator + 1);
-      if (!key || /[\"\r\n]/.test(key)) {
+      if (!key || /["\r\n]/.test(key)) {
         throw new Error("Formularfeldname ist ungültig.");
       }
       return [key, value];

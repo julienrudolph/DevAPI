@@ -3,6 +3,13 @@ import {
   type RequestSummary,
 } from "@api-client/contracts";
 import {
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
+} from "@fluentui/react-components";
+import {
   ChevronDown,
   ChevronRight,
   ArrowDown,
@@ -27,6 +34,10 @@ import {
   X,
 } from "lucide-react";
 import {
+  Children,
+  isValidElement,
+  type ButtonHTMLAttributes,
+  type MouseEvent,
   type ReactNode,
   useEffect,
   useMemo,
@@ -35,6 +46,13 @@ import {
 } from "react";
 import { useNavigate, useParams } from "react-router";
 
+import {
+  Button,
+  Dialog,
+  DialogFooter,
+  IconButton,
+  Select,
+} from "../../components/ui";
 import { RequestEditor } from "../requests/request-editor";
 import { RequestConflictError } from "../requests/request-api";
 import {
@@ -128,51 +146,50 @@ function TreeActionMenu({
   children: ReactNode;
   label: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const closeOnOutsideInteraction = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("pointerdown", closeOnOutsideInteraction);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnOutsideInteraction);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [open]);
-
   return (
-    <div className="tree-menu" ref={menuRef}>
-      <button
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-label={label}
-        className="icon-button compact tree-menu-trigger"
-        onClick={(event) => {
-          event.stopPropagation();
-          setOpen((current) => !current);
-        }}
-        type="button"
-      >
-        <MoreHorizontal aria-hidden="true" size={16} />
-      </button>
-      {open ? (
-        <div
-          className="tree-menu-popover"
-          onClickCapture={(event) => {
-            if ((event.target as HTMLElement).closest("button")) setOpen(false);
-          }}
-          role="menu"
-        >
-          {children}
-        </div>
-      ) : null}
+    <div className="tree-menu">
+      <Menu positioning="below-end">
+        <MenuTrigger disableButtonEnhancement>
+          <IconButton
+            aria-label={label}
+            className="tree-menu-trigger"
+            size="compact"
+          >
+            <MoreHorizontal aria-hidden="true" size={16} />
+          </IconButton>
+        </MenuTrigger>
+        <MenuPopover className="tree-menu-popover">
+          <MenuList>
+          {Children.map(children, (child) => {
+            if (
+              !isValidElement<ButtonHTMLAttributes<HTMLButtonElement>>(child)
+            ) {
+              return child;
+            }
+            const onClick = child.props.onClick;
+            return (
+              <MenuItem
+                aria-label={child.props["aria-label"]}
+                className={
+                  child.props.className === "danger"
+                    ? "relay-danger"
+                    : undefined
+                }
+                disabled={child.props.disabled}
+                onClick={(event) =>
+                  onClick?.(
+                    event as unknown as MouseEvent<HTMLButtonElement>,
+                  )
+                }
+                title={child.props.title}
+              >
+                {child.props.children}
+              </MenuItem>
+            );
+          })}
+          </MenuList>
+        </MenuPopover>
+      </Menu>
     </div>
   );
 }
@@ -663,9 +680,9 @@ export function WorkspacePage() {
     return (
       <main className="centered-state">
         <h1>Workspaces konnten nicht geladen werden</h1>
-        <button className="button secondary" onClick={() => workspaces.refetch()}>
+        <Button onClick={() => workspaces.refetch()}>
           Erneut versuchen
-        </button>
+        </Button>
       </main>
     );
   }
@@ -710,9 +727,9 @@ export function WorkspacePage() {
             </span>
             <ChevronDown aria-hidden="true" size={16} />
           </label>
-          <button
+          <IconButton
             aria-label="Workspace erstellen"
-            className="icon-button workspace-create-button"
+            className="workspace-create-button"
             disabled={activeWorkspace.role !== "owner"}
             onClick={() => setCreatingWorkspace(true)}
             title={
@@ -720,23 +737,21 @@ export function WorkspacePage() {
                 ? "Workspace in diesem Team erstellen"
                 : "Nur Team-Owner können Workspaces erstellen"
             }
-            type="button"
           >
             <Plus aria-hidden="true" size={17} />
-          </button>
+          </IconButton>
         </div>
 
         <div className="sidebar-heading">
           <span>Collections</span>
           {canEdit ? (
-            <button
-              className="icon-button compact"
-              onClick={() => setCreatingCollection(true)}
-              type="button"
+            <IconButton
               aria-label="Collection erstellen"
+              onClick={() => setCreatingCollection(true)}
+              size="compact"
             >
               <Plus aria-hidden="true" size={16} />
-            </button>
+            </IconButton>
           ) : null}
         </div>
 
@@ -1151,7 +1166,7 @@ export function WorkspacePage() {
               <div
                 aria-label="Geöffnete Requests"
                 className="request-tabs"
-                role="tablist"
+                role="navigation"
               >
                 {openRequests.map((request) => (
                   <div
@@ -1175,7 +1190,8 @@ export function WorkspacePage() {
                     }}
                   >
                     <button
-                      aria-selected={request.id === activeRequestId}
+                      aria-label={`${request.method} ${request.name} Tab`}
+                      aria-pressed={request.id === activeRequestId}
                       className="request-tab-select"
                       onClick={() => setActiveRequestId(request.id)}
                       onKeyDown={(event) => {
@@ -1194,7 +1210,6 @@ export function WorkspacePage() {
                           reorderRequestIds(current, request.id, targetId),
                         );
                       }}
-                      role="tab"
                       title="Zum Sortieren ziehen oder Alt + Pfeiltaste verwenden"
                       type="button"
                     >
@@ -1263,22 +1278,18 @@ export function WorkspacePage() {
               <div className="toolbar-actions">
                 {activeWorkspace.role === "owner" ? (
                   <>
-                    <button
-                      className="button secondary"
+                    <Button
                       onClick={() => setManagingTeam(true)}
-                      type="button"
                     >
                       <Users aria-hidden="true" size={16} />
                       Team
-                    </button>
-                    <button
-                      className="button secondary"
+                    </Button>
+                    <Button
                       onClick={() => setInviting(true)}
-                      type="button"
                     >
                       <UserPlus aria-hidden="true" size={16} />
                       Einladen
-                    </button>
+                    </Button>
                   </>
                 ) : null}
                 <EnvironmentControls
@@ -1289,18 +1300,15 @@ export function WorkspacePage() {
                 />
                 {canEdit && activeRequest.collectionId ? (
                   <>
-                    <button
-                      className="button secondary"
+                    <Button
                       disabled={duplicateRequest.isPending}
                       onClick={() => duplicateNavigationRequest(activeRequest)}
                       title="Dupliziert die zuletzt gespeicherte Version"
-                      type="button"
                     >
                       <Copy aria-hidden="true" size={16} />
                       Duplizieren
-                    </button>
-                    <button
-                      className="button secondary"
+                    </Button>
+                    <Button
                       disabled={dirtyRequestIds.has(activeRequest.id)}
                       onClick={() => startMovingRequest(activeRequest)}
                       title={
@@ -1308,27 +1316,24 @@ export function WorkspacePage() {
                           ? "Speichere den Request vor dem Verschieben"
                           : undefined
                       }
-                      type="button"
                     >
                       <FolderInput aria-hidden="true" size={16} />
                       Verschieben
-                    </button>
+                    </Button>
                   </>
                 ) : null}
                 {canEdit ? (
-                  <button
-                    className="button danger"
+                  <Button
                     disabled={deleteRequest.isPending}
                     onClick={() => removeRequestItem(activeRequest)}
-                    type="button"
+                    variant="danger"
                   >
                     <Trash2 aria-hidden="true" size={16} />
                     Löschen
-                  </button>
+                  </Button>
                 ) : null}
                 {canEdit ? (
-                  <button
-                    className="button secondary"
+                  <Button
                     form={`request-form-${activeRequest.id}`}
                     name="intent"
                     type="submit"
@@ -1336,18 +1341,18 @@ export function WorkspacePage() {
                   >
                     <Save aria-hidden="true" size={16} />
                     Speichern
-                  </button>
+                  </Button>
                 ) : null}
-                <button
-                  className="button primary"
+                <Button
                   form={`request-form-${activeRequest.id}`}
                   name="intent"
                   type="submit"
                   value="execute"
+                  variant="primary"
                 >
                   <Send aria-hidden="true" size={16} />
                   Senden
-                </button>
+                </Button>
               </div>
             </div>
             {openRequests.map((request) => (
@@ -1375,22 +1380,18 @@ export function WorkspacePage() {
             <p>Wähle einen Request oder erstelle einen neuen.</p>
             {activeWorkspace.role === "owner" ? (
               <div className="empty-actions">
-                <button
-                  className="button secondary"
+                <Button
                   onClick={() => setManagingTeam(true)}
-                  type="button"
                 >
                   <Users aria-hidden="true" size={16} />
                   Team verwalten
-                </button>
-                <button
-                  className="button secondary"
+                </Button>
+                <Button
                   onClick={() => setInviting(true)}
-                  type="button"
                 >
                   <UserPlus aria-hidden="true" size={16} />
                   Mitglied einladen
-                </button>
+                </Button>
               </div>
             ) : null}
           </div>
@@ -1428,13 +1429,10 @@ export function WorkspacePage() {
         />
       ) : null}
       {movingRequest && activeRequest ? (
-        <div className="modal-backdrop" role="presentation">
-          <section
-            aria-labelledby="move-request-title"
-            aria-modal="true"
-            className="conflict-dialog"
-            role="dialog"
-          >
+        <Dialog
+          onClose={() => setMovingRequest(false)}
+          titleId="move-request-title"
+        >
             <h2 id="move-request-title">Request verschieben</h2>
             <p>
               Wähle die neue Collection und optional einen zugehörigen Ordner.
@@ -1442,7 +1440,7 @@ export function WorkspacePage() {
             <div className="move-request-fields">
               <label>
                 Collection
-                <select
+                <Select
                   onChange={(event) => {
                     setDestinationCollectionId(event.target.value);
                     setDestinationFolderId("");
@@ -1454,11 +1452,11 @@ export function WorkspacePage() {
                       {collection.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label>
                 Ordner
-                <select
+                <Select
                   onChange={(event) =>
                     setDestinationFolderId(event.target.value)
                   }
@@ -1475,7 +1473,7 @@ export function WorkspacePage() {
                         {folder.name}
                       </option>
                     ))}
-                </select>
+                </Select>
               </label>
             </div>
             {managementError ? (
@@ -1483,16 +1481,13 @@ export function WorkspacePage() {
                 {managementError}
               </p>
             ) : null}
-            <div className="dialog-actions">
-              <button
-                className="button secondary"
+            <DialogFooter>
+              <Button
                 onClick={() => setMovingRequest(false)}
-                type="button"
               >
                 Abbrechen
-              </button>
-              <button
-                className="button primary"
+              </Button>
+              <Button
                 disabled={!destinationCollectionId || moveRequest.isPending}
                 onClick={() => {
                   if (!destinationCollectionId) return;
@@ -1510,22 +1505,19 @@ export function WorkspacePage() {
                       ),
                     );
                 }}
-                type="button"
+                variant="primary"
               >
                 Verschieben
-              </button>
-            </div>
-          </section>
-        </div>
+              </Button>
+            </DialogFooter>
+        </Dialog>
       ) : null}
       {creatingWorkspace ? (
-        <div className="modal-backdrop" role="presentation">
-          <section
-            aria-labelledby="create-workspace-title"
-            aria-modal="true"
-            className="conflict-dialog workspace-create-dialog"
-            role="dialog"
-          >
+        <Dialog
+          className="workspace-create-dialog"
+          onClose={() => setCreatingWorkspace(false)}
+          titleId="create-workspace-title"
+        >
             <h2 id="create-workspace-title">Workspace erstellen</h2>
             <p>
               Lege einen weiteren gemeinsamen Workspace im Team von{" "}
@@ -1533,17 +1525,14 @@ export function WorkspacePage() {
               Teammitglieder erhalten automatisch Zugriff.
             </p>
             <WorkspaceCreateForm teamId={activeWorkspace.teamId} />
-            <div className="dialog-actions">
-              <button
-                className="button secondary"
+            <DialogFooter>
+              <Button
                 onClick={() => setCreatingWorkspace(false)}
-                type="button"
               >
                 Abbrechen
-              </button>
-            </div>
-          </section>
-        </div>
+              </Button>
+            </DialogFooter>
+        </Dialog>
       ) : null}
     </div>
   );

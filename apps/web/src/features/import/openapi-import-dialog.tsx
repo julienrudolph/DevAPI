@@ -2,6 +2,13 @@ import type { CollectionSummary, RequestSummary } from "@api-client/contracts";
 import { FileUp } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import {
+  Button,
+  Dialog,
+  DialogFooter,
+  Select,
+  Textarea,
+} from "../../components/ui";
 import { useCreateRequest } from "../workspaces/workspace-queries";
 import { parseOpenApi, type OpenApiImport } from "./openapi";
 import { parsePostmanCollection } from "./postman";
@@ -30,13 +37,11 @@ export function OpenApiImportDialog({
   );
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section
-        aria-labelledby="openapi-import-title"
-        aria-modal="true"
-        className="conflict-dialog openapi-import-dialog"
-        role="dialog"
-      >
+    <Dialog
+      className="openapi-import-dialog"
+      onClose={onClose}
+      titleId="openapi-import-title"
+    >
         <div className="team-members-heading">
           <span className="member-avatar">
             <FileUp aria-hidden="true" size={18} />
@@ -51,11 +56,12 @@ export function OpenApiImportDialog({
         </div>
         {!parsed ? (
           <>
-            <label className="openapi-source">
+            <label className="openapi-source" htmlFor="openapi-document">
               OpenAPI-Dokument
-              <textarea
+              <Textarea
                 aria-label="OpenAPI-Dokument"
                 autoFocus
+                id="openapi-document"
                 onChange={(event) => setSource(event.target.value)}
                 placeholder="Datei hier einfügen oder auswählen …"
                 rows={12}
@@ -85,7 +91,7 @@ export function OpenApiImportDialog({
             </div>
             <label>
               Ziel-Collection
-              <select
+              <Select
                 aria-label="Ziel-Collection"
                 onChange={(event) => setCollectionId(event.target.value)}
                 value={collectionId}
@@ -95,7 +101,7 @@ export function OpenApiImportDialog({
                     {collection.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <div className="openapi-operation-list">
               {parsed.requests.map((request) => (
@@ -105,9 +111,11 @@ export function OpenApiImportDialog({
                     onChange={(event) =>
                       setSelectedIds((current) => {
                         const next = new Set(current);
-                        event.target.checked
-                          ? next.add(request.importId)
-                          : next.delete(request.importId);
+                        if (event.target.checked) {
+                          next.add(request.importId);
+                        } else {
+                          next.delete(request.importId);
+                        }
                         return next;
                       })
                     }
@@ -127,13 +135,12 @@ export function OpenApiImportDialog({
         )}
         {error ? <p className="field-error">{error}</p> : null}
         {progress ? <p aria-live="polite">{progress}</p> : null}
-        <div className="dialog-actions">
-          <button className="button secondary" onClick={onClose} type="button">
+        <DialogFooter>
+          <Button onClick={onClose}>
             Abbrechen
-          </button>
+          </Button>
           {!parsed ? (
-            <button
-              className="button primary"
+            <Button
               disabled={!source.trim()}
               onClick={() => {
                 try {
@@ -160,13 +167,12 @@ export function OpenApiImportDialog({
                   );
                 }
               }}
-              type="button"
+              variant="primary"
             >
               Vorschau erstellen
-            </button>
+            </Button>
           ) : (
-            <button
-              className="button primary"
+            <Button
               disabled={
                 !collectionId ||
                 selectedRequests.length === 0 ||
@@ -197,13 +203,12 @@ export function OpenApiImportDialog({
                   setProgress(undefined);
                 }
               }}
-              type="button"
+              variant="primary"
             >
               {selectedRequests.length} Requests importieren
-            </button>
+            </Button>
           )}
-        </div>
-      </section>
-    </div>
+        </DialogFooter>
+    </Dialog>
   );
 }

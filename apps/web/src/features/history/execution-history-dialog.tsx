@@ -1,6 +1,17 @@
 import { Clock3, ExternalLink, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  FieldError,
+  IconButton,
+  Input,
+  Select,
+} from "../../components/ui";
 import { useExecutionHistory } from "./execution-history-queries";
 
 export function ExecutionHistoryDialog({
@@ -34,37 +45,39 @@ export function ExecutionHistoryDialog({
   }, [history.data, query, status]);
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section
-        aria-labelledby="execution-history-title"
-        aria-modal="true"
-        className="conflict-dialog execution-history-dialog"
-        role="dialog"
-      >
-        <div className="team-members-heading">
-          <span className="member-avatar">
-            <Clock3 aria-hidden="true" size={18} />
-          </span>
-          <div>
-            <h2 id="execution-history-title">Request-Verlauf</h2>
-            <p>Maximal 100 Einträge aus den letzten 30 Tagen.</p>
-          </div>
+    <Dialog
+      className="execution-history-dialog"
+      descriptionId="execution-history-description"
+      onClose={onClose}
+      titleId="execution-history-title"
+    >
+      <DialogHeader>
+        <span className="member-avatar">
+          <Clock3 aria-hidden="true" size={18} />
+        </span>
+        <div>
+          <h2 id="execution-history-title">Request-Verlauf</h2>
+          <p id="execution-history-description">
+            Maximal 100 Einträge aus den letzten 30 Tagen.
+          </p>
         </div>
+      </DialogHeader>
 
+      <DialogBody>
         {!history.isPending && !history.isError && history.data.length > 0 ? (
           <div className="history-filters">
-            <label>
+            <div className="history-search-field">
               <Search aria-hidden="true" size={15} />
               <span className="sr-only">Verlauf durchsuchen</span>
-              <input
+              <Input
                 aria-label="Verlauf durchsuchen"
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Request, Methode, Status, Person"
                 type="search"
                 value={query}
               />
-            </label>
-            <select
+            </div>
+            <Select
               aria-label="Verlauf nach Status filtern"
               onChange={(event) =>
                 setStatus(
@@ -76,14 +89,14 @@ export function ExecutionHistoryDialog({
               <option value="all">Alle Ergebnisse</option>
               <option value="successful">Erfolgreich</option>
               <option value="failed">Fehlgeschlagen</option>
-            </select>
+            </Select>
           </div>
         ) : null}
 
         {history.isPending ? (
           <p className="dialog-state">Verlauf wird geladen …</p>
         ) : history.isError ? (
-          <p className="field-error">Der Verlauf konnte nicht geladen werden.</p>
+          <FieldError>Der Verlauf konnte nicht geladen werden.</FieldError>
         ) : history.data.length === 0 ? (
           <p className="dialog-state">Noch keine Requests ausgeführt.</p>
         ) : filteredHistory.length === 0 ? (
@@ -116,18 +129,17 @@ export function ExecutionHistoryDialog({
                   {execution.durationMs} ms
                 </span>
                 {onOpenRequest ? (
-                  <button
+                  <IconButton
                     aria-label={`${execution.requestName} öffnen`}
-                    className="icon-button compact"
                     onClick={() => {
                       onOpenRequest(execution.requestId);
                       onClose();
                     }}
                     title="Request in einem Tab öffnen"
-                    type="button"
+                    size="compact"
                   >
                     <ExternalLink aria-hidden="true" size={14} />
-                  </button>
+                  </IconButton>
                 ) : null}
               </article>
             ))}
@@ -138,12 +150,12 @@ export function ExecutionHistoryDialog({
           URL, Header, Zugangsdaten sowie Request- und Response-Inhalte werden
           nicht im Verlauf gespeichert.
         </p>
-        <div className="dialog-actions">
-          <button className="button primary" onClick={onClose} type="button">
-            Schließen
-          </button>
-        </div>
-      </section>
-    </div>
+      </DialogBody>
+      <DialogFooter>
+        <Button onClick={onClose} variant="primary">
+          Schließen
+        </Button>
+      </DialogFooter>
+    </Dialog>
   );
 }

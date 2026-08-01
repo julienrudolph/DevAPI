@@ -1,6 +1,14 @@
 import type { ApiRequest } from "@api-client/contracts";
 import { History, RotateCcw } from "lucide-react";
 
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  FieldError,
+} from "../../components/ui";
 import { RequestConflictError } from "../requests/request-api";
 import {
   useRequestRevisions,
@@ -33,29 +41,29 @@ export function RevisionDialog({
   const restore = useRestoreRequestRevision(workspaceId, requestId);
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section
-        aria-labelledby="revision-title"
-        aria-modal="true"
-        className="conflict-dialog revision-dialog"
-        role="dialog"
-      >
-        <div className="team-members-heading">
-          <span className="member-avatar">
-            <History aria-hidden="true" size={18} />
-          </span>
-          <div>
-            <h2 id="revision-title">Versionen</h2>
-            <p>Frühere gespeicherte Fassungen dieses Requests.</p>
-          </div>
+    <Dialog
+      className="revision-dialog"
+      descriptionId="revision-description"
+      onClose={onClose}
+      titleId="revision-title"
+    >
+      <DialogHeader>
+        <span className="member-avatar">
+          <History aria-hidden="true" size={18} />
+        </span>
+        <div>
+          <h2 id="revision-title">Versionen</h2>
+          <p id="revision-description">
+            Frühere gespeicherte Fassungen dieses Requests.
+          </p>
         </div>
+      </DialogHeader>
 
+      <DialogBody>
         {revisions.isPending ? (
           <p className="dialog-state">Versionen werden geladen …</p>
         ) : revisions.isError ? (
-          <p className="field-error">
-            Die Versionen konnten nicht geladen werden.
-          </p>
+          <FieldError>Die Versionen konnten nicht geladen werden.</FieldError>
         ) : revisions.data.length === 0 ? (
           <p className="dialog-state">Noch keine frühere Version vorhanden.</p>
         ) : (
@@ -79,8 +87,7 @@ export function RevisionDialog({
                   </small>
                 </span>
                 {canRestore ? (
-                  <button
-                    className="button secondary"
+                  <Button
                     disabled={restore.isPending}
                     onClick={() => {
                       if (
@@ -102,7 +109,7 @@ export function RevisionDialog({
                   >
                     <RotateCcw aria-hidden="true" size={14} />
                     Wiederherstellen
-                  </button>
+                  </Button>
                 ) : null}
               </article>
             ))}
@@ -110,25 +117,25 @@ export function RevisionDialog({
         )}
 
         {restore.error instanceof RequestConflictError ? (
-          <p className="field-error">
+          <FieldError>
             Der Request wurde zwischenzeitlich geändert. Schließe den Dialog
             und lade die aktuelle Version.
-          </p>
+          </FieldError>
         ) : restore.isError ? (
-          <p className="field-error">
+          <FieldError>
             Die Version konnte nicht wiederhergestellt werden.
-          </p>
+          </FieldError>
         ) : null}
         <p className="security-hint">
           Gespeicherte Header-Werte werden aus Sicherheitsgründen nicht
           wiederhergestellt.
         </p>
-        <div className="dialog-actions">
-          <button className="button primary" onClick={onClose} type="button">
-            Schließen
-          </button>
-        </div>
-      </section>
-    </div>
+      </DialogBody>
+      <DialogFooter>
+        <Button onClick={onClose} variant="primary">
+          Schließen
+        </Button>
+      </DialogFooter>
+    </Dialog>
   );
 }

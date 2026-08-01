@@ -96,6 +96,12 @@ werden:
 npm run make:windows
 ```
 
+Jeder Pull Request und jeder Push auf `main` baut außerdem ein unsigniertes
+Windows-x64-Paket. Dieser CI-Test prüft, dass Electron-Anwendung, `app.asar`
+und Windows-Metadaten auch ohne Signing-Secrets reproduzierbar erzeugt werden.
+Die geschützte Release-Pipeline bleibt zusätzlich für Installer,
+Authenticode-Signatur und Installationstest verantwortlich.
+
 ### Windows-Installer Schritt für Schritt
 
 Auf einem Windows-10- oder Windows-11-Rechner werden benötigt:

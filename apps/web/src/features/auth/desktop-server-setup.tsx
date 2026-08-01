@@ -1,6 +1,8 @@
 import { ServerCog } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { Button, Input } from "../../components/ui";
+
 export function DesktopServerSetup() {
   const bridge = window.devapiDesktop;
   const [serverUrl, setServerUrl] = useState("");
@@ -53,7 +55,7 @@ export function DesktopServerSetup() {
           DevAPI-Server.
         </p>
         <label htmlFor="desktop-server-url">Serveradresse</label>
-        <input
+        <Input
           autoFocus
           id="desktop-server-url"
           onChange={(event) => setServerUrl(event.target.value)}
@@ -71,13 +73,14 @@ export function DesktopServerSetup() {
             {error}
           </p>
         ) : null}
-        <button
-          className="button primary login-submit"
+        <Button
+          className="login-submit"
           disabled={saving}
           type="submit"
+          variant="primary"
         >
           {saving ? "Verbindung wird gespeichert …" : "Mit Server verbinden"}
-        </button>
+        </Button>
       </form>
     </main>
   );

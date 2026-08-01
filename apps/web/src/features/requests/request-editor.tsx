@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Tab, TabList } from "@fluentui/react-components";
 import {
   type ApiRequest,
   type EnvironmentVariable,
@@ -25,6 +26,13 @@ import {
   type UseFormRegister,
 } from "react-hook-form";
 
+import {
+  Button,
+  Dialog,
+  DialogFooter,
+  IconButton,
+  Textarea,
+} from "../../components/ui";
 import { RequestConflictError } from "./request-api";
 import { RequestExecutionError } from "./request-execution-api";
 import { formatCurl, parseCurl } from "./curl";
@@ -76,6 +84,8 @@ interface RequestEditorProps {
   variables?: EnvironmentVariable[];
 }
 
+type RequestConfigurationTab = "params" | "headers" | "body" | "auth";
+
 export function RequestEditor({
   formId = "request-form",
   requestId,
@@ -93,9 +103,9 @@ export function RequestEditor({
     return (
       <div className="centered-state">
         <p>Der Request konnte nicht geladen werden.</p>
-        <button className="button secondary" onClick={() => request.refetch()}>
+        <Button onClick={() => request.refetch()}>
           Erneut versuchen
-        </button>
+        </Button>
       </div>
     );
   }
@@ -127,7 +137,8 @@ function LoadedRequestEditor({
   readOnly: boolean;
   variables: EnvironmentVariable[];
 }) {
-  const [activeTab, setActiveTab] = useState("params");
+  const [activeTab, setActiveTab] =
+    useState<RequestConfigurationTab>("params");
   const [auth, setAuth] = useState<RequestAuth>({ type: "none" });
   const [conflict, setConflict] = useState<RequestConflict>();
   const [baseVersion, setBaseVersion] = useState(request.version);
@@ -348,25 +359,25 @@ function LoadedRequestEditor({
           </div>
         ) : null}
 
-        <div className="tabs" role="tablist" aria-label="Request-Konfiguration">
+        <TabList
+          aria-label="Request-Konfiguration"
+          className="fluent-tabs"
+          onTabSelect={(_, data) =>
+            setActiveTab(data.value as RequestConfigurationTab)
+          }
+          selectedValue={activeTab}
+        >
           {([
             ["params", "Parameter"],
             ["headers", "Header"],
             ["body", "Body"],
             ["auth", "Authentifizierung"],
           ] as const).map(([id, label]) => (
-            <button
-              aria-selected={activeTab === id}
-              className={activeTab === id ? "active" : ""}
-              key={id}
-              onClick={() => setActiveTab(id)}
-              role="tab"
-              type="button"
-            >
+            <Tab key={id} value={id}>
               {label}
-            </button>
+            </Tab>
           ))}
-        </div>
+        </TabList>
 
         <div className="editor-panel">
           {activeTab === "params" ? (
@@ -599,28 +610,22 @@ function LoadedRequestEditor({
                 </div>
               ) : null}
               <div className="response-toolbar">
-                <div aria-label="Response-Ansicht" className="response-tabs">
-                  <button
-                    aria-selected={responseTab === "body"}
-                    className={responseTab === "body" ? "active" : undefined}
-                    onClick={() => setResponseTab("body")}
-                    role="tab"
-                    type="button"
-                  >
+                <TabList
+                  aria-label="Response-Ansicht"
+                  className="response-tabs"
+                  onTabSelect={(_, data) =>
+                    setResponseTab(data.value as "body" | "headers")
+                  }
+                  selectedValue={responseTab}
+                  size="small"
+                >
+                  <Tab value="body">
                     Body
-                  </button>
-                  <button
-                    aria-selected={responseTab === "headers"}
-                    className={
-                      responseTab === "headers" ? "active" : undefined
-                    }
-                    onClick={() => setResponseTab("headers")}
-                    role="tab"
-                    type="button"
-                  >
+                  </Tab>
+                  <Tab value="headers">
                     Header ({Object.keys(execution.data.headers).length})
-                  </button>
-                </div>
+                  </Tab>
+                </TabList>
                 <div className="response-actions">
                   <label className="response-search">
                     <Search aria-hidden="true" size={14} />
@@ -644,8 +649,8 @@ function LoadedRequestEditor({
                       </span>
                     ) : null}
                   </label>
-                  <button
-                    className="icon-button"
+                  <IconButton
+                    aria-label="Response kopieren"
                     onClick={() =>
                       void navigator.clipboard.writeText(
                         responseTab === "body"
@@ -654,13 +659,11 @@ function LoadedRequestEditor({
                       )
                     }
                     title="Aktuelle Response-Ansicht kopieren"
-                    type="button"
                   >
                     <ClipboardCopy aria-hidden="true" size={15} />
-                    <span className="sr-only">Response kopieren</span>
-                  </button>
-                  <button
-                    className="icon-button"
+                  </IconButton>
+                  <IconButton
+                    aria-label="Response-Body herunterladen"
                     onClick={() =>
                       downloadResponseBody(
                         execution.data.body,
@@ -668,13 +671,9 @@ function LoadedRequestEditor({
                       )
                     }
                     title="Response-Body herunterladen"
-                    type="button"
                   >
                     <Download aria-hidden="true" size={15} />
-                    <span className="sr-only">
-                      Response-Body herunterladen
-                    </span>
-                  </button>
+                  </IconButton>
                 </div>
               </div>
               <div className="response-content" role="tabpanel">
@@ -694,13 +693,10 @@ function LoadedRequestEditor({
       </form>
 
       {conflict ? (
-        <div className="modal-backdrop" role="presentation">
-          <section
-            aria-labelledby="conflict-title"
-            aria-modal="true"
-            className="conflict-dialog"
-            role="dialog"
-          >
+        <Dialog
+          onClose={() => setConflict(undefined)}
+          titleId="conflict-title"
+        >
             <h2 id="conflict-title">Request wurde zwischenzeitlich geändert</h2>
             <p>
               Die Team-Version ist jetzt Version {conflict.currentVersion}.
@@ -716,36 +712,30 @@ function LoadedRequestEditor({
                 <dd>{conflict.current.url}</dd>
               </div>
             </dl>
-            <div className="dialog-actions">
-              <button
-                className="button secondary"
+            <DialogFooter>
+              <Button
                 onClick={() => {
                   reset(toDraft(conflict.current));
                   setBaseVersion(conflict.currentVersion);
                   setConflict(undefined);
                 }}
-                type="button"
               >
                 Team-Version übernehmen
-              </button>
-              <button
-                className="button secondary"
+              </Button>
+              <Button
                 onClick={() => setConflict(undefined)}
-                type="button"
               >
                 Weiter bearbeiten
-              </button>
-              <button
-                className="button primary"
+              </Button>
+              <Button
                 disabled={mutation.isPending}
                 onClick={() => void save(getValues(), true)}
-                type="button"
+                variant="primary"
               >
                 Meine Version speichern
-              </button>
-            </div>
-          </section>
-        </div>
+              </Button>
+            </DialogFooter>
+        </Dialog>
       ) : null}
       {showingRevisions ? (
         <RevisionDialog
@@ -763,20 +753,18 @@ function LoadedRequestEditor({
         />
       ) : null}
       {showingCurlImport ? (
-        <div className="modal-backdrop" role="presentation">
-          <section
-            aria-labelledby="curl-import-title"
-            aria-modal="true"
-            className="conflict-dialog curl-import-dialog"
-            role="dialog"
-          >
+        <Dialog
+          className="curl-import-dialog"
+          onClose={() => setShowingCurlImport(false)}
+          titleId="curl-import-title"
+        >
             <h2 id="curl-import-title">cURL importieren</h2>
             <p>
               Das Kommando wird nur lokal ausgewertet und nicht ausgeführt.
               Vorhandene Request-Felder werden erst nach deiner Bestätigung
               ersetzt.
             </p>
-            <textarea
+            <Textarea
               aria-label="cURL-Kommando"
               autoFocus
               onChange={(event) => {
@@ -792,16 +780,13 @@ function LoadedRequestEditor({
                 {curlError}
               </p>
             ) : null}
-            <div className="dialog-actions">
-              <button
-                className="button secondary"
+            <DialogFooter>
+              <Button
                 onClick={() => setShowingCurlImport(false)}
-                type="button"
               >
                 Abbrechen
-              </button>
-              <button
-                className="button primary"
+              </Button>
+              <Button
                 onClick={() => {
                   try {
                     const imported = parseCurl(curlInput);
@@ -837,13 +822,12 @@ function LoadedRequestEditor({
                     );
                   }
                 }}
-                type="button"
+                variant="primary"
               >
                 Als Entwurf übernehmen
-              </button>
-            </div>
-          </section>
-        </div>
+              </Button>
+            </DialogFooter>
+        </Dialog>
       ) : null}
     </>
   );
@@ -1017,14 +1001,13 @@ function KeyValueTable({
           />
           <input type="hidden" {...register(`${field}.${index}.id`)} />
           {!readOnly ? (
-            <button
+            <IconButton
               aria-label="Eintrag entfernen"
-              className="icon-button compact"
               onClick={() => remove(index)}
-              type="button"
+              size="compact"
             >
               <Minus aria-hidden="true" size={14} />
-            </button>
+            </IconButton>
           ) : null}
         </div>
       ))}

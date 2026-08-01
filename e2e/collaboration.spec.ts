@@ -1,6 +1,26 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 const password = "Relay-E2E-Password-2026!";
+
+async function expectNoAccessibilityViolations(page: Page): Promise<void> {
+  const result = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    // Fluent UI/Tabster uses hidden, focusable sentinels to implement its
+    // keyboard focus traps. Axe treats the sentinels themselves as content,
+    // although they are never exposed as application controls.
+    .exclude("[data-tabster-dummy]")
+    .analyze();
+  expect(
+    result.violations,
+    result.violations
+      .map(
+        (violation) =>
+          `${violation.id}: ${violation.help} (${violation.nodes.length})`,
+      )
+      .join("\n"),
+  ).toEqual([]);
+}
 
 async function register(page: Page, email: string): Promise<void> {
   await page.goto("/login");
@@ -26,8 +46,9 @@ async function createRequest(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Collection erstellen" }).click();
   await page.getByLabel("Collection-Name").fill("Smoke");
   await page.getByRole("button", { name: "Erstellen", exact: true }).click();
+  await page.getByRole("button", { name: "Smoke Optionen" }).click();
   await page
-    .getByRole("button", { name: "Request in Smoke erstellen" })
+    .getByRole("menuitem", { name: "Request in Smoke erstellen" })
     .click();
   await page.getByLabel("Request-Name").fill("Health");
   await page.getByRole("button", { name: "Erstellen", exact: true }).click();
@@ -64,6 +85,7 @@ test("collaborative workspace, conflict, roles, and tenant isolation", async ({
   await createWorkspace(owner, `Team ${suffix}`, `Workspace ${suffix}`);
   const ownerWorkspaceUrl = owner.url();
   await createRequest(owner);
+  await expectNoAccessibilityViolations(owner);
 
   await owner.getByLabel("Request-URL").fill("https://example.com/");
   await owner.getByRole("button", { name: "Speichern" }).click();
@@ -81,7 +103,9 @@ test("collaborative workspace, conflict, roles, and tenant isolation", async ({
   await concurrent
     .getByRole("button", { name: "Einladung annehmen" })
     .click();
-  await concurrent.getByRole("button", { name: "GET Health" }).click();
+  await concurrent
+    .getByRole("button", { name: "GET Health", exact: true })
+    .click();
   await expect(concurrent.getByLabel("Request-URL")).toHaveValue(
     "https://example.com/",
   );
@@ -107,7 +131,9 @@ test("collaborative workspace, conflict, roles, and tenant isolation", async ({
   );
   await viewer.goto(invitationUrl);
   await viewer.getByRole("button", { name: "Einladung annehmen" }).click();
-  await viewer.getByRole("button", { name: "GET Health" }).click();
+  await viewer
+    .getByRole("button", { name: "GET Health", exact: true })
+    .click();
   await expect(viewer.getByRole("button", { name: "Senden" })).toBeVisible();
   await expect(
     viewer.getByRole("button", { name: "Speichern" }),

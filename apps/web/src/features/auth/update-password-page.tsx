@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { z } from "zod";
 
+import { Button, Input } from "../../components/ui";
 import { useAuth } from "./auth-context";
 
 const schema = z
@@ -44,7 +45,7 @@ export function UpdatePasswordPage() {
           })}
         >
           <label htmlFor="new-password">Neues Passwort</label>
-          <input
+          <Input
             autoComplete="new-password"
             className="login-password"
             id="new-password"
@@ -55,7 +56,7 @@ export function UpdatePasswordPage() {
             <p className="field-error">{formState.errors.password.message}</p>
           ) : null}
           <label htmlFor="password-confirmation">Passwort wiederholen</label>
-          <input
+          <Input
             autoComplete="new-password"
             className="login-password"
             id="password-confirmation"
@@ -67,9 +68,9 @@ export function UpdatePasswordPage() {
               {formState.errors.confirmation.message}
             </p>
           ) : null}
-          <button className="button primary login-submit" type="submit">
+          <Button className="login-submit" type="submit" variant="primary">
             Passwort speichern
-          </button>
+          </Button>
         </form>
         {message ? <p className="login-message" role="alert">{message}</p> : null}
       </section>

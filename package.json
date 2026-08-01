@@ -12,7 +12,7 @@
     "dev:web": "npm run dev --workspace @api-client/web",
     "dev:api": "npm run dev --workspace @api-client/api",
     "dev:proxy": "npm run dev --workspace @api-client/proxy",
-    "dev:desktop": "npm run build --workspace @api-client/web && npm run start --workspace @api-client/desktop",
+    "dev:desktop": "npm run build --workspace @api-client/contracts && npm run build --workspace @api-client/web && npm run start --workspace @api-client/desktop",
     "compose:env": "node scripts/generate-compose-env.mjs",
     "compose:config": "docker compose --env-file .env.compose -f compose.yaml -f compose.local.yaml config --quiet",
     "compose:config:ci": "docker compose --env-file .env.compose.example -f compose.yaml -f compose.local.yaml config --quiet",
@@ -23,14 +23,16 @@
     "compose:selfhosted:up": "docker compose --env-file .env.selfhosted -f compose.yaml -f compose.selfhosted.yaml -f compose.npm-proxy.yaml up -d --build --wait",
     "compose:selfhosted:down": "docker compose --env-file .env.selfhosted -f compose.yaml -f compose.selfhosted.yaml -f compose.npm-proxy.yaml down",
     "build": "npm run build --workspace @api-client/contracts && npm run build --workspace @api-client/api && npm run build --workspace @api-client/proxy && npm run build --workspace @api-client/web",
-    "build:desktop": "npm run build --workspace @api-client/web && npm run build --workspace @api-client/desktop",
-    "make:windows": "npm run build --workspace @api-client/web && npm run make --workspace @api-client/desktop -- --platform=win32 --arch=x64",
+    "build:desktop": "npm run build --workspace @api-client/contracts && npm run build --workspace @api-client/web && npm run build --workspace @api-client/desktop",
+    "make:windows": "npm run build --workspace @api-client/contracts && npm run build --workspace @api-client/web && npm run make --workspace @api-client/desktop -- --platform=win32 --arch=x64",
+    "lint": "eslint . --max-warnings=0",
     "typecheck": "npm run build --workspace @api-client/contracts && npm run typecheck --workspaces --if-present",
     "test": "npm run build --workspace @api-client/contracts && npm run test --workspaces --if-present",
     "test:database": "sh scripts/test-database.sh",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
-    "check": "npm run typecheck && npm run test && npm run build",
+    "test:load": "node scripts/smoke-load.mjs",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "verify": "npm run check && npm run compose:config:ci"
   },
@@ -38,6 +40,13 @@
     "node": ">=22.22.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1"
+    "@axe-core/playwright": "^4.12.1",
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.62.1",
+    "eslint": "^9.39.5",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.8.0",
+    "typescript-eslint": "^8.65.0"
   }
 }

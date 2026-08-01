@@ -1,6 +1,7 @@
 import { Braces, CircleUserRound } from "lucide-react";
 import { Outlet } from "react-router";
 
+import { Button } from "../components/ui";
 import { useAuth } from "../features/auth/auth-context";
 
 export function RootLayout() {
@@ -23,15 +24,15 @@ export function RootLayout() {
           <span>Relay</span>
         </a>
         <div className="topbar-actions">
-          <button
+          <Button
             className="profile-button"
             onClick={signOut}
             title="Abmelden"
-            type="button"
+            variant="ghost"
           >
             <CircleUserRound aria-hidden="true" size={20} />
             <span>{user?.email ?? "Abmelden"}</span>
-          </button>
+          </Button>
         </div>
       </header>
       <main id="main-content" tabIndex={-1}>

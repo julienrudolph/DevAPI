@@ -6,6 +6,17 @@ import {
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
+import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogFooter,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  Select,
+} from "../../components/ui";
 import { useCreateInvitation } from "./invitation-queries";
 
 export function InvitationDialog({
@@ -26,29 +37,23 @@ export function InvitationDialog({
     : undefined;
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section
-        aria-labelledby="invitation-title"
-        aria-modal="true"
-        className="conflict-dialog"
-        role="dialog"
-      >
-        <h2 id="invitation-title">Teammitglied einladen</h2>
+    <Dialog onClose={onClose} titleId="invitation-title">
+      <h2 id="invitation-title">Teammitglied einladen</h2>
+      <DialogBody>
         {invitationUrl ? (
           <>
             <p>
               Dieser Link ist sieben Tage gültig und kann einmal angenommen
               werden. Der Token wird serverseitig nur gehasht gespeichert.
             </p>
-            <input
+            <Input
               aria-label="Einladungslink"
               className="invitation-link"
               readOnly
               value={invitationUrl}
             />
-            <div className="dialog-actions">
-              <button
-                className="button secondary"
+            <DialogFooter>
+              <Button
                 onClick={() => {
                   void navigator.clipboard
                     .writeText(invitationUrl)
@@ -58,46 +63,41 @@ export function InvitationDialog({
                 type="button"
               >
                 {copied ? "Kopiert" : "Link kopieren"}
-              </button>
-              <button className="button primary" onClick={onClose} type="button">
+              </Button>
+              <Button onClick={onClose} variant="primary">
                 Fertig
-              </button>
-            </div>
+              </Button>
+            </DialogFooter>
           </>
         ) : (
-          <form
-            onSubmit={handleSubmit((input) => mutation.mutate(input))}
-          >
-            <label className="invitation-role">
-              Rolle
-              <select {...register("role")}>
+          <form onSubmit={handleSubmit((input) => mutation.mutate(input))}>
+            <Field className="invitation-role">
+              <FieldLabel htmlFor="invitation-role">Rolle</FieldLabel>
+              <Select id="invitation-role" {...register("role")}>
                 <option value="editor">Editor</option>
                 <option value="viewer">Viewer</option>
-              </select>
-            </label>
+              </Select>
+            </Field>
             {mutation.isError ? (
-              <p className="field-error">
+              <FieldError>
                 Der Einladungslink konnte nicht erstellt werden.
-              </p>
+              </FieldError>
             ) : null}
-            <div className="dialog-actions">
-              <button
-                className="button secondary"
-                onClick={onClose}
-                type="button"
-              >
+            <DialogFooter>
+              <Button onClick={onClose}>
                 Abbrechen
-              </button>
-              <button
-                className="button primary"
+              </Button>
+              <Button
                 disabled={mutation.isPending}
+                type="submit"
+                variant="primary"
               >
                 Link erstellen
-              </button>
-            </div>
+              </Button>
+            </DialogFooter>
           </form>
         )}
-      </section>
-    </div>
+      </DialogBody>
+    </Dialog>
   );
 }

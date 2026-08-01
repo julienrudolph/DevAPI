@@ -1,3 +1,4 @@
+import { FluentProvider } from "@fluentui/react-components";
 import {
   QueryClient,
   QueryClientProvider,
@@ -6,6 +7,7 @@ import type { PropsWithChildren } from "react";
 import { useState } from "react";
 
 import { AuthProvider } from "../features/auth/auth-context";
+import { relayTheme } from "./theme";
 
 export function AppProviders({ children }: PropsWithChildren) {
   const [queryClient] = useState(
@@ -22,8 +24,10 @@ export function AppProviders({ children }: PropsWithChildren) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>{children}</AuthProvider>
-    </QueryClientProvider>
+    <FluentProvider className="fluent-app-root" theme={relayTheme}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryClientProvider>
+    </FluentProvider>
   );
 }

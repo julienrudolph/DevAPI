@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router";
 
+import { Button } from "../../components/ui";
 import { useAcceptInvitation } from "./invitation-queries";
 
 export function InvitationAcceptPage() {
@@ -19,8 +20,7 @@ export function InvitationAcceptPage() {
           Der Link ist ungültig, abgelaufen oder wurde bereits verwendet.
         </p>
       ) : null}
-      <button
-        className="button primary"
+      <Button
         disabled={!token || mutation.isPending}
         onClick={() => {
           if (!token) return;
@@ -29,9 +29,10 @@ export function InvitationAcceptPage() {
             .then(() => navigate("/", { replace: true }))
             .catch(() => undefined);
         }}
+        variant="primary"
       >
         Einladung annehmen
-      </button>
+      </Button>
     </section>
   );
 }

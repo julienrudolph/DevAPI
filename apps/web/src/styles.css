@@ -1,6 +1,29 @@
 :root {
-  color: #17211b;
-  background: #f4f6f3;
+  --background: #f4f6f3;
+  --surface: #ffffff;
+  --surface-subtle: #f9faf8;
+  --surface-muted: #f0f3f0;
+  --foreground: #17211b;
+  --foreground-muted: #68736c;
+  --foreground-subtle: #778179;
+  --primary: #226c49;
+  --primary-hover: #195b3c;
+  --primary-foreground: #ffffff;
+  --danger: #a52b20;
+  --danger-hover: #892119;
+  --danger-surface: #fff0ee;
+  --border: #dfe5df;
+  --border-strong: #cfd7d0;
+  --focus: #2b7653;
+  --focus-ring: rgb(34 108 73 / 16%);
+  --radius-sm: 0.4375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --shadow-popover: 0 10px 28px rgb(22 34 27 / 16%);
+  --shadow-dialog: 0 24px 60px rgb(18 25 20 / 25%);
+  --control-height: 2.375rem;
+  color: var(--foreground);
+  background: var(--background);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -19,6 +42,10 @@ body {
   min-height: 100vh;
 }
 
+.fluent-app-root {
+  min-height: 100vh;
+}
+
 button,
 input,
 select {
@@ -27,6 +54,20 @@ select {
 
 button {
   cursor: pointer;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }
 
 .app-shell {
@@ -175,7 +216,7 @@ button {
 }
 
 .eyebrow {
-  color: #758078;
+  color: #5f6b63;
   font-size: 11px;
   letter-spacing: 0.06em;
   margin-bottom: 3px;
@@ -199,7 +240,7 @@ button {
   background: #ffffff;
   border: 1px solid #dfe5df;
   border-radius: 7px;
-  color: #758078;
+  color: #5f6b63;
   display: flex;
   gap: 6px;
   margin: 2px 0 10px;
@@ -224,6 +265,7 @@ button {
   background: #f2f4f1;
   border: 1px solid #dfe4df;
   border-radius: 4px;
+  color: #566159;
   font-size: 9px;
   padding: 2px 4px;
   white-space: nowrap;
@@ -346,46 +388,18 @@ button {
 }
 
 .tree-menu-popover {
-  background: #ffffff;
-  border: 1px solid #d7ded8;
-  border-radius: 8px;
-  box-shadow: 0 10px 28px rgb(22 34 27 / 16%);
-  display: grid;
+  box-shadow: var(--shadow-popover);
   min-width: 172px;
-  padding: 5px;
-  position: absolute;
-  right: 0;
-  top: calc(100% + 3px);
-  z-index: 20;
 }
 
-.tree-menu-popover button {
-  align-items: center;
-  background: transparent;
-  border: 0;
-  border-radius: 5px;
-  color: #344139;
-  display: flex;
+.tree-menu-popover .fui-MenuItem {
   font-size: 12px;
-  gap: 8px;
   min-height: 32px;
-  padding: 6px 9px;
-  text-align: left;
   white-space: nowrap;
 }
 
-.tree-menu-popover button:hover,
-.tree-menu-popover button:focus-visible {
-  background: #edf2ee;
-}
-
-.tree-menu-popover button.danger {
+.tree-menu-popover .fui-MenuItem.relay-danger {
   color: #b42318;
-}
-
-.tree-menu-popover button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
 }
 
 .tree-row[draggable="true"] {
@@ -439,11 +453,11 @@ button {
 }
 
 .method-get {
-  color: #187d55;
+  color: #116b47;
 }
 
 .method-post {
-  color: #a85f0a;
+  color: #864b08;
 }
 
 .muted {
@@ -628,12 +642,33 @@ button {
 }
 
 .conflict-dialog {
-  background: #ffffff;
-  border-radius: 14px;
-  box-shadow: 0 24px 60px rgb(18 25 20 / 25%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dialog);
   max-width: 640px;
   padding: 24px;
   width: 100%;
+}
+
+.dialog-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+}
+
+.dialog-header h2,
+.dialog-header p {
+  margin: 0;
+}
+
+.dialog-header p {
+  color: var(--foreground-muted);
+  margin-top: 3px;
+}
+
+.dialog-body {
+  margin-block: 18px;
 }
 
 .conflict-dialog h2 {
@@ -670,6 +705,21 @@ button {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.relay-control {
+  width: 100%;
+}
+
+.fui-Button.relay-danger {
+  border-color: #e4c5c2;
+  color: var(--danger);
+}
+
+.fui-Button.relay-danger:hover:not(:disabled) {
+  background: var(--danger-surface);
+  border-color: #dba9a4;
+  color: var(--danger-hover);
 }
 
 .move-request-fields {
@@ -898,16 +948,18 @@ button {
 }
 
 .request-toolbar {
-  align-items: center;
+  align-items: flex-start;
   border-bottom: 1px solid #e2e7e2;
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
   justify-content: space-between;
   min-height: 72px;
   padding: 14px 28px;
 }
 
 .breadcrumb {
-  color: #7a847c;
+  color: #5f6a62;
   font-size: 12px;
 }
 
@@ -917,7 +969,15 @@ h1 {
 }
 
 .toolbar-actions {
+  flex: 1 1 42rem;
+  flex-wrap: wrap;
   gap: 9px;
+  justify-content: flex-end;
+}
+
+.fui-Button > svg {
+  flex: 0 0 auto;
+  margin-right: 6px;
 }
 
 .save-state {
@@ -927,30 +987,102 @@ h1 {
 }
 
 .button {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 650;
   gap: 7px;
-  height: 38px;
+  min-height: var(--control-height);
   padding: 0 14px;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
 }
 
 .button.secondary {
-  background: #ffffff;
-  border-color: #d8dfd9;
+  background: var(--surface);
+  border-color: var(--border);
   color: #354139;
 }
 
 .button.primary {
-  background: #226c49;
-  color: #ffffff;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .button.danger {
-  background: #ffffff;
+  background: var(--surface);
   border-color: #e4c5c2;
-  color: #9b332e;
+  color: var(--danger);
+}
+
+.button.ghost {
+  background: transparent;
+  color: var(--foreground-muted);
+}
+
+.button-small {
+  font-size: 12px;
+  min-height: 2rem;
+  padding-inline: 10px;
+}
+
+.button.primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.button.secondary:hover:not(:disabled),
+.button.ghost:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.button.danger:hover:not(:disabled) {
+  background: var(--danger-surface);
+  border-color: #dba9a4;
+  color: var(--danger-hover);
+}
+
+.ui-control {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--foreground);
+  min-height: var(--control-height);
+  padding: 0 10px;
+  width: 100%;
+}
+
+textarea.ui-control {
+  min-height: 6rem;
+  padding-block: 9px;
+  resize: vertical;
+}
+
+.ui-control:focus-visible {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  outline: 0;
+}
+
+.ui-control:disabled {
+  background: var(--surface-muted);
+  color: var(--foreground-subtle);
+  cursor: not-allowed;
+}
+
+.ui-field {
+  display: grid;
+  gap: 6px;
+}
+
+.ui-field-label {
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .editor {
@@ -996,25 +1128,9 @@ h1 {
   font-size: 12px;
 }
 
-.tabs {
+.fluent-tabs {
   border-bottom: 1px solid #dfe5df;
-  display: flex;
-  gap: 24px;
   margin-top: 22px;
-}
-
-.tabs button {
-  background: transparent;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  color: #68736c;
-  padding: 0 1px 11px;
-}
-
-.tabs button.active {
-  border-bottom-color: #226c49;
-  color: #1d5e40;
-  font-weight: 650;
 }
 
 .editor-panel {
@@ -1030,7 +1146,7 @@ h1 {
 }
 
 .table-head {
-  color: #79837b;
+  color: #5f6a62;
   font-size: 11px;
   font-weight: 700;
   padding: 7px 0;
@@ -1252,24 +1368,7 @@ h1 {
 }
 
 .response-tabs {
-  display: flex;
-  gap: 4px;
-}
-
-.response-tabs button {
-  background: transparent;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  color: #68736b;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 650;
-  padding: 9px 10px 8px;
-}
-
-.response-tabs button.active {
-  border-bottom-color: #21734f;
-  color: #185b3d;
+  min-width: 0;
 }
 
 .response-actions,
@@ -1363,7 +1462,7 @@ h1 {
   margin: 16px 0 10px;
 }
 
-.history-filters label {
+.history-search-field {
   align-items: center;
   border: 1px solid #cfd7d0;
   border-radius: 7px;
@@ -1454,7 +1553,7 @@ h1 {
 
 .response-empty {
   align-items: center;
-  color: #7c867f;
+  color: #5f6a62;
   display: flex;
   justify-content: center;
   min-height: 180px;
@@ -1534,8 +1633,7 @@ a:focus-visible {
     padding: 18px 16px;
   }
 
-  .tabs {
-    gap: 14px;
+  .fluent-tabs {
     overflow-x: auto;
   }
 }

@@ -7,6 +7,7 @@ import {
 } from "@api-client/contracts";
 import { useForm } from "react-hook-form";
 
+import { Button, Input } from "../../components/ui";
 import { useCreateFolder, useCreateRequest } from "./workspace-queries";
 
 interface CreateFormProps {
@@ -39,7 +40,7 @@ export function FolderCreateForm({
         onClose();
       })}
     >
-      <input
+      <Input
         aria-label="Ordnername"
         autoFocus
         placeholder="Neuer Ordner"
@@ -89,7 +90,7 @@ export function RequestCreateForm({
         onClose();
       })}
     >
-      <input
+      <Input
         aria-label="Request-Name"
         autoFocus
         placeholder="Neuer Request"
@@ -114,12 +115,12 @@ function CreateActions({
 }) {
   return (
     <div>
-      <button className="button primary" disabled={isPending}>
+      <Button disabled={isPending} type="submit" variant="primary">
         Erstellen
-      </button>
-      <button className="button secondary" onClick={onClose} type="button">
+      </Button>
+      <Button onClick={onClose}>
         Abbrechen
-      </button>
+      </Button>
     </div>
   );
 }

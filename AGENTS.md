@@ -101,7 +101,9 @@ Netze bleibt eine getrennte, sicherheitskritische Folgeentscheidung.
 - React Hook Form für Formulare
 - Zod für Laufzeitvalidierung und Schemas
 - Zustand ausschließlich für lokalen, übergreifenden UI-State
-- shadcn/ui als Komponentenbasis
+- Fluent UI React v9 (`@fluentui/react-components`) als Komponentenbasis
+- Fluent System Icons für neue Standardaktionen; bestehende Lucide-Icons
+  werden bei Arbeiten am jeweiligen Feature schrittweise ersetzt
 - Monaco Editor für JSON- und Textbearbeitung
 - Electron für den installierbaren Desktop-Client
 
@@ -435,6 +437,13 @@ Logs verwenden Allowlisting statt einer unvollständigen Blocklist. Fehlermeldun
 - Komponenten klein und auf eine klar erkennbare Aufgabe begrenzen.
 - Features kapseln ihre UI, Hooks, Schemas, API-Zugriffe und Tests.
 - Gemeinsame UI-Primitiven kommen aus `components/ui`; keine unnötigen Parallelkomponenten.
+- Die Anwendung wird zentral durch einen `FluentProvider` mit dem Relay-Theme
+  versorgt. Features verwenden bevorzugt die Wrapper aus `components/ui`,
+  damit produktbezogene Varianten und Fluent UI nicht an jeder Aufrufstelle
+  neu gekoppelt werden.
+- Layout-CSS bleibt für Workbench, Sidebar, Monaco und responsive Anordnung
+  zulässig. Interaktive Standardkomponenten, Fokusmanagement, Dialoge, Menüs,
+  Tabs und Formfelder basieren auf Fluent UI.
 - Serverdaten werden über TanStack Query gelesen und verändert.
 - Query Keys werden zentral und typsicher erzeugt.
 - Mutations aktualisieren oder invalidieren genau die betroffenen Queries.

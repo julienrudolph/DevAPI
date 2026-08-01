@@ -14,6 +14,9 @@ Umgebungsvariablen, die abgesicherte Proxy-Ausführung, Konflikterkennung,
 Revisionen und eine datensparsame Ausführungshistorie. OpenAPI- und
 Postman-Import, redigierter Workspace-Export sowie JSON-, Text-,
 URL-encoded- und textbasierte Form-Data-Bodies sind ebenfalls enthalten.
+Request-Revisionen werden pro Request auf die jüngsten 100 Einträge und
+höchstens 180 Tage begrenzt. Die Ausführungshistorie enthält maximal 100
+Einträge aus den letzten 30 Tagen.
 
 ## Voraussetzungen
 
@@ -333,7 +336,7 @@ isolierte Netze verwenden stattdessen ein Zertifikat der eigenen CA.
 Die ausführliche Betriebs-, Sicherheits- und Rollback-Anleitung steht in
 [`docs/self-hosted-deployment.md`](docs/self-hosted-deployment.md).
 
-Das sichere Electron-Grundgerüst und der geplante Windows-Build sind in
+Das sichere Electron-Grundgerüst und der geprüfte Windows-Build sind in
 `docs/desktop.md` dokumentiert.
 
 Die verbindlichen Produkt- und Entwicklungsregeln stehen in `AGENTS.md`.

@@ -1,6 +1,16 @@
 import { Trash2, Users } from "lucide-react";
 
 import {
+  Button,
+  Dialog,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  FieldError,
+  IconButton,
+  Select,
+} from "../../components/ui";
+import {
   useRemoveTeamMember,
   useTeamMembers,
   useUpdateTeamMember,
@@ -19,23 +29,25 @@ export function TeamMembersDialog({
   const busy = updateMember.isPending || removeMember.isPending;
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section
-        aria-labelledby="team-members-title"
-        aria-modal="true"
-        className="conflict-dialog team-members-dialog"
-        role="dialog"
-      >
-        <div className="team-members-heading">
-          <span className="member-avatar">
-            <Users aria-hidden="true" size={19} />
-          </span>
-          <div>
-            <h2 id="team-members-title">Team verwalten</h2>
-            <p>Rollen gelten für alle Workspaces dieses Teams.</p>
-          </div>
+    <Dialog
+      className="team-members-dialog"
+      descriptionId="team-members-description"
+      onClose={onClose}
+      titleId="team-members-title"
+    >
+      <DialogHeader>
+        <span className="member-avatar">
+          <Users aria-hidden="true" size={19} />
+        </span>
+        <div>
+          <h2 id="team-members-title">Team verwalten</h2>
+          <p id="team-members-description">
+            Rollen gelten für alle Workspaces dieses Teams.
+          </p>
         </div>
+      </DialogHeader>
 
+      <DialogBody>
         {members.isPending ? (
           <p className="dialog-state">Mitglieder werden geladen …</p>
         ) : members.isError ? (
@@ -57,7 +69,7 @@ export function TeamMembersDialog({
                   <span className="role-badge">Owner</span>
                 ) : (
                   <>
-                    <select
+                    <Select
                       aria-label={`Rolle von ${member.displayName}`}
                       disabled={busy}
                       onChange={(event) =>
@@ -70,10 +82,9 @@ export function TeamMembersDialog({
                     >
                       <option value="editor">Editor</option>
                       <option value="viewer">Viewer</option>
-                    </select>
-                    <button
+                    </Select>
+                    <IconButton
                       aria-label={`${member.displayName} entfernen`}
-                      className="icon-button danger"
                       disabled={busy}
                       onClick={() => {
                         if (
@@ -84,10 +95,10 @@ export function TeamMembersDialog({
                           removeMember.mutate(member.userId);
                         }
                       }}
-                      type="button"
+                      variant="danger"
                     >
                       <Trash2 aria-hidden="true" size={16} />
-                    </button>
+                    </IconButton>
                   </>
                 )}
               </div>
@@ -96,16 +107,14 @@ export function TeamMembersDialog({
         )}
 
         {updateMember.isError || removeMember.isError ? (
-          <p className="field-error">
-            Die Änderung konnte nicht gespeichert werden.
-          </p>
+          <FieldError>Die Änderung konnte nicht gespeichert werden.</FieldError>
         ) : null}
-        <div className="dialog-actions">
-          <button className="button primary" onClick={onClose} type="button">
-            Fertig
-          </button>
-        </div>
-      </section>
-    </div>
+      </DialogBody>
+      <DialogFooter>
+        <Button onClick={onClose} variant="primary">
+          Fertig
+        </Button>
+      </DialogFooter>
+    </Dialog>
   );
 }

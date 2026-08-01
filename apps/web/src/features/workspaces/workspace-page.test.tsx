@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -531,14 +532,19 @@ describe("WorkspacePage", () => {
     );
     expect(confirm).not.toHaveBeenCalled();
 
+    const requestTabs = within(
+      screen.getByRole("navigation", { name: "Geöffnete Requests" }),
+    );
     expect(
-      screen.getByRole("tab", { name: /List customers/ }),
+      requestTabs.getByRole("button", { name: "GET List customers Tab" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("tab", { name: /Create customer/ }),
-    ).toHaveAttribute("aria-selected", "true");
+      requestTabs.getByRole("button", { name: "POST Create customer Tab" }),
+    ).toHaveAttribute("aria-pressed", "true");
 
-    await user.click(screen.getByRole("tab", { name: /List customers/ }));
+    await user.click(
+      requestTabs.getByRole("button", { name: "GET List customers Tab" }),
+    );
 
     expect(firstDraft).toHaveValue("lokaler Entwurf");
 
@@ -547,7 +553,7 @@ describe("WorkspacePage", () => {
     );
     expect(confirm).toHaveBeenCalledOnce();
     expect(
-      screen.getByRole("tab", { name: /List customers/ }),
+      requestTabs.getByRole("button", { name: "GET List customers Tab" }),
     ).toBeInTheDocument();
   });
 
@@ -566,10 +572,17 @@ describe("WorkspacePage", () => {
 
     renderWorkspace();
 
+    const restoredTabs = within(
+      screen.getByRole("navigation", { name: "Geöffnete Requests" }),
+    );
     expect(
-      await screen.findByRole("tab", { name: /Create customer/ }),
-    ).toHaveAttribute("aria-selected", "true");
-    expect(screen.getAllByRole("tab")).toHaveLength(2);
+      await restoredTabs.findByRole("button", {
+        name: "POST Create customer Tab",
+      }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      restoredTabs.getAllByRole("button", { name: / Tab$/ }),
+    ).toHaveLength(2);
   });
 
   it("closes other tabs and all tabs through the tab actions", async () => {
@@ -584,9 +597,11 @@ describe("WorkspacePage", () => {
       screen.getByRole("button", { name: "Andere Tabs schließen" }),
     );
 
-    expect(screen.getAllByRole("tab")).toHaveLength(1);
+    const requestTabs = within(
+      screen.getByRole("navigation", { name: "Geöffnete Requests" }),
+    );
     expect(
-      screen.getByRole("tab", { name: /Create customer/ }),
+      requestTabs.getByRole("button", { name: "POST Create customer Tab" }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByLabelText("Tab-Aktionen"));

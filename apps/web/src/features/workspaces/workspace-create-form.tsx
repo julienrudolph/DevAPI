@@ -7,6 +7,7 @@ import {
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 
+import { Button, Input } from "../../components/ui";
 import { useCreateWorkspace } from "./workspace-queries";
 
 export function WorkspaceCreateForm({ teamId }: { teamId?: string }) {
@@ -31,7 +32,7 @@ export function WorkspaceCreateForm({ teamId }: { teamId?: string }) {
       ) : (
         <>
           <label htmlFor="team-name">Teamname</label>
-          <input id="team-name" {...register("teamName")} />
+          <Input id="team-name" {...register("teamName")} />
           {"teamName" in formState.errors && formState.errors.teamName ? (
             <p className="field-error">
               {formState.errors.teamName.message}
@@ -40,17 +41,17 @@ export function WorkspaceCreateForm({ teamId }: { teamId?: string }) {
         </>
       )}
       <label htmlFor="workspace-name">Workspace-Name</label>
-      <input id="workspace-name" {...register("workspaceName")} />
+      <Input id="workspace-name" {...register("workspaceName")} />
       {formState.errors.workspaceName ? (
         <p className="field-error">{formState.errors.workspaceName.message}</p>
       ) : null}
-      <button
-        className="button primary"
+      <Button
         disabled={mutation.isPending}
         type="submit"
+        variant="primary"
       >
         Workspace erstellen
-      </button>
+      </Button>
       {mutation.isError ? (
         <p className="field-error">Workspace konnte nicht erstellt werden.</p>
       ) : null}

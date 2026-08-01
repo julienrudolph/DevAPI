@@ -5,6 +5,7 @@ import {
 } from "@api-client/contracts";
 import { useForm } from "react-hook-form";
 
+import { Button, Input } from "../../components/ui";
 import { useCreateCollection } from "./workspace-queries";
 
 interface CollectionCreateFormProps {
@@ -29,19 +30,19 @@ export function CollectionCreateForm({
 
   return (
     <form className="inline-create-form" onSubmit={handleSubmit(submit)}>
-      <input
+      <Input
         aria-label="Collection-Name"
         autoFocus
         placeholder="Neue Collection"
         {...register("name")}
       />
       <div>
-        <button className="button primary" disabled={mutation.isPending}>
+        <Button disabled={mutation.isPending} type="submit" variant="primary">
           Erstellen
-        </button>
-        <button className="button secondary" onClick={onClose} type="button">
+        </Button>
+        <Button onClick={onClose}>
           Abbrechen
-        </button>
+        </Button>
       </div>
       {formState.errors.name || mutation.isError ? (
         <p className="field-error">

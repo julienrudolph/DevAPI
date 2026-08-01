@@ -12,6 +12,12 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import {
+  Button,
+  IconButton,
+  Input,
+  Select,
+} from "../../components/ui";
+import {
   EnvironmentVariableConflictError,
 } from "./environment-api";
 import {
@@ -48,7 +54,7 @@ export function EnvironmentControls({
     <div className="environment-controls">
       <label>
         <span className="sr-only">Aktive Umgebung</span>
-        <select
+        <Select
           aria-label="Aktive Umgebung"
           onChange={(event) => onSelect(event.target.value || undefined)}
           value={selectedId ?? ""}
@@ -59,27 +65,25 @@ export function EnvironmentControls({
               {environment.name}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       {canEditShared ? (
-        <button
+        <IconButton
           aria-label="Umgebung erstellen"
-          className="icon-button compact"
           onClick={() => setMode("environment")}
-          type="button"
+          size="compact"
         >
           <Plus aria-hidden="true" size={15} />
-        </button>
+        </IconButton>
       ) : null}
       {selected ? (
-        <button
+        <IconButton
           aria-label="Variable hinzufügen"
-          className="icon-button compact"
           onClick={() => setMode("variable")}
-          type="button"
+          size="compact"
         >
           <Settings2 aria-hidden="true" size={15} />
-        </button>
+        </IconButton>
       ) : null}
       {mode === "environment" ? (
         <EnvironmentCreatePopover
@@ -124,7 +128,7 @@ function EnvironmentCreatePopover({
       })}
     >
       <strong>Umgebung erstellen</strong>
-      <input
+      <Input
         aria-label="Umgebungsname"
         autoFocus
         placeholder="z. B. Entwicklung"
@@ -188,22 +192,22 @@ function VariableCreatePopover({
           />
         ))}
       </div>
-      <input
+      <Input
         aria-label="Variablenname"
         placeholder="baseUrl"
         {...register("key")}
       />
-      <input
+      <Input
         aria-label="Variablenwert"
         autoComplete="off"
         placeholder="Wert"
         type={scope === "personal" ? "password" : "text"}
         {...register("value")}
       />
-      <select aria-label="Variablenbereich" {...register("scope")}>
+      <Select aria-label="Variablenbereich" {...register("scope")}>
         {canEditShared ? <option value="shared">Mit Team geteilt</option> : null}
         <option value="personal">Nur für mich</option>
-      </select>
+      </Select>
       <p className="security-hint">
         {scope === "shared"
           ? "Dieser Wert ist für alle Workspace-Mitglieder sichtbar. Hier keine Tokens oder Passwörter speichern."
@@ -250,13 +254,11 @@ export function EnvironmentVariableRow({
         </span>
         <code>{variable.scope === "personal" ? "••••••••" : variable.value}</code>
         {canEdit ? (
-          <button
-            className="button secondary"
+          <Button
             onClick={() => setEditing(true)}
-            type="button"
           >
             Bearbeiten
-          </button>
+          </Button>
         ) : null}
       </div>
     );
@@ -266,7 +268,7 @@ export function EnvironmentVariableRow({
   return (
     <div className="environment-variable-edit">
       <strong>{variable.key}</strong>
-      <input
+      <Input
         aria-label={`${variable.key} bearbeiten`}
         autoFocus
         onChange={(event) => setValue(event.target.value)}
@@ -281,32 +283,27 @@ export function EnvironmentVariableRow({
       ) : null}
       <div className="dialog-actions">
         {conflict ? (
-          <button
-            className="button secondary"
+          <Button
             onClick={() => {
               setValue(conflict.current.value);
               setBaseVersion(conflict.currentVersion);
               mutation.reset();
             }}
-            type="button"
           >
             Aktuellen Wert übernehmen
-          </button>
+          </Button>
         ) : null}
-        <button
-          className="button secondary"
+        <Button
           onClick={() => {
             setValue(variable.value);
             setBaseVersion(variable.version);
             mutation.reset();
             setEditing(false);
           }}
-          type="button"
         >
           Abbrechen
-        </button>
-        <button
-          className="button primary"
+        </Button>
+        <Button
           disabled={mutation.isPending}
           onClick={async () => {
             await mutation
@@ -314,10 +311,10 @@ export function EnvironmentVariableRow({
               .then(() => setEditing(false))
               .catch(() => undefined);
           }}
-          type="button"
+          variant="primary"
         >
           {conflict ? "Meinen Wert speichern" : "Speichern"}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -332,12 +329,12 @@ function PopoverActions({
 }) {
   return (
     <div className="dialog-actions">
-      <button className="button secondary" onClick={onClose} type="button">
+      <Button onClick={onClose}>
         Abbrechen
-      </button>
-      <button className="button primary" disabled={isPending}>
+      </Button>
+      <Button disabled={isPending} type="submit" variant="primary">
         Speichern
-      </button>
+      </Button>
     </div>
   );
 }

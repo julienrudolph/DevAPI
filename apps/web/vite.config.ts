@@ -10,6 +10,13 @@ export default defineConfig({
           if (id.includes("@supabase")) return "vendor-supabase";
           if (id.includes("@tanstack")) return "vendor-query";
           if (
+            id.includes("@fluentui") ||
+            id.includes("@griffel") ||
+            id.includes("/tabster/")
+          ) {
+            return "vendor-fluent";
+          }
+          if (
             id.includes("/react/") ||
             id.includes("/react-dom/") ||
             id.includes("/react-router/")

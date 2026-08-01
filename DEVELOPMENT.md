@@ -167,6 +167,14 @@ apps/desktop
 
 - TanStack Query verwaltet Server-State.
 - React Hook Form und lokaler Komponenten-State halten Entwürfe.
+- Wiederverwendbare Bedienelemente liegen in `apps/web/src/components/ui`.
+- Interaktive Standardkomponenten basieren auf Fluent UI React v9.
+- Das Relay-Fluent-Theme liegt in `apps/web/src/app/theme.ts`; Layout-Tokens
+  und Workbench-spezifische Regeln bleiben zentral in `styles.css`.
+- Features importieren nach Möglichkeit die Relay-Wrapper aus `components/ui`
+  statt Fluent-Komponenten mit eigenen Varianten zu duplizieren.
+- Feature-Komponenten verwenden bevorzugt `Button`, `IconButton`, `Input`,
+  `Select`, `Textarea` und `Dialog`, statt parallele Varianten anzulegen.
 - Zustand ist nur für übergreifenden lokalen UI-State vorgesehen.
 - Serverdaten dürfen nicht dauerhaft in Zustand gespiegelt werden.
 - Ungespeicherte Entwürfe dürfen durch Refetches nicht verloren gehen.
@@ -244,7 +252,8 @@ Alle Prüfungen:
 npm run check
 ```
 
-Das umfasst TypeScript, alle Tests und Produktions-Builds.
+Das umfasst ESLint einschließlich JSX-Accessibility-Regeln, TypeScript, alle
+Tests und Produktions-Builds.
 
 Zusätzlich die lokale Compose-Konfiguration prüfen:
 
@@ -292,10 +301,24 @@ npm run test:e2e
 
 Der Test legt isolierte Konten und Workspaces mit eindeutigen Namen an. Er
 prüft Registrierung, Request-Ausführung, einen parallelen Versionskonflikt,
-Viewer-Rechte und die Mandantentrennung. Screenshots, Traces und HTML-Berichte
-bei Fehlern liegen in den ignorierten Ordnern `test-results/` und
+Viewer-Rechte, Mandantentrennung und WCAG-A/AA-Verstöße. Screenshots, Traces
+und HTML-Berichte bei Fehlern liegen in den ignorierten Ordnern `test-results/` und
 `playwright-report/`. Mit `E2E_BASE_URL` kann ein anderer Testserver angegeben
 werden; dieser muss Passwortregistrierung aktiviert haben.
+
+Ein begrenzter Lasttest gegen den lokalen Health-Endpunkt:
+
+```bash
+npm run compose:up
+npm run test:load
+```
+
+Standardmäßig werden 200 Requests mit einer Parallelität von 10 ausgeführt
+und eine p95-Latenz von höchstens 1000 ms verlangt. Externe Ziele sind
+absichtlich gesperrt. Abweichende Werte werden über `LOAD_TEST_REQUESTS`,
+`LOAD_TEST_CONCURRENCY`, `LOAD_TEST_TIMEOUT_MS` und
+`LOAD_TEST_MAX_P95_MS` gesetzt. `LOAD_TEST_ALLOW_REMOTE=true` darf nur für ein
+ausdrücklich freigegebenes Testsystem verwendet werden.
 
 Neue Logik benötigt Tests auf der passenden Ebene:
 
@@ -354,6 +377,9 @@ DEVAPI_SERVER_URL=http://localhost:8080 npm run dev:desktop
 
 Weitere Sicherheits- und Buildhinweise stehen in
 [docs/desktop.md](docs/desktop.md).
+Die normale CI baut auf einem Windows-Runner zusätzlich ein unsigniertes
+Electron-Paket. Dadurch werden plattformspezifische Buildfehler bereits vor
+einem signierten Release sichtbar.
 
 ## 13. Vor einem Pull Request oder Commit
 
