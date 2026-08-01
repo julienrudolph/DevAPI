@@ -61,6 +61,14 @@ export interface UpdateNavigationItemCommand
   targetPosition?: number;
 }
 
+export interface UpdateFolderNavigationItemCommand
+  extends UpdateNavigationItemCommand {
+  destination?: {
+    collectionId: string;
+    parentFolderId: string | null;
+  };
+}
+
 export type UpdateCollectionResult =
   | { kind: "updated"; item: CollectionSummary }
   | Exclude<DeleteNavigationItemResult, { kind: "deleted" | "not-empty" }>;
@@ -88,6 +96,6 @@ export interface WorkspaceRepository {
     command: UpdateNavigationItemCommand,
   ): Promise<UpdateCollectionResult>;
   updateFolder?(
-    command: UpdateNavigationItemCommand,
+    command: UpdateFolderNavigationItemCommand,
   ): Promise<UpdateFolderResult>;
 }

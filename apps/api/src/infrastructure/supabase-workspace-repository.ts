@@ -20,6 +20,7 @@ import type {
   DeleteNavigationItemCommand,
   DeleteNavigationItemResult,
   UpdateCollectionResult,
+  UpdateFolderNavigationItemCommand,
   UpdateFolderResult,
   UpdateNavigationItemCommand,
   WorkspaceRepository,
@@ -318,9 +319,24 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
   }
 
   async updateFolder(
-    command: UpdateNavigationItemCommand,
+    command: UpdateFolderNavigationItemCommand,
   ): Promise<UpdateFolderResult> {
     const client = this.client(command.accessToken);
+    if (command.destination) {
+      const { data, error } = await client.rpc("move_folder_navigation", {
+        p_folder_id: command.itemId,
+        p_expected_version: command.expectedVersion,
+        p_collection_id: command.destination.collectionId,
+        p_parent_folder_id: command.destination.parentFolderId,
+      });
+      if (!error) {
+        return {
+          kind: "updated",
+          item: folderRowSchema.parse(normalizeRpcRow(data)),
+        };
+      }
+      return mapNavigationUpdateError(error);
+    }
     const { data, error } = await client.rpc("update_folder_navigation", {
       p_folder_id: command.itemId,
       p_expected_version: command.expectedVersion,
@@ -383,11 +399,18 @@ function normalizeRpcRow(value: unknown): unknown {
 
 function mapNavigationUpdateError(error: {
   code: string;
+  message?: string;
 }): Exclude<
   UpdateCollectionResult,
   { kind: "updated" }
 > {
-  if (error.code === "40001") return { kind: "conflict" };
+  if (
+    error.code === "40001" ||
+    error.message?.includes("FOLDER_VERSION_CONFLICT") ||
+    error.message?.includes("COLLECTION_VERSION_CONFLICT")
+  ) {
+    return { kind: "conflict" };
+  }
   if (error.code === "42501") return { kind: "forbidden" };
   if (error.code === "P0002") return { kind: "not-found" };
   throw new Error("NAVIGATION_UPDATE_FAILED", { cause: error });

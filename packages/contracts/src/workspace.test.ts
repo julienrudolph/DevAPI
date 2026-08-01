@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createRequestSummarySchema,
   createWorkspaceSchema,
+  updateFolderNavigationSchema,
   updateNavigationItemSchema,
   workspaceTreeSchema,
 } from "./workspace.js";
@@ -84,5 +85,24 @@ describe("updateNavigationItemSchema", () => {
     expect(updateNavigationItemSchema.safeParse({
       expectedVersion: 1,
     }).success).toBe(false);
+  });
+});
+
+describe("updateFolderNavigationSchema", () => {
+  it("accepts a versioned folder destination", () => {
+    expect(
+      updateFolderNavigationSchema.parse({
+        expectedVersion: 2,
+        destination: {
+          collectionId: "95da6097-0742-4164-9c9a-75dc64d2cd8f",
+          parentFolderId: "cc0814af-eeb4-45ad-8686-0784a67ea823",
+        },
+      }),
+    ).toMatchObject({
+      expectedVersion: 2,
+      destination: {
+        parentFolderId: "cc0814af-eeb4-45ad-8686-0784a67ea823",
+      },
+    });
   });
 });

@@ -1,5 +1,6 @@
 import {
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -24,6 +25,7 @@ const deleteCollectionMutation = vi.hoisted(() => vi.fn());
 const deleteFolderMutation = vi.hoisted(() => vi.fn());
 const updateCollectionMutation = vi.hoisted(() => vi.fn());
 const updateFolderMutation = vi.hoisted(() => vi.fn());
+const moveRequestMutation = vi.hoisted(() => vi.fn());
 
 vi.mock("./workspace-queries", () => ({
   useExportWorkspace: vi.fn(() => ({
@@ -94,7 +96,7 @@ vi.mock("../requests/request-queries", () => ({
     isPending: false,
   })),
   useMoveRequest: vi.fn(() => ({
-    mutateAsync: vi.fn(),
+    mutateAsync: moveRequestMutation,
     isPending: false,
   })),
 }));
@@ -148,6 +150,8 @@ beforeEach(() => {
   updateCollectionMutation.mockResolvedValue(undefined);
   updateFolderMutation.mockReset();
   updateFolderMutation.mockResolvedValue(undefined);
+  moveRequestMutation.mockReset();
+  moveRequestMutation.mockResolvedValue(undefined);
   vi.mocked(useWorkspaces).mockReturnValue({
     data: [
       {
@@ -328,7 +332,10 @@ describe("WorkspacePage", () => {
     renderWorkspace();
 
     await user.click(
-      screen.getByRole("button", { name: "Customers löschen" }),
+      screen.getByRole("button", { name: "Customers Optionen" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", { name: "Customers löschen" }),
     );
     expect(deleteCollectionMutation).toHaveBeenCalledWith({
       collectionId,
@@ -336,7 +343,10 @@ describe("WorkspacePage", () => {
     });
 
     await user.click(
-      screen.getByRole("button", { name: "Mutations löschen" }),
+      screen.getByRole("button", { name: "Mutations Optionen" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", { name: "Mutations löschen" }),
     );
     expect(deleteFolderMutation).toHaveBeenCalledWith({
       folderId,
@@ -352,7 +362,10 @@ describe("WorkspacePage", () => {
     renderWorkspace();
 
     await user.click(
-      screen.getByRole("button", { name: "Customers umbenennen" }),
+      screen.getByRole("button", { name: "Customers Optionen" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", { name: "Customers umbenennen" }),
     );
     expect(updateCollectionMutation).toHaveBeenCalledWith({
       collectionId,
@@ -361,7 +374,10 @@ describe("WorkspacePage", () => {
     });
 
     await user.click(
-      screen.getByRole("button", { name: "Customers nach unten" }),
+      screen.getByRole("button", { name: "Customers Optionen" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", { name: "Customers nach unten" }),
     );
     expect(updateCollectionMutation).toHaveBeenCalledWith({
       collectionId,
@@ -370,7 +386,10 @@ describe("WorkspacePage", () => {
     });
 
     await user.click(
-      screen.getByRole("button", { name: "Mutations umbenennen" }),
+      screen.getByRole("button", { name: "Mutations Optionen" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", { name: "Mutations umbenennen" }),
     );
     expect(updateFolderMutation).toHaveBeenCalledWith({
       folderId,
@@ -379,7 +398,10 @@ describe("WorkspacePage", () => {
     });
 
     await user.click(
-      screen.getByRole("button", { name: "Mutations nach unten" }),
+      screen.getByRole("button", { name: "Mutations Optionen" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", { name: "Mutations nach unten" }),
     );
     expect(updateFolderMutation).toHaveBeenCalledWith({
       folderId,
@@ -394,22 +416,105 @@ describe("WorkspacePage", () => {
     renderWorkspace();
 
     await user.click(
-      screen.getByRole("button", {
+      screen.getByRole("button", { name: "Mutations Optionen" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", {
         name: "Request in Mutations erstellen",
       }),
     );
+    expect(
+      screen.queryByRole("menuitem", {
+        name: "Request in Mutations erstellen",
+      }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByLabelText(`Request anlegen ${folderId}`),
     ).toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", {
+      screen.getByRole("button", { name: "Mutations Optionen" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", {
         name: "Unterordner in Mutations erstellen",
       }),
     );
     expect(
       screen.getByLabelText(`Ordner anlegen ${folderId}`),
     ).toBeInTheDocument();
+  });
+
+  it("offers compact menus for requests and folders", async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+
+    await user.click(
+      screen.getByRole("button", { name: "Mutations Optionen" }),
+    );
+    expect(
+      screen.getByRole("menuitem", { name: "Mutations umbenennen" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("menuitem", {
+        name: "Request in Mutations erstellen",
+      }),
+    ).toBeVisible();
+
+    await user.click(
+      screen.getByRole("button", { name: "Create customer Optionen" }),
+    );
+    expect(
+      screen.getByRole("menuitem", { name: "Duplizieren" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("menuitem", { name: "Verschieben" }),
+    ).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Löschen" })).toBeVisible();
+  });
+
+  it("moves requests and folders with drag and drop", () => {
+    renderWorkspace();
+    const dataTransfer = {
+      dropEffect: "move",
+      effectAllowed: "move",
+      getData: vi.fn(() => ""),
+      setData: vi.fn(),
+    };
+
+    const requestRow = screen
+      .getByRole("button", { name: "GET List customers" })
+      .closest(".request-row");
+    const folderRow = screen
+      .getByRole("button", { name: "Mutations" })
+      .closest(".nested-folder");
+    const internalCollection = screen
+      .getByRole("button", { name: "Internal" })
+      .closest(".tree-parent");
+    expect(requestRow).not.toBeNull();
+    expect(folderRow).not.toBeNull();
+    expect(internalCollection).not.toBeNull();
+
+    fireEvent.dragStart(requestRow!, { dataTransfer });
+    fireEvent.dragOver(folderRow!, { dataTransfer });
+    fireEvent.drop(folderRow!, { dataTransfer });
+    expect(moveRequestMutation).toHaveBeenCalledWith({
+      requestId: firstRequestId,
+      collectionId,
+      folderId,
+    });
+
+    fireEvent.dragStart(folderRow!, { dataTransfer });
+    fireEvent.dragOver(internalCollection!, { dataTransfer });
+    fireEvent.drop(internalCollection!, { dataTransfer });
+    expect(updateFolderMutation).toHaveBeenCalledWith({
+      folderId,
+      expectedVersion: 1,
+      destination: {
+        collectionId: secondCollectionId,
+        parentFolderId: null,
+      },
+    });
   });
 
   it("keeps unsaved drafts mounted while switching request tabs", async () => {
@@ -422,7 +527,7 @@ describe("WorkspacePage", () => {
     );
     await user.type(firstDraft, "lokaler Entwurf");
     await user.click(
-      screen.getByRole("button", { name: /Create customer/ }),
+      screen.getByRole("button", { name: "POST Create customer" }),
     );
     expect(confirm).not.toHaveBeenCalled();
 

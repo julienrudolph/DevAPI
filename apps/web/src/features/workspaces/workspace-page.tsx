@@ -26,7 +26,13 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useParams } from "react-router";
 
 import { RequestEditor } from "../requests/request-editor";
@@ -111,6 +117,66 @@ export function reorderRequestIds(
   return next;
 }
 
+type DraggedNavigationItem =
+  | { kind: "folder"; item: FolderSummary }
+  | { kind: "request"; item: RequestSummary };
+
+function TreeActionMenu({
+  children,
+  label,
+}: {
+  children: ReactNode;
+  label: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsideInteraction = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsideInteraction);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideInteraction);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  return (
+    <div className="tree-menu" ref={menuRef}>
+      <button
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={label}
+        className="icon-button compact tree-menu-trigger"
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((current) => !current);
+        }}
+        type="button"
+      >
+        <MoreHorizontal aria-hidden="true" size={16} />
+      </button>
+      {open ? (
+        <div
+          className="tree-menu-popover"
+          onClickCapture={(event) => {
+            if ((event.target as HTMLElement).closest("button")) setOpen(false);
+          }}
+          role="menu"
+        >
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function WorkspacePage() {
   const { workspaceId: routeWorkspaceId } = useParams();
   const navigate = useNavigate();
@@ -155,6 +221,9 @@ export function WorkspacePage() {
     useState<string>();
   const [destinationFolderId, setDestinationFolderId] = useState<string>("");
   const [managementError, setManagementError] = useState<string>();
+  const [draggedNavigationItem, setDraggedNavigationItem] =
+    useState<DraggedNavigationItem>();
+  const [dropTarget, setDropTarget] = useState<string>();
   const [creatingChild, setCreatingChild] = useState<{
     collectionId: string;
     parentFolderId: string | null;
@@ -183,6 +252,8 @@ export function WorkspacePage() {
     setDestinationCollectionId(undefined);
     setDestinationFolderId("");
     setManagementError(undefined);
+    setDraggedNavigationItem(undefined);
+    setDropTarget(undefined);
     setCreatingWorkspace(false);
   }, [activeWorkspace?.id]);
 
@@ -363,7 +434,14 @@ export function WorkspacePage() {
 
   function updateFolderItem(
     folder: FolderSummary,
-    change: { name?: string; targetPosition?: number },
+    change: {
+      name?: string;
+      targetPosition?: number;
+      destination?: {
+        collectionId: string;
+        parentFolderId: string | null;
+      };
+    },
   ) {
     setManagementError(undefined);
     void updateFolder
@@ -377,6 +455,108 @@ export function WorkspacePage() {
           navigationDeleteMessage(error, "Ordner", "bearbeitet"),
         ),
       );
+  }
+
+  function duplicateNavigationRequest(request: RequestSummary) {
+    if (!request.collectionId) return;
+    setManagementError(undefined);
+    void duplicateRequest
+      .mutateAsync({
+        requestId: request.id,
+        collectionId: request.collectionId,
+        folderId: request.folderId,
+      })
+      .then((duplicated) => selectRequest(duplicated.id))
+      .catch(() =>
+        setManagementError("Der Request konnte nicht dupliziert werden."),
+      );
+  }
+
+  function startMovingRequest(request: RequestSummary) {
+    if (!request.collectionId || dirtyRequestIds.has(request.id)) return;
+    selectRequest(request.id);
+    setDestinationCollectionId(request.collectionId);
+    setDestinationFolderId(request.folderId ?? "");
+    setManagementError(undefined);
+    setMovingRequest(true);
+  }
+
+  function removeRequestItem(request: RequestSummary) {
+    const dirtyWarning = dirtyRequestIds.has(request.id)
+      ? " Ungespeicherte Änderungen gehen ebenfalls verloren."
+      : "";
+    if (
+      !window.confirm(
+        `Request „${request.name}“ löschen?${dirtyWarning} Die gespeicherte Fassung bleibt intern als Revision erhalten.`,
+      )
+    ) {
+      return;
+    }
+    setManagementError(undefined);
+    void deleteRequest
+      .mutateAsync({
+        requestId: request.id,
+        expectedVersion: request.version,
+      })
+      .then(() => removeDeletedRequest(request.id))
+      .catch((error: unknown) => {
+        setManagementError(
+          error instanceof RequestConflictError
+            ? "Der Request wurde zwischenzeitlich geändert. Lade den aktuellen Stand und versuche das Löschen erneut."
+            : "Der Request konnte nicht gelöscht werden.",
+        );
+      });
+  }
+
+  function canDropNavigationItem(
+    collectionId: string,
+    parentFolderId: string | null,
+  ) {
+    if (!draggedNavigationItem) return false;
+    if (draggedNavigationItem.kind === "request") {
+      return !dirtyRequestIds.has(draggedNavigationItem.item.id);
+    }
+    if (parentFolderId === draggedNavigationItem.item.id) return false;
+    let currentParentId = parentFolderId;
+    while (currentParentId) {
+      if (currentParentId === draggedNavigationItem.item.id) return false;
+      currentParentId =
+        tree.data?.folders.find(({ id }) => id === currentParentId)
+          ?.parentFolderId ?? null;
+    }
+    return !(
+      draggedNavigationItem.item.collectionId === collectionId &&
+      draggedNavigationItem.item.parentFolderId === parentFolderId
+    );
+  }
+
+  function dropNavigationItem(
+    collectionId: string,
+    parentFolderId: string | null,
+  ) {
+    const dragged = draggedNavigationItem;
+    const allowed = canDropNavigationItem(collectionId, parentFolderId);
+    setDropTarget(undefined);
+    setDraggedNavigationItem(undefined);
+    if (!dragged || !allowed) return;
+    setManagementError(undefined);
+    if (dragged.kind === "request") {
+      void moveRequest
+        .mutateAsync({
+          requestId: dragged.item.id,
+          collectionId,
+          folderId: parentFolderId,
+        })
+        .catch(() =>
+          setManagementError(
+            "Der Request konnte nicht verschoben werden. Lade bei einem Konflikt die aktuelle Version.",
+          ),
+        );
+      return;
+    }
+    updateFolderItem(dragged.item, {
+      destination: { collectionId, parentFolderId },
+    });
   }
 
   useEffect(() => {
@@ -641,7 +821,24 @@ export function WorkspacePage() {
           <nav className="collection-tree">
             {tree.data?.collections.map((collection, collectionIndex) => (
               <div key={collection.id}>
-                <div className="tree-row tree-parent">
+                <div
+                  className={`tree-row tree-parent ${
+                    dropTarget === `collection:${collection.id}`
+                      ? "drop-target"
+                      : ""
+                  }`}
+                  onDragLeave={() => setDropTarget(undefined)}
+                  onDragOver={(event) => {
+                    if (!canDropNavigationItem(collection.id, null)) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    setDropTarget(`collection:${collection.id}`);
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    dropNavigationItem(collection.id, null);
+                  }}
+                >
                   <button
                     aria-expanded={!collapsedCollectionIds.has(collection.id)}
                     className="tree-toggle"
@@ -664,10 +861,9 @@ export function WorkspacePage() {
                     <span>{collection.name}</span>
                   </button>
                   {canEdit ? (
-                    <span className="tree-actions">
+                    <TreeActionMenu label={`${collection.name} Optionen`}>
                       <button
                         aria-label={`${collection.name} nach oben`}
-                        className="icon-button compact"
                         disabled={
                           collectionIndex === 0 || updateCollection.isPending
                         }
@@ -676,13 +872,14 @@ export function WorkspacePage() {
                             targetPosition: collectionIndex - 1,
                           })
                         }
+                        role="menuitem"
                         type="button"
                       >
                         <ArrowUp aria-hidden="true" size={14} />
+                        Nach oben
                       </button>
                       <button
                         aria-label={`${collection.name} nach unten`}
-                        className="icon-button compact"
                         disabled={
                           collectionIndex ===
                             (tree.data?.collections.length ?? 0) - 1 ||
@@ -693,13 +890,14 @@ export function WorkspacePage() {
                             targetPosition: collectionIndex + 1,
                           })
                         }
+                        role="menuitem"
                         type="button"
                       >
                         <ArrowDown aria-hidden="true" size={14} />
+                        Nach unten
                       </button>
                       <button
                         aria-label={`${collection.name} umbenennen`}
-                        className="icon-button compact"
                         onClick={() => {
                           const name = window.prompt(
                             "Neuer Collection-Name",
@@ -711,13 +909,14 @@ export function WorkspacePage() {
                             });
                           }
                         }}
+                        role="menuitem"
                         type="button"
                       >
                         <Pencil aria-hidden="true" size={14} />
+                        Umbenennen
                       </button>
                       <button
                         aria-label={`Request in ${collection.name} erstellen`}
-                        className="icon-button compact"
                         onClick={(event) => {
                           event.stopPropagation();
                           setCreatingChild({
@@ -726,13 +925,14 @@ export function WorkspacePage() {
                             kind: "request",
                           });
                         }}
+                        role="menuitem"
                         type="button"
                       >
                         <FilePlus2 aria-hidden="true" size={14} />
+                        Request erstellen
                       </button>
                       <button
                         aria-label={`Ordner in ${collection.name} erstellen`}
-                        className="icon-button compact"
                         onClick={(event) => {
                           event.stopPropagation();
                           setCreatingChild({
@@ -741,23 +941,27 @@ export function WorkspacePage() {
                             kind: "folder",
                           });
                         }}
+                        role="menuitem"
                         type="button"
                       >
                         <FolderPlus aria-hidden="true" size={14} />
+                        Ordner erstellen
                       </button>
                       <button
                         aria-label={`${collection.name} löschen`}
-                        className="icon-button compact danger"
+                        className="danger"
                         disabled={deleteCollection.isPending}
                         onClick={(event) => {
                           event.stopPropagation();
                           removeCollection(collection);
                         }}
+                        role="menuitem"
                         type="button"
                       >
                         <Trash2 aria-hidden="true" size={14} />
+                        Löschen
                       </button>
-                    </span>
+                    </TreeActionMenu>
                   ) : null}
                 </div>
                 <div
@@ -790,6 +994,9 @@ export function WorkspacePage() {
                         canEdit={canEdit}
                         collapsedFolderIds={collapsedFolderIds}
                         creatingChild={creatingChild}
+                        draggedNavigationItem={draggedNavigationItem}
+                        dirtyRequestIds={dirtyRequestIds}
+                        dropTarget={dropTarget}
                         folder={folder}
                         foldersByParent={foldersByParent}
                         key={folder.id}
@@ -803,6 +1010,24 @@ export function WorkspacePage() {
                         }
                         onSelectRequest={selectRequest}
                         onDeleteFolder={removeFolder}
+                        onDeleteRequest={removeRequestItem}
+                        onDragEnd={() => {
+                          setDraggedNavigationItem(undefined);
+                          setDropTarget(undefined);
+                        }}
+                        onDragStart={setDraggedNavigationItem}
+                        onDropFolder={(collectionId, parentFolderId) =>
+                          dropNavigationItem(collectionId, parentFolderId)
+                        }
+                        onDragOverFolder={(target, collectionId, folderId) => {
+                          if (!canDropNavigationItem(collectionId, folderId)) {
+                            return false;
+                          }
+                          setDropTarget(target);
+                          return true;
+                        }}
+                        onDuplicateRequest={duplicateNavigationRequest}
+                        onMoveRequest={startMovingRequest}
                         onUpdateFolder={updateFolderItem}
                         onStartCreating={setCreatingChild}
                         onStopCreating={() => setCreatingChild(undefined)}
@@ -815,10 +1040,21 @@ export function WorkspacePage() {
                     (request) => (
                       <RequestTreeRow
                         active={activeRequestId === request.id}
+                        canEdit={canEdit}
+                        dirty={dirtyRequestIds.has(request.id)}
                         key={request.id}
-                        method={request.method}
-                        name={request.name}
+                        onDelete={() => removeRequestItem(request)}
+                        onDragEnd={() => setDraggedNavigationItem(undefined)}
+                        onDragStart={() =>
+                          setDraggedNavigationItem({
+                            kind: "request",
+                            item: request,
+                          })
+                        }
+                        onDuplicate={() => duplicateNavigationRequest(request)}
+                        onMove={() => startMovingRequest(request)}
                         onClick={() => selectRequest(request.id)}
+                        request={request}
                       />
                     ),
                   )}
@@ -828,10 +1064,18 @@ export function WorkspacePage() {
             {(requestsByCollection.get("unassigned") ?? []).map((request) => (
               <RequestTreeRow
                 active={activeRequestId === request.id}
+                canEdit={canEdit}
+                dirty={dirtyRequestIds.has(request.id)}
                 key={request.id}
-                method={request.method}
-                name={request.name}
+                onDelete={() => removeRequestItem(request)}
+                onDragEnd={() => setDraggedNavigationItem(undefined)}
+                onDragStart={() =>
+                  setDraggedNavigationItem({ kind: "request", item: request })
+                }
+                onDuplicate={() => duplicateNavigationRequest(request)}
+                onMove={() => startMovingRequest(request)}
                 onClick={() => selectRequest(request.id)}
+                request={request}
               />
             ))}
             {tree.data?.requests.length === 0 ? (
@@ -1048,21 +1292,7 @@ export function WorkspacePage() {
                     <button
                       className="button secondary"
                       disabled={duplicateRequest.isPending}
-                      onClick={() => {
-                        setManagementError(undefined);
-                        void duplicateRequest
-                          .mutateAsync({
-                            requestId: activeRequest.id,
-                            collectionId: activeRequest.collectionId!,
-                            folderId: activeRequest.folderId,
-                          })
-                          .then((duplicated) => selectRequest(duplicated.id))
-                          .catch(() =>
-                            setManagementError(
-                              "Der Request konnte nicht dupliziert werden.",
-                            ),
-                          );
-                      }}
+                      onClick={() => duplicateNavigationRequest(activeRequest)}
                       title="Dupliziert die zuletzt gespeicherte Version"
                       type="button"
                     >
@@ -1072,12 +1302,7 @@ export function WorkspacePage() {
                     <button
                       className="button secondary"
                       disabled={dirtyRequestIds.has(activeRequest.id)}
-                      onClick={() => {
-                        setDestinationCollectionId(activeRequest.collectionId!);
-                        setDestinationFolderId(activeRequest.folderId ?? "");
-                        setManagementError(undefined);
-                        setMovingRequest(true);
-                      }}
+                      onClick={() => startMovingRequest(activeRequest)}
                       title={
                         dirtyRequestIds.has(activeRequest.id)
                           ? "Speichere den Request vor dem Verschieben"
@@ -1094,32 +1319,7 @@ export function WorkspacePage() {
                   <button
                     className="button danger"
                     disabled={deleteRequest.isPending}
-                    onClick={() => {
-                      const dirtyWarning = dirtyRequestIds.has(activeRequest.id)
-                        ? " Ungespeicherte Änderungen gehen ebenfalls verloren."
-                        : "";
-                      if (
-                        !window.confirm(
-                          `Request „${activeRequest.name}“ löschen?${dirtyWarning} Die gespeicherte Fassung bleibt intern als Revision erhalten.`,
-                        )
-                      ) {
-                        return;
-                      }
-                      setManagementError(undefined);
-                      void deleteRequest
-                        .mutateAsync({
-                          requestId: activeRequest.id,
-                          expectedVersion: activeRequest.version,
-                        })
-                        .then(() => removeDeletedRequest(activeRequest.id))
-                        .catch((error: unknown) => {
-                          setManagementError(
-                            error instanceof RequestConflictError
-                              ? "Der Request wurde zwischenzeitlich geändert. Lade den aktuellen Stand und versuche das Löschen erneut."
-                              : "Der Request konnte nicht gelöscht werden.",
-                          );
-                        });
-                    }}
+                    onClick={() => removeRequestItem(activeRequest)}
                     type="button"
                   >
                     <Trash2 aria-hidden="true" size={16} />
@@ -1361,13 +1561,34 @@ interface FolderTreeNodeProps {
       }
     | undefined;
   folder: FolderSummary;
+  draggedNavigationItem: DraggedNavigationItem | undefined;
+  dirtyRequestIds: Set<string>;
+  dropTarget: string | undefined;
   foldersByParent: Map<string, FolderSummary[]>;
   requestsByFolder: Map<string, RequestSummary[]>;
   onSelectRequest: (requestId: string) => void;
   onDeleteFolder: (folder: FolderSummary) => void;
+  onDeleteRequest: (request: RequestSummary) => void;
+  onDragEnd: () => void;
+  onDragStart: (item: DraggedNavigationItem) => void;
+  onDragOverFolder: (
+    target: string,
+    collectionId: string,
+    folderId: string,
+  ) => boolean;
+  onDropFolder: (collectionId: string, folderId: string) => void;
+  onDuplicateRequest: (request: RequestSummary) => void;
+  onMoveRequest: (request: RequestSummary) => void;
   onUpdateFolder: (
     folder: FolderSummary,
-    change: { name?: string; targetPosition?: number },
+    change: {
+      name?: string;
+      targetPosition?: number;
+      destination?: {
+        collectionId: string;
+        parentFolderId: string | null;
+      };
+    },
   ) => void;
   onStartCreating: (value: {
     collectionId: string;
@@ -1384,11 +1605,21 @@ function FolderTreeNode({
   canEdit,
   collapsedFolderIds,
   creatingChild,
+  draggedNavigationItem,
+  dirtyRequestIds,
+  dropTarget,
   folder,
   foldersByParent,
   requestsByFolder,
   onSelectRequest,
   onDeleteFolder,
+  onDeleteRequest,
+  onDragEnd,
+  onDragStart,
+  onDragOverFolder,
+  onDropFolder,
+  onDuplicateRequest,
+  onMoveRequest,
   onUpdateFolder,
   onStartCreating,
   onStopCreating,
@@ -1402,7 +1633,38 @@ function FolderTreeNode({
   const siblingIndex = siblings.findIndex(({ id }) => id === folder.id);
   return (
     <div>
-      <div className="tree-row nested-folder">
+      <div
+        className={`tree-row nested-folder tree-parent ${
+          dropTarget === `folder:${folder.id}` ? "drop-target" : ""
+        }`}
+        draggable={canEdit}
+        onDragEnd={onDragEnd}
+        onDragOver={(event) => {
+          if (
+            !onDragOverFolder(
+              `folder:${folder.id}`,
+              folder.collectionId,
+              folder.id,
+            )
+          ) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          event.dataTransfer.dropEffect = "move";
+        }}
+        onDragStart={(event) => {
+          event.stopPropagation();
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", `folder:${folder.id}`);
+          onDragStart({ kind: "folder", item: folder });
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onDropFolder(folder.collectionId, folder.id);
+        }}
+      >
         <button
           aria-expanded={!collapsed}
           className="tree-toggle"
@@ -1418,45 +1680,47 @@ function FolderTreeNode({
           <span>{folder.name}</span>
         </button>
         {canEdit ? (
-          <span className="tree-actions">
+          <TreeActionMenu label={`${folder.name} Optionen`}>
             <button
               aria-label={`${folder.name} nach oben`}
-              className="icon-button compact"
               disabled={siblingIndex <= 0}
               onClick={() =>
                 onUpdateFolder(folder, { targetPosition: siblingIndex - 1 })
               }
+              role="menuitem"
               type="button"
             >
               <ArrowUp aria-hidden="true" size={14} />
+              Nach oben
             </button>
             <button
               aria-label={`${folder.name} nach unten`}
-              className="icon-button compact"
               disabled={siblingIndex < 0 || siblingIndex === siblings.length - 1}
               onClick={() =>
                 onUpdateFolder(folder, { targetPosition: siblingIndex + 1 })
               }
+              role="menuitem"
               type="button"
             >
               <ArrowDown aria-hidden="true" size={14} />
+              Nach unten
             </button>
             <button
               aria-label={`${folder.name} umbenennen`}
-              className="icon-button compact"
               onClick={() => {
                 const name = window.prompt("Neuer Ordnername", folder.name);
                 if (name?.trim() && name.trim() !== folder.name) {
                   onUpdateFolder(folder, { name: name.trim() });
                 }
               }}
+              role="menuitem"
               type="button"
             >
               <Pencil aria-hidden="true" size={14} />
+              Umbenennen
             </button>
             <button
               aria-label={`Request in ${folder.name} erstellen`}
-              className="icon-button compact"
               onClick={() =>
                 onStartCreating({
                   collectionId: folder.collectionId,
@@ -1464,13 +1728,14 @@ function FolderTreeNode({
                   kind: "request",
                 })
               }
+              role="menuitem"
               type="button"
             >
               <FilePlus2 aria-hidden="true" size={14} />
+              Request erstellen
             </button>
             <button
               aria-label={`Unterordner in ${folder.name} erstellen`}
-              className="icon-button compact"
               onClick={() =>
                 onStartCreating({
                   collectionId: folder.collectionId,
@@ -1478,19 +1743,23 @@ function FolderTreeNode({
                   kind: "folder",
                 })
               }
+              role="menuitem"
               type="button"
             >
               <FolderPlus aria-hidden="true" size={14} />
+              Unterordner erstellen
             </button>
             <button
               aria-label={`${folder.name} löschen`}
-              className="icon-button compact danger"
+              className="danger"
               onClick={() => onDeleteFolder(folder)}
+              role="menuitem"
               type="button"
             >
               <Trash2 aria-hidden="true" size={14} />
+              Löschen
             </button>
-          </span>
+          </TreeActionMenu>
         ) : null}
       </div>
       <div className="tree-children" hidden={collapsed}>
@@ -1519,11 +1788,21 @@ function FolderTreeNode({
             canEdit={canEdit}
             collapsedFolderIds={collapsedFolderIds}
             creatingChild={creatingChild}
+            draggedNavigationItem={draggedNavigationItem}
+            dirtyRequestIds={dirtyRequestIds}
+            dropTarget={dropTarget}
             folder={child}
             foldersByParent={foldersByParent}
             key={child.id}
             onSelectRequest={onSelectRequest}
             onDeleteFolder={onDeleteFolder}
+            onDeleteRequest={onDeleteRequest}
+            onDragEnd={onDragEnd}
+            onDragStart={onDragStart}
+            onDragOverFolder={onDragOverFolder}
+            onDropFolder={onDropFolder}
+            onDuplicateRequest={onDuplicateRequest}
+            onMoveRequest={onMoveRequest}
             onUpdateFolder={onUpdateFolder}
             onStartCreating={onStartCreating}
             onStopCreating={onStopCreating}
@@ -1535,10 +1814,18 @@ function FolderTreeNode({
         {(requestsByFolder.get(folder.id) ?? []).map((request) => (
           <RequestTreeRow
             active={activeRequestId === request.id}
+            canEdit={canEdit}
+            dirty={dirtyRequestIds.has(request.id)}
             key={request.id}
-            method={request.method}
-            name={request.name}
+            onDelete={() => onDeleteRequest(request)}
+            onDragEnd={onDragEnd}
+            onDragStart={() =>
+              onDragStart({ kind: "request", item: request })
+            }
+            onDuplicate={() => onDuplicateRequest(request)}
+            onMove={() => onMoveRequest(request)}
             onClick={() => onSelectRequest(request.id)}
+            request={request}
           />
         ))}
       </div>
@@ -1548,25 +1835,87 @@ function FolderTreeNode({
 
 interface RequestTreeRowProps {
   active: boolean;
-  method: string;
-  name: string;
+  canEdit: boolean;
+  dirty: boolean;
+  onDelete: () => void;
+  onDragEnd: () => void;
+  onDragStart: () => void;
+  onDuplicate: () => void;
+  onMove: () => void;
   onClick: () => void;
+  request: RequestSummary;
 }
 
 function RequestTreeRow({
   active,
-  method,
-  name,
+  canEdit,
+  dirty,
+  onDelete,
+  onDragEnd,
+  onDragStart,
+  onDuplicate,
+  onMove,
   onClick,
+  request,
 }: RequestTreeRowProps) {
   return (
-    <button
+    <div
       className={`tree-row request-row ${active ? "active" : ""}`}
-      onClick={onClick}
-      type="button"
+      draggable={canEdit && !dirty}
+      onDragEnd={onDragEnd}
+      onDragStart={(event) => {
+        event.stopPropagation();
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", `request:${request.id}`);
+        onDragStart();
+      }}
     >
-      <span className={`method method-${method.toLowerCase()}`}>{method}</span>
-      <span>{name}</span>
-    </button>
+      <button
+        aria-label={`${request.method} ${request.name}`}
+        className="tree-request-select"
+        onClick={onClick}
+        type="button"
+      >
+        <span className={`method method-${request.method.toLowerCase()}`}>
+          {request.method}
+        </span>
+        <span>{request.name}</span>
+      </button>
+      {canEdit ? (
+        <TreeActionMenu label={`${request.name} Optionen`}>
+          <button onClick={onClick} role="menuitem" type="button">
+            Öffnen
+          </button>
+          <button
+            disabled={!request.collectionId}
+            onClick={onDuplicate}
+            role="menuitem"
+            type="button"
+          >
+            <Copy aria-hidden="true" size={14} />
+            Duplizieren
+          </button>
+          <button
+            disabled={!request.collectionId || dirty}
+            onClick={onMove}
+            role="menuitem"
+            title={dirty ? "Speichere den Request vor dem Verschieben" : undefined}
+            type="button"
+          >
+            <FolderInput aria-hidden="true" size={14} />
+            Verschieben
+          </button>
+          <button
+            className="danger"
+            onClick={onDelete}
+            role="menuitem"
+            type="button"
+          >
+            <Trash2 aria-hidden="true" size={14} />
+            Löschen
+          </button>
+        </TreeActionMenu>
+      ) : null}
+    </div>
   );
 }

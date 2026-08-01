@@ -14,6 +14,7 @@ import {
   environmentIdParamsSchema,
   environmentVariableIdParamsSchema,
   folderIdParamsSchema,
+  updateFolderNavigationSchema,
   requestIdParamsSchema,
   restoreRequestRevisionSchema,
   teamIdParamsSchema,
@@ -872,7 +873,7 @@ export function buildApp(dependencies: ApiDependencies) {
         });
     }
     const params = folderIdParamsSchema.safeParse(request.params);
-    const body = updateNavigationItemSchema.safeParse(request.body);
+    const body = updateFolderNavigationSchema.safeParse(request.body);
     if (!params.success || !body.success) {
       return reply.code(400).send({ code: "INVALID_REQUEST" });
     }

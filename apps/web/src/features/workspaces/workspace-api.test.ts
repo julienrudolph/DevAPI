@@ -284,4 +284,42 @@ describe("workspace API client", () => {
       "session-token",
     )).resolves.toMatchObject({ position: 0, version: 2 });
   });
+
+  it("sends a folder destination for drag and drop", async () => {
+    const workspaceId = "85e52968-22cc-483d-b6a6-bdc169e46ede";
+    const collectionId = "95da6097-0742-4164-9c9a-75dc64d2cd8f";
+    const folderId = "cc0814af-eeb4-45ad-8686-0784a67ea823";
+    const destination = {
+      collectionId,
+      parentFolderId: "8827867e-cd16-47cc-a3ca-336dd4e774e8",
+    };
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: folderId,
+          workspaceId,
+          collectionId,
+          parentFolderId: destination.parentFolderId,
+          name: "Folder",
+          position: 1,
+          version: 2,
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await updateFolder(
+      folderId,
+      { expectedVersion: 1, destination },
+      "session-token",
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/v1/folders/${folderId}`,
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ expectedVersion: 1, destination }),
+      }),
+    );
+  });
 });

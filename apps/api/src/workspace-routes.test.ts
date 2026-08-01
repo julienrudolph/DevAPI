@@ -336,6 +336,48 @@ describe("workspace routes", () => {
     await app.close();
   });
 
+  it("passes a folder destination to the versioned repository operation", async () => {
+    const folderId = "cc0814af-eeb4-45ad-8686-0784a67ea823";
+    const collectionId = "95da6097-0742-4164-9c9a-75dc64d2cd8f";
+    const parentFolderId = "8827867e-cd16-47cc-a3ca-336dd4e774e8";
+    const moved = {
+      id: folderId,
+      workspaceId: workspace.id,
+      collectionId,
+      parentFolderId,
+      name: "Moved",
+      position: 2,
+      version: 3,
+    };
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: requestRepository,
+      workspaces: {
+        ...emptyWorkspaceRepository,
+        updateFolder: async (command) => {
+          expect(command).toMatchObject({
+            itemId: folderId,
+            expectedVersion: 2,
+            destination: { collectionId, parentFolderId },
+          });
+          return { kind: "updated", item: moved };
+        },
+      },
+    });
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/v1/folders/${folderId}`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: {
+        expectedVersion: 2,
+        destination: { collectionId, parentFolderId },
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(moved);
+    await app.close();
+  });
+
   it("returns only environments supplied by the RLS-backed repository", async () => {
     const environment = {
       id: "a768f717-d11f-4ce0-a72b-8e1d439222b0",

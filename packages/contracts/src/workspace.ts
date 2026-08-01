@@ -35,6 +35,26 @@ export const updateNavigationItemSchema = z
     { message: "Name oder Zielposition ist erforderlich." },
   );
 
+export const updateFolderNavigationSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    name: z.string().trim().min(1).max(160).optional(),
+    targetPosition: z.number().int().nonnegative().optional(),
+    destination: z
+      .object({
+        collectionId: z.string().uuid(),
+        parentFolderId: z.string().uuid().nullable(),
+      })
+      .optional(),
+  })
+  .refine(
+    ({ destination, name, targetPosition }) =>
+      destination !== undefined ||
+      name !== undefined ||
+      targetPosition !== undefined,
+    { message: "Name, Zielposition oder Zielordner ist erforderlich." },
+  );
+
 export const createWorkspaceSchema = z.union([
   z.object({
     teamName: z.string().trim().min(1).max(160),
@@ -124,4 +144,7 @@ export type DeleteNavigationItem = z.infer<
 >;
 export type UpdateNavigationItem = z.infer<
   typeof updateNavigationItemSchema
+>;
+export type UpdateFolderNavigation = z.infer<
+  typeof updateFolderNavigationSchema
 >;

@@ -7,6 +7,7 @@ import {
   deleteNavigationItemSchema,
   folderSummarySchema,
   requestSummarySchema,
+  updateFolderNavigationSchema,
   updateNavigationItemSchema,
   workspaceSummarySchema,
   workspaceTreeSchema,
@@ -20,6 +21,7 @@ import {
   type FolderSummary,
   type RequestSummary,
   type UpdateNavigationItem,
+  type UpdateFolderNavigation,
 } from "@api-client/contracts";
 import { z } from "zod";
 
@@ -148,7 +150,7 @@ export async function updateCollection(
 
 export async function updateFolder(
   folderId: string,
-  input: UpdateNavigationItem,
+  input: UpdateFolderNavigation,
   accessToken: string,
 ): Promise<FolderSummary> {
   return updateNavigationItem(
@@ -156,6 +158,7 @@ export async function updateFolder(
     input,
     accessToken,
     folderSummarySchema,
+    updateFolderNavigationSchema,
   );
 }
 
@@ -191,6 +194,7 @@ async function updateNavigationItem<T>(
   input: UpdateNavigationItem,
   accessToken: string,
   schema: z.ZodType<T>,
+  inputSchema: z.ZodType = updateNavigationItemSchema,
 ): Promise<T> {
   const response = await fetch(url, {
     method: "PATCH",
@@ -198,7 +202,7 @@ async function updateNavigationItem<T>(
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(updateNavigationItemSchema.parse(input)),
+    body: JSON.stringify(inputSchema.parse(input)),
   });
   if (!response.ok) {
     const payload: unknown = await response.json().catch(() => undefined);

@@ -183,6 +183,10 @@ export function useUpdateFolder(workspaceId: string) {
       expectedVersion: number;
       name?: string;
       targetPosition?: number;
+      destination?: {
+        collectionId: string;
+        parentFolderId: string | null;
+      };
     }) =>
       updateFolder(
         input.folderId,
@@ -190,6 +194,7 @@ export function useUpdateFolder(workspaceId: string) {
           expectedVersion: input.expectedVersion,
           name: input.name,
           targetPosition: input.targetPosition,
+          destination: input.destination,
         },
         accessToken!,
       ),
