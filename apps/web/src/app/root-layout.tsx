@@ -1,7 +1,8 @@
-import { Braces, CircleUserRound } from "lucide-react";
+import { PersonCircle20Regular } from "@fluentui/react-icons";
+import { Braces } from "lucide-react";
 import { Outlet } from "react-router";
 
-import { Button } from "../components/ui";
+import { Button, Tooltip } from "../components/ui";
 import { useAuth } from "../features/auth/auth-context";
 
 export function RootLayout() {
@@ -24,15 +25,19 @@ export function RootLayout() {
           <span>Relay</span>
         </a>
         <div className="topbar-actions">
-          <Button
-            className="profile-button"
-            onClick={signOut}
-            title="Abmelden"
-            variant="ghost"
+          <Tooltip
+            content={`Als ${user?.email ?? "Nutzer"} abmelden`}
+            relationship="description"
           >
-            <CircleUserRound aria-hidden="true" size={20} />
-            <span>{user?.email ?? "Abmelden"}</span>
-          </Button>
+            <Button
+              className="profile-button"
+              onClick={signOut}
+              variant="ghost"
+            >
+              <PersonCircle20Regular aria-hidden="true" />
+              <span>{user?.email ?? "Abmelden"}</span>
+            </Button>
+          </Tooltip>
         </div>
       </header>
       <main id="main-content" tabIndex={-1}>

@@ -137,6 +137,7 @@ const folderId = "e8f8b5cb-9d47-4265-b34a-599ed8ea8b21";
 const secondFolderId = "3b55891d-b9c0-4c36-af89-587a77545a0a";
 const firstRequestId = "fa7596b3-0041-4fe8-9ddf-956e7a107014";
 const secondRequestId = "a5acefdb-0b49-43d7-83dc-f3ec414aa501";
+const originalMatchMedia = window.matchMedia;
 
 beforeEach(() => {
   localStorage.clear();
@@ -235,7 +236,13 @@ beforeEach(() => {
   } as unknown as ReturnType<typeof useEnvironments>);
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: originalMatchMedia,
+  });
+});
 
 function renderWorkspace() {
   return render(
@@ -248,6 +255,38 @@ function renderWorkspace() {
 }
 
 describe("WorkspacePage", () => {
+  it("opens and closes the workspace navigation on compact screens", async () => {
+    const user = userEvent.setup();
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    });
+
+    renderWorkspace();
+
+    const sidebar = document.getElementById("workspace-sidebar");
+    await waitFor(() => expect(sidebar).toHaveAttribute("aria-hidden", "true"));
+
+    await user.click(
+      screen.getByRole("button", { name: "Workspace-Navigation öffnen" }),
+    );
+    expect(sidebar).toHaveAttribute("aria-hidden", "false");
+    expect(
+      within(sidebar as HTMLElement).getByRole("button", {
+        name: "Workspace-Navigation schließen",
+      }),
+    ).toHaveFocus();
+
+    await user.click(
+      screen.getByRole("button", { name: "GET List customers" }),
+    );
+    expect(sidebar).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("switches workspaces and exposes creation after onboarding", async () => {
     const user = userEvent.setup();
     const secondWorkspaceId = "45d80ec6-6136-41d9-b62c-953e3fe94456";

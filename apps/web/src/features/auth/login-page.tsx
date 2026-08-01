@@ -242,14 +242,15 @@ export function LoginPage() {
                 {mode === "signup" ? "Konto erstellen" : "Anmelden"}
               </Button>
               {mode === "signin" ? (
-                <button
+                <Button
                   className="revision-link login-forgot-password"
                   disabled={submitting}
                   onClick={() => void resetPassword()}
-                  type="button"
+                  size="small"
+                  variant="ghost"
                 >
                   Passwort vergessen?
-                </button>
+                </Button>
               ) : null}
             </>
           ) : null}

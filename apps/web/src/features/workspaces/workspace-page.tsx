@@ -10,28 +10,31 @@ import {
   MenuTrigger,
 } from "@fluentui/react-components";
 import {
+  Add20Regular,
+  ArrowDownload20Regular,
+  ArrowUpload20Regular,
+  Copy20Regular,
+  Delete20Regular,
+  Dismiss20Regular,
+  History20Regular,
+  MoreHorizontal20Regular,
+  Navigation20Regular,
+  People20Regular,
+  PeopleAdd20Regular,
+  Save20Regular,
+  Send20Regular,
+} from "@fluentui/react-icons";
+import {
   ChevronDown,
   ChevronRight,
   ArrowDown,
   ArrowUp,
-  Clock3,
-  Copy,
-  Download,
-  FileUp,
   FilePlus2,
   FolderClosed,
   FolderInput,
   FolderPlus,
-  MoreHorizontal,
-  Plus,
   Pencil,
-  Save,
   Search,
-  Send,
-  Trash2,
-  UserPlus,
-  Users,
-  X,
 } from "lucide-react";
 import {
   Children,
@@ -155,7 +158,7 @@ function TreeActionMenu({
             className="tree-menu-trigger"
             size="compact"
           >
-            <MoreHorizontal aria-hidden="true" size={16} />
+            <MoreHorizontal20Regular aria-hidden="true" />
           </IconButton>
         </MenuTrigger>
         <MenuPopover className="tree-menu-popover">
@@ -214,6 +217,10 @@ export function WorkspacePage() {
   const canEdit =
     activeWorkspace?.role === "owner" || activeWorkspace?.role === "editor";
   const [activeRequestId, setActiveRequestId] = useState<string>();
+  const [compactNavigation, setCompactNavigation] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarCloseRef = useRef<HTMLButtonElement>(null);
+  const sidebarTriggerRef = useRef<HTMLButtonElement>(null);
   const [openRequestIds, setOpenRequestIds] = useState<string[]>([]);
   const [dirtyRequestIds, setDirtyRequestIds] = useState<Set<string>>(
     () => new Set(),
@@ -223,6 +230,28 @@ export function WorkspacePage() {
   const [collapsedFolderIds, setCollapsedFolderIds] = useState<Set<string>>(
     () => new Set(),
   );
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(max-width: 850px)");
+    const update = () => {
+      setCompactNavigation(media.matches);
+      if (!media.matches) setSidebarOpen(false);
+    };
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    sidebarCloseRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeSidebar();
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [sidebarOpen]);
   const [restoredWorkspaceId, setRestoredWorkspaceId] = useState<string>();
   const [selectedEnvironmentId, setSelectedEnvironmentId] =
     useState<string>();
@@ -313,6 +342,12 @@ export function WorkspacePage() {
       current.includes(requestId) ? current : [...current, requestId],
     );
     setActiveRequestId(requestId);
+    setSidebarOpen(false);
+  }
+
+  function closeSidebar() {
+    setSidebarOpen(false);
+    sidebarTriggerRef.current?.focus();
   }
 
   function closeRequest(requestId: string) {
@@ -697,8 +732,42 @@ export function WorkspacePage() {
   }
 
   return (
-    <div className="workspace-layout">
-      <aside className="sidebar" aria-label="Workspace-Navigation">
+    <div
+      className={`workspace-layout ${sidebarOpen ? "sidebar-open" : ""}`}
+    >
+      <IconButton
+        aria-controls="workspace-sidebar"
+        aria-expanded={sidebarOpen}
+        aria-label="Workspace-Navigation öffnen"
+        className="mobile-sidebar-trigger"
+        onClick={() => setSidebarOpen(true)}
+        ref={sidebarTriggerRef}
+      >
+        <Navigation20Regular aria-hidden="true" />
+      </IconButton>
+      {compactNavigation && sidebarOpen ? (
+        <button
+          aria-label="Workspace-Navigation schließen"
+          className="sidebar-backdrop"
+          onClick={closeSidebar}
+          type="button"
+        />
+      ) : null}
+      <aside
+        aria-hidden={compactNavigation && !sidebarOpen}
+        aria-label="Workspace-Navigation"
+        className="sidebar"
+        id="workspace-sidebar"
+        inert={compactNavigation && !sidebarOpen ? true : undefined}
+      >
+        <IconButton
+          aria-label="Workspace-Navigation schließen"
+          className="mobile-sidebar-close"
+          onClick={closeSidebar}
+          ref={sidebarCloseRef}
+        >
+          <Dismiss20Regular aria-hidden="true" />
+        </IconButton>
         <div className="workspace-switcher">
           <label className="workspace-select">
             <span className="workspace-select-control">
@@ -738,7 +807,7 @@ export function WorkspacePage() {
                 : "Nur Team-Owner können Workspaces erstellen"
             }
           >
-            <Plus aria-hidden="true" size={17} />
+            <Add20Regular aria-hidden="true" />
           </IconButton>
         </div>
 
@@ -750,7 +819,7 @@ export function WorkspacePage() {
               onClick={() => setCreatingCollection(true)}
               size="compact"
             >
-              <Plus aria-hidden="true" size={16} />
+              <Add20Regular aria-hidden="true" />
             </IconButton>
           ) : null}
         </div>
@@ -973,7 +1042,7 @@ export function WorkspacePage() {
                         role="menuitem"
                         type="button"
                       >
-                        <Trash2 aria-hidden="true" size={14} />
+                        <Delete20Regular aria-hidden="true" />
                         Löschen
                       </button>
                     </TreeActionMenu>
@@ -1112,7 +1181,7 @@ export function WorkspacePage() {
               onClick={() => setShowingOpenApiImport(true)}
               type="button"
             >
-              <FileUp aria-hidden="true" size={16} />
+              <ArrowUpload20Regular aria-hidden="true" />
               OpenAPI importieren
             </button>
           ) : null}
@@ -1143,7 +1212,7 @@ export function WorkspacePage() {
             }}
             type="button"
           >
-            <Download aria-hidden="true" size={16} />
+            <ArrowDownload20Regular aria-hidden="true" />
             {exportWorkspace.isPending
               ? "Export wird erstellt …"
               : "Workspace exportieren"}
@@ -1153,7 +1222,7 @@ export function WorkspacePage() {
             onClick={() => setShowingHistory(true)}
             type="button"
           >
-            <Clock3 aria-hidden="true" size={16} />
+            <History20Regular aria-hidden="true" />
             Verlauf
           </button>
         </div>
@@ -1232,14 +1301,14 @@ export function WorkspacePage() {
                       onClick={() => closeRequest(request.id)}
                       type="button"
                     >
-                      <X aria-hidden="true" size={13} />
+                      <Dismiss20Regular aria-hidden="true" />
                     </button>
                   </div>
                 ))}
               </div>
               <details className="request-tab-menu">
                 <summary aria-label="Tab-Aktionen">
-                  <MoreHorizontal aria-hidden="true" size={16} />
+                  <MoreHorizontal20Regular aria-hidden="true" />
                 </summary>
                 <div className="request-tab-menu-popover">
                   <button
@@ -1281,13 +1350,13 @@ export function WorkspacePage() {
                     <Button
                       onClick={() => setManagingTeam(true)}
                     >
-                      <Users aria-hidden="true" size={16} />
+                      <People20Regular aria-hidden="true" />
                       Team
                     </Button>
                     <Button
                       onClick={() => setInviting(true)}
                     >
-                      <UserPlus aria-hidden="true" size={16} />
+                      <PeopleAdd20Regular aria-hidden="true" />
                       Einladen
                     </Button>
                   </>
@@ -1305,7 +1374,7 @@ export function WorkspacePage() {
                       onClick={() => duplicateNavigationRequest(activeRequest)}
                       title="Dupliziert die zuletzt gespeicherte Version"
                     >
-                      <Copy aria-hidden="true" size={16} />
+                      <Copy20Regular aria-hidden="true" />
                       Duplizieren
                     </Button>
                     <Button
@@ -1328,7 +1397,7 @@ export function WorkspacePage() {
                     onClick={() => removeRequestItem(activeRequest)}
                     variant="danger"
                   >
-                    <Trash2 aria-hidden="true" size={16} />
+                    <Delete20Regular aria-hidden="true" />
                     Löschen
                   </Button>
                 ) : null}
@@ -1339,7 +1408,7 @@ export function WorkspacePage() {
                     type="submit"
                     value="save"
                   >
-                    <Save aria-hidden="true" size={16} />
+                    <Save20Regular aria-hidden="true" />
                     Speichern
                   </Button>
                 ) : null}
@@ -1350,7 +1419,7 @@ export function WorkspacePage() {
                   value="execute"
                   variant="primary"
                 >
-                  <Send aria-hidden="true" size={16} />
+                  <Send20Regular aria-hidden="true" />
                   Senden
                 </Button>
               </div>
@@ -1383,13 +1452,13 @@ export function WorkspacePage() {
                 <Button
                   onClick={() => setManagingTeam(true)}
                 >
-                  <Users aria-hidden="true" size={16} />
+                  <People20Regular aria-hidden="true" />
                   Team verwalten
                 </Button>
                 <Button
                   onClick={() => setInviting(true)}
                 >
-                  <UserPlus aria-hidden="true" size={16} />
+                  <PeopleAdd20Regular aria-hidden="true" />
                   Mitglied einladen
                 </Button>
               </div>
@@ -1745,7 +1814,7 @@ function FolderTreeNode({
               role="menuitem"
               type="button"
             >
-              <Trash2 aria-hidden="true" size={14} />
+              <Delete20Regular aria-hidden="true" />
               Löschen
             </button>
           </TreeActionMenu>
@@ -1881,7 +1950,7 @@ function RequestTreeRow({
             role="menuitem"
             type="button"
           >
-            <Copy aria-hidden="true" size={14} />
+            <Copy20Regular aria-hidden="true" />
             Duplizieren
           </button>
           <button
@@ -1900,7 +1969,7 @@ function RequestTreeRow({
             role="menuitem"
             type="button"
           >
-            <Trash2 aria-hidden="true" size={14} />
+            <Delete20Regular aria-hidden="true" />
             Löschen
           </button>
         </TreeActionMenu>

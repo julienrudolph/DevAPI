@@ -14,3 +14,5 @@ export {
   Select,
   Textarea,
 } from "./form-controls";
+export { Tooltip } from "./tooltip";
+export type { TooltipProps } from "./tooltip";

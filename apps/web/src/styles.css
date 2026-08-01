@@ -810,6 +810,12 @@ button:disabled {
   min-width: 0;
 }
 
+.mobile-sidebar-trigger,
+.mobile-sidebar-close,
+.sidebar-backdrop {
+  display: none;
+}
+
 .request-tabs-bar {
   align-items: end;
   background: #f5f7f4;
@@ -1610,8 +1616,59 @@ a:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .request-workbench {
+    padding-top: 46px;
+  }
+
+  .mobile-sidebar-trigger {
+    display: inline-flex;
+    left: 12px;
+    position: fixed;
+    top: 72px;
+    z-index: 55;
+  }
+
   .sidebar {
-    display: none;
+    bottom: 0;
+    box-shadow: var(--shadow-dialog);
+    display: flex;
+    left: 0;
+    max-width: 88vw;
+    overflow-y: auto;
+    position: fixed;
+    top: 64px;
+    transform: translateX(-100%);
+    transition: transform 160ms ease;
+    width: 22rem;
+    z-index: 60;
+  }
+
+  .sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar-open .mobile-sidebar-trigger {
+    visibility: hidden;
+  }
+
+  .mobile-sidebar-close {
+    align-self: flex-end;
+    display: inline-flex;
+    flex: 0 0 auto;
+    margin-bottom: 8px;
+  }
+
+  .sidebar-backdrop {
+    background: rgb(18 25 20 / 45%);
+    border: 0;
+    bottom: 0;
+    display: block;
+    left: 0;
+    padding: 0;
+    position: fixed;
+    right: 0;
+    top: 64px;
+    z-index: 50;
   }
 
   .save-state {

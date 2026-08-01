@@ -1,6 +1,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Tab, TabList } from "@fluentui/react-components";
 import {
+  Add20Regular,
+  ArrowDownload20Regular,
+  ArrowImport20Regular,
+  Copy20Regular,
+  History20Regular,
+  Search20Regular,
+  Subtract20Regular,
+} from "@fluentui/react-icons";
+import {
   type ApiRequest,
   type EnvironmentVariable,
   type RequestConflict,
@@ -8,15 +17,6 @@ import {
   type RequestDraft,
   requestDraftSchema,
 } from "@api-client/contracts";
-import {
-  ClipboardCopy,
-  Download,
-  History,
-  Import,
-  Minus,
-  Plus,
-  Search,
-} from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Controller,
@@ -32,6 +32,7 @@ import {
   DialogFooter,
   IconButton,
   Textarea,
+  Tooltip,
 } from "../../components/ui";
 import { RequestConflictError } from "./request-api";
 import { RequestExecutionError } from "./request-execution-api";
@@ -262,19 +263,20 @@ function LoadedRequestEditor({
           </span>
           <div className="editor-tools">
             {!readOnly ? (
-              <button
+              <Button
                 className="revision-link"
                 onClick={() => {
                   setCurlError(undefined);
                   setShowingCurlImport(true);
                 }}
-                type="button"
+                size="small"
+                variant="ghost"
               >
-                <Import aria-hidden="true" size={13} />
+                <ArrowImport20Regular aria-hidden="true" />
                 cURL importieren
-              </button>
+              </Button>
             ) : null}
-            <button
+            <Button
               className="revision-link"
               onClick={() => {
                 void navigator.clipboard
@@ -287,19 +289,21 @@ function LoadedRequestEditor({
                     setCurlNotice("cURL konnte nicht kopiert werden"),
                   );
               }}
-              type="button"
+              size="small"
+              variant="ghost"
             >
-              <ClipboardCopy aria-hidden="true" size={13} />
+              <Copy20Regular aria-hidden="true" />
               Als cURL kopieren
-            </button>
-            <button
+            </Button>
+            <Button
               className="revision-link"
               onClick={() => setShowingRevisions(true)}
-              type="button"
+              size="small"
+              variant="ghost"
             >
-              <History aria-hidden="true" size={13} />
+              <History20Regular aria-hidden="true" />
               Versionen
-            </button>
+            </Button>
           </div>
         </div>
         <div className="url-bar">
@@ -628,7 +632,7 @@ function LoadedRequestEditor({
                 </TabList>
                 <div className="response-actions">
                   <label className="response-search">
-                    <Search aria-hidden="true" size={14} />
+                    <Search20Regular aria-hidden="true" />
                     <span className="sr-only">Response durchsuchen</span>
                     <input
                       aria-label="Response durchsuchen"
@@ -649,31 +653,39 @@ function LoadedRequestEditor({
                       </span>
                     ) : null}
                   </label>
-                  <IconButton
-                    aria-label="Response kopieren"
-                    onClick={() =>
-                      void navigator.clipboard.writeText(
-                        responseTab === "body"
-                          ? formatResponseBody(execution.data.body)
-                          : formatResponseHeaders(execution.data.headers),
-                      )
-                    }
-                    title="Aktuelle Response-Ansicht kopieren"
+                  <Tooltip
+                    content="Aktuelle Response-Ansicht kopieren"
+                    relationship="description"
                   >
-                    <ClipboardCopy aria-hidden="true" size={15} />
-                  </IconButton>
-                  <IconButton
-                    aria-label="Response-Body herunterladen"
-                    onClick={() =>
-                      downloadResponseBody(
-                        execution.data.body,
-                        execution.data.headers,
-                      )
-                    }
-                    title="Response-Body herunterladen"
+                    <IconButton
+                      aria-label="Response kopieren"
+                      onClick={() =>
+                        void navigator.clipboard.writeText(
+                          responseTab === "body"
+                            ? formatResponseBody(execution.data.body)
+                            : formatResponseHeaders(execution.data.headers),
+                        )
+                      }
+                    >
+                      <Copy20Regular aria-hidden="true" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip
+                    content="Response-Body herunterladen"
+                    relationship="description"
                   >
-                    <Download aria-hidden="true" size={15} />
-                  </IconButton>
+                    <IconButton
+                      aria-label="Response-Body herunterladen"
+                      onClick={() =>
+                        downloadResponseBody(
+                          execution.data.body,
+                          execution.data.headers,
+                        )
+                      }
+                    >
+                      <ArrowDownload20Regular aria-hidden="true" />
+                    </IconButton>
+                  </Tooltip>
                 </div>
               </div>
               <div className="response-content" role="tabpanel">
@@ -1006,13 +1018,13 @@ function KeyValueTable({
               onClick={() => remove(index)}
               size="compact"
             >
-              <Minus aria-hidden="true" size={14} />
+              <Subtract20Regular aria-hidden="true" />
             </IconButton>
           ) : null}
         </div>
       ))}
       {!readOnly ? (
-        <button
+        <Button
           className="add-row"
           onClick={() =>
             append({
@@ -1022,10 +1034,11 @@ function KeyValueTable({
               enabled: true,
             })
           }
-          type="button"
+          size="small"
+          variant="ghost"
         >
-          <Plus aria-hidden="true" size={14} /> {emptyLabel}
-        </button>
+          <Add20Regular aria-hidden="true" /> {emptyLabel}
+        </Button>
       ) : null}
     </div>
   );
