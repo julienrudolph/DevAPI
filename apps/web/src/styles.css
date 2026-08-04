@@ -42,7 +42,14 @@ body {
   min-height: 100vh;
 }
 
-.fluent-app-root {
+/*
+ * FluentProvider replicates its className onto Fluent UI's global portal-mount
+ * node (position: absolute, inset 0, z-index: 1000000, appended to <body> for
+ * tooltips/menus/dialogs). Excluding that node keeps this rule from turning
+ * the always-mounted portal target into a full-viewport overlay that blocks
+ * every click in the app.
+ */
+.fluent-app-root:not([data-portal-node]) {
   min-height: 100vh;
 }
 
