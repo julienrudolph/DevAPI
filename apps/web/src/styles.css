@@ -817,9 +817,15 @@ button:disabled {
   min-width: 0;
 }
 
-.mobile-sidebar-trigger,
-.mobile-sidebar-close,
-.sidebar-backdrop {
+/*
+ * Two-class selectors so this reliably wins the cascade over Fluent UI's own
+ * Button base styles (equal-specificity atomic classes injected by Griffel,
+ * often after this stylesheet — source order would otherwise let Fluent's
+ * `display: inline-flex` show these controls on desktop).
+ */
+.workspace-layout .mobile-sidebar-trigger,
+.workspace-layout .mobile-sidebar-close,
+.workspace-layout .sidebar-backdrop {
   display: none;
 }
 
@@ -1627,7 +1633,7 @@ a:focus-visible {
     padding-top: 46px;
   }
 
-  .mobile-sidebar-trigger {
+  .workspace-layout .mobile-sidebar-trigger {
     display: inline-flex;
     left: 12px;
     position: fixed;
@@ -1658,14 +1664,14 @@ a:focus-visible {
     visibility: hidden;
   }
 
-  .mobile-sidebar-close {
+  .workspace-layout .mobile-sidebar-close {
     align-self: flex-end;
     display: inline-flex;
     flex: 0 0 auto;
     margin-bottom: 8px;
   }
 
-  .sidebar-backdrop {
+  .workspace-layout .sidebar-backdrop {
     background: rgb(18 25 20 / 45%);
     border: 0;
     bottom: 0;
