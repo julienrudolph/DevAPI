@@ -39,7 +39,9 @@ async function createWorkspace(
   await page.getByLabel("Teamname").fill(teamName);
   await page.getByLabel("Workspace-Name").fill(workspaceName);
   await page.getByRole("button", { name: "Workspace erstellen" }).click();
-  await expect(page.getByLabel("Workspace auswählen")).toHaveValue(/.+/);
+  await expect(page.getByLabel("Workspace auswählen")).toContainText(
+    workspaceName,
+  );
 }
 
 async function createRequest(page: Page): Promise<void> {

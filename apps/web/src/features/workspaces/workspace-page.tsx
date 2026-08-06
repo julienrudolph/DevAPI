@@ -3,11 +3,13 @@ import {
   type RequestSummary,
 } from "@api-client/contracts";
 import {
+  Dropdown,
   Menu,
   MenuItem,
   MenuList,
   MenuPopover,
   MenuTrigger,
+  Option,
 } from "@fluentui/react-components";
 import {
   Add20Regular,
@@ -769,33 +771,33 @@ export function WorkspacePage() {
           <Dismiss20Regular aria-hidden="true" />
         </IconButton>
         <div className="workspace-switcher">
-          <label className="workspace-select">
-            <span className="workspace-select-control">
-              <span className="eyebrow">Workspace</span>
-              <select
-                aria-label="Workspace auswählen"
-                value={activeWorkspace.id}
-                onChange={(event) => {
-                  if (
-                    hasDirtyRequests &&
-                    !window.confirm(
-                      "In offenen Tabs gibt es ungespeicherte Änderungen. Möchtest du den Workspace wirklich wechseln?",
-                    )
-                  ) {
-                    return;
-                  }
-                  navigate(`/workspaces/${event.target.value}`);
-                }}
-              >
-                {workspaces.data?.map((workspace) => (
-                  <option key={workspace.id} value={workspace.id}>
-                    {workspace.name}
-                  </option>
-                ))}
-              </select>
-            </span>
-            <ChevronDown aria-hidden="true" size={16} />
-          </label>
+          <div className="workspace-select">
+            <span className="eyebrow">Workspace</span>
+            <Dropdown
+              aria-label="Workspace auswählen"
+              className="workspace-select-dropdown"
+              onOptionSelect={(_, data) => {
+                if (!data.optionValue) return;
+                if (
+                  hasDirtyRequests &&
+                  !window.confirm(
+                    "In offenen Tabs gibt es ungespeicherte Änderungen. Möchtest du den Workspace wirklich wechseln?",
+                  )
+                ) {
+                  return;
+                }
+                navigate(`/workspaces/${data.optionValue}`);
+              }}
+              selectedOptions={[activeWorkspace.id]}
+              value={activeWorkspace.name}
+            >
+              {workspaces.data?.map((workspace) => (
+                <Option key={workspace.id} value={workspace.id}>
+                  {workspace.name}
+                </Option>
+              ))}
+            </Dropdown>
+          </div>
           <IconButton
             aria-label="Workspace erstellen"
             className="workspace-create-button"

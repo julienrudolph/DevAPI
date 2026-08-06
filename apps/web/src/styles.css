@@ -169,13 +169,10 @@ button:disabled {
 }
 
 .workspace-select {
-  align-items: center;
-  background: #ffffff;
-  border: 1px solid #dfe5df;
-  border-radius: 10px;
   display: flex;
-  justify-content: space-between;
-  padding: 11px 12px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .workspace-switcher {
@@ -195,27 +192,19 @@ button:disabled {
   min-width: 38px;
 }
 
-.workspace-select-control {
-  display: block;
+/*
+ * Two-class selector so this reliably wins the cascade over Fluent's own
+ * Dropdown root style (equal-specificity Griffel atomic class, inserted
+ * after this stylesheet, which hardcodes min-width: 250px and would
+ * otherwise overflow this narrow sidebar column into the adjacent button).
+ */
+.workspace-select .workspace-select-dropdown {
   min-width: 0;
-  overflow: hidden;
-}
-
-.workspace-select select {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  color: #17211b;
-  font-weight: 700;
-  min-width: 0;
-  outline: 0;
   width: 100%;
-  text-overflow: ellipsis;
 }
 
-.workspace-select strong,
-.workspace-select span {
-  display: block;
+.workspace-select-dropdown button {
+  font-weight: 700;
 }
 
 .workspace-create-dialog .creation-form {

@@ -310,13 +310,11 @@ describe("WorkspacePage", () => {
     } as unknown as ReturnType<typeof useWorkspaces>);
     renderWorkspace();
 
-    await user.selectOptions(
-      screen.getByLabelText("Workspace auswählen"),
-      secondWorkspaceId,
+    await user.click(screen.getByLabelText("Workspace auswählen"));
+    await user.click(screen.getByRole("option", { name: "Customer API" }));
+    expect(screen.getByLabelText("Workspace auswählen")).toHaveTextContent(
+      "Customer API",
     );
-    expect(
-      screen.getByLabelText("Workspace auswählen"),
-    ).toHaveValue(secondWorkspaceId);
 
     await user.click(
       screen.getByRole("button", { name: "Workspace erstellen" }),
