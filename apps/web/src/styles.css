@@ -169,7 +169,8 @@ button:disabled {
   background: var(--surface-muted);
 }
 
-.profile-button {
+/* See the .fui-Button.history-link comment above for why this needs both classes. */
+.fui-Button.profile-button {
   gap: 8px;
   padding: 0 10px;
 }
@@ -485,7 +486,13 @@ button:disabled {
   color: var(--foreground-subtle);
 }
 
-.history-link {
+/*
+ * Two-class selector so this reliably wins the cascade over Fluent's own
+ * Button padding/height (equal-specificity Griffel atomic classes, inserted
+ * after this stylesheet), which otherwise shrinks these into a visibly
+ * shorter row than the tree rows right above them.
+ */
+.fui-Button.history-link {
   align-items: center;
   background: transparent;
   border: 0;
@@ -562,10 +569,14 @@ button:disabled {
   padding: 0 9px;
 }
 
-.retry-link {
+/* See the .fui-Button.history-link comment above for why this needs both classes. */
+.fui-Button.retry-link {
   background: transparent;
   border: 0;
   color: var(--primary);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 10px 8px;
   text-align: left;
 }
 
@@ -1161,7 +1172,8 @@ textarea.ui-control {
   justify-self: center;
 }
 
-.add-row {
+/* See the .fui-Button.history-link comment above for why this needs both classes. */
+.fui-Button.add-row {
   align-items: center;
   background: transparent;
   border: 0;
