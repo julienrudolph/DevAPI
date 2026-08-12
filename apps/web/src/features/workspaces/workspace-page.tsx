@@ -854,12 +854,13 @@ export function WorkspacePage() {
         {tree.isPending ? (
           <p className="sidebar-state">Navigation wird geladen …</p>
         ) : tree.isError ? (
-          <button
+          <Button
             className="sidebar-state retry-link"
             onClick={() => tree.refetch()}
+            variant="ghost"
           >
             Laden erneut versuchen
-          </button>
+          </Button>
         ) : normalizedSearch ? (
           <div className="workspace-search-results">
             {matchingCollections.map((collection) => (
@@ -1182,16 +1183,16 @@ export function WorkspacePage() {
 
         <div className="sidebar-footer-actions">
           {canEdit && (tree.data?.collections.length ?? 0) > 0 ? (
-            <button
+            <Button
               className="history-link"
               onClick={() => setShowingOpenApiImport(true)}
-              type="button"
+              variant="ghost"
             >
               <ArrowUpload20Regular aria-hidden="true" />
               OpenAPI importieren
-            </button>
+            </Button>
           ) : null}
-          <button
+          <Button
             className="history-link"
             disabled={exportWorkspace.isPending || !tree.data}
             onClick={async () => {
@@ -1216,21 +1217,21 @@ export function WorkspacePage() {
                 );
               }
             }}
-            type="button"
+            variant="ghost"
           >
             <ArrowDownload20Regular aria-hidden="true" />
             {exportWorkspace.isPending
               ? "Export wird erstellt …"
               : "Workspace exportieren"}
-          </button>
-          <button
+          </Button>
+          <Button
             className="history-link"
             onClick={() => setShowingHistory(true)}
-            type="button"
+            variant="ghost"
           >
             <History20Regular aria-hidden="true" />
             Verlauf
-          </button>
+          </Button>
         </div>
       </aside>
 
