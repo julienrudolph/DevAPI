@@ -1149,7 +1149,7 @@ textarea.ui-control {
   border-radius: 7px;
 }
 
-.table-row > input:not([type="checkbox"]) {
+.table-row input:not([type="checkbox"]) {
   border: 0;
   border-left: 1px solid var(--border);
   height: 40px;

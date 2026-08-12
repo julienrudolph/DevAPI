@@ -309,24 +309,32 @@ function LoadedRequestEditor({
           </div>
         </div>
         <div className="url-bar">
-          <select
-            aria-label="HTTP-Methode"
-            disabled={readOnly}
-            {...register("method")}
-          >
-            <option>GET</option>
-            <option>POST</option>
-            <option>PUT</option>
-            <option>PATCH</option>
-            <option>DELETE</option>
-          </select>
-          <input
-            aria-label="Request-URL"
-            autoComplete="off"
-            disabled={readOnly}
-            list="request-variable-suggestions"
-            spellCheck={false}
-            {...register("url")}
+          <Controller
+            control={control}
+            name="method"
+            render={({ field }) => (
+              <Select aria-label="HTTP-Methode" disabled={readOnly} {...field}>
+                <option>GET</option>
+                <option>POST</option>
+                <option>PUT</option>
+                <option>PATCH</option>
+                <option>DELETE</option>
+              </Select>
+            )}
+          />
+          <Controller
+            control={control}
+            name="url"
+            render={({ field }) => (
+              <Input
+                aria-label="Request-URL"
+                autoComplete="off"
+                disabled={readOnly}
+                list="request-variable-suggestions"
+                spellCheck={false}
+                {...field}
+              />
+            )}
           />
           <datalist id="request-variable-suggestions">
             {variables.map((variable) => (
@@ -998,23 +1006,35 @@ function KeyValueTable({
             type="checkbox"
             {...register(`${field}.${index}.enabled`)}
           />
-          <input
-            aria-label="Schlüssel"
-            autoComplete="off"
-            disabled={readOnly}
-            list={
-              field === "headers"
-                ? "request-header-name-suggestions"
-                : undefined
-            }
-            placeholder="key"
-            {...register(`${field}.${index}.key`)}
+          <Controller
+            control={control}
+            name={`${field}.${index}.key`}
+            render={({ field: controllerField }) => (
+              <Input
+                aria-label="Schlüssel"
+                autoComplete="off"
+                disabled={readOnly}
+                list={
+                  field === "headers"
+                    ? "request-header-name-suggestions"
+                    : undefined
+                }
+                placeholder="key"
+                {...controllerField}
+              />
+            )}
           />
-          <input
-            aria-label="Wert"
-            disabled={readOnly}
-            placeholder="value"
-            {...register(`${field}.${index}.value`)}
+          <Controller
+            control={control}
+            name={`${field}.${index}.value`}
+            render={({ field: controllerField }) => (
+              <Input
+                aria-label="Wert"
+                disabled={readOnly}
+                placeholder="value"
+                {...controllerField}
+              />
+            )}
           />
           <input type="hidden" {...register(`${field}.${index}.id`)} />
           {!readOnly ? (
