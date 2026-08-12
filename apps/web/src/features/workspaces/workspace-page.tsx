@@ -146,18 +146,22 @@ type DraggedNavigationItem =
 
 function TreeActionMenu({
   children,
+  className = "tree-menu",
   label,
+  triggerClassName = "tree-menu-trigger",
 }: {
   children: ReactNode;
+  className?: string;
   label: string;
+  triggerClassName?: string;
 }) {
   return (
-    <div className="tree-menu">
+    <div className={className}>
       <Menu positioning="below-end">
         <MenuTrigger disableButtonEnhancement>
           <IconButton
             aria-label={label}
-            className="tree-menu-trigger"
+            className={triggerClassName}
             size="compact"
           >
             <MoreHorizontal20Regular aria-hidden="true" />
@@ -1308,38 +1312,37 @@ export function WorkspacePage() {
                   </div>
                 ))}
               </div>
-              <details className="request-tab-menu">
-                <summary aria-label="Tab-Aktionen">
-                  <MoreHorizontal20Regular aria-hidden="true" />
-                </summary>
-                <div className="request-tab-menu-popover">
-                  <button
-                    disabled={openRequestIds.length <= 1}
-                    onClick={() =>
-                      closeRequests(
-                        openRequestIds.filter(
-                          (requestId) => requestId !== activeRequestId,
-                        ),
-                        "Andere Tabs enthalten ungespeicherte Änderungen. Möchtest du sie wirklich schließen?",
-                      )
-                    }
-                    type="button"
-                  >
-                    Andere Tabs schließen
-                  </button>
-                  <button
-                    onClick={() =>
-                      closeRequests(
-                        openRequestIds,
-                        "Offene Tabs enthalten ungespeicherte Änderungen. Möchtest du wirklich alle schließen?",
-                      )
-                    }
-                    type="button"
-                  >
-                    Alle Tabs schließen
-                  </button>
-                </div>
-              </details>
+              <TreeActionMenu
+                className="request-tab-menu"
+                label="Tab-Aktionen"
+                triggerClassName="tree-menu-trigger"
+              >
+                <button
+                  disabled={openRequestIds.length <= 1}
+                  onClick={() =>
+                    closeRequests(
+                      openRequestIds.filter(
+                        (requestId) => requestId !== activeRequestId,
+                      ),
+                      "Andere Tabs enthalten ungespeicherte Änderungen. Möchtest du sie wirklich schließen?",
+                    )
+                  }
+                  type="button"
+                >
+                  Andere Tabs schließen
+                </button>
+                <button
+                  onClick={() =>
+                    closeRequests(
+                      openRequestIds,
+                      "Offene Tabs enthalten ungespeicherte Änderungen. Möchtest du wirklich alle schließen?",
+                    )
+                  }
+                  type="button"
+                >
+                  Alle Tabs schließen
+                </button>
+              </TreeActionMenu>
             </div>
             <div className="request-toolbar">
               <div>

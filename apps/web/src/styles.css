@@ -928,56 +928,13 @@ button:disabled {
 }
 
 .request-tab-menu {
+  align-items: center;
   align-self: stretch;
   border-left: 1px solid var(--border);
-  flex: 0 0 38px;
-  position: relative;
-}
-
-.request-tab-menu summary {
-  align-items: center;
-  color: var(--foreground-muted);
-  cursor: pointer;
   display: flex;
-  height: 100%;
+  flex: 0 0 38px;
   justify-content: center;
-  list-style: none;
-}
-
-.request-tab-menu summary::-webkit-details-marker {
-  display: none;
-}
-
-.request-tab-menu-popover {
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgb(18 25 20 / 15%);
-  display: grid;
-  min-width: 180px;
-  padding: 5px;
-  position: absolute;
-  right: 5px;
-  top: calc(100% + 4px);
-  z-index: 20;
-}
-
-.request-tab-menu-popover button {
-  background: transparent;
-  border: 0;
-  border-radius: 5px;
-  color: var(--foreground-strong);
-  padding: 8px 10px;
-  text-align: left;
-}
-
-.request-tab-menu-popover button:hover:not(:disabled) {
-  background: var(--surface-muted);
-}
-
-.request-tab-menu-popover button:disabled {
-  color: #9aa39c;
-  cursor: default;
+  position: relative;
 }
 
 .request-toolbar {

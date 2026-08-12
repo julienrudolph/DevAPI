@@ -631,7 +631,7 @@ describe("WorkspacePage", () => {
     );
     await user.click(screen.getByLabelText("Tab-Aktionen"));
     await user.click(
-      screen.getByRole("button", { name: "Andere Tabs schließen" }),
+      screen.getByRole("menuitem", { name: "Andere Tabs schließen" }),
     );
 
     const requestTabs = within(
@@ -643,7 +643,7 @@ describe("WorkspacePage", () => {
 
     await user.click(screen.getByLabelText("Tab-Aktionen"));
     await user.click(
-      screen.getByRole("button", { name: "Alle Tabs schließen" }),
+      screen.getByRole("menuitem", { name: "Alle Tabs schließen" }),
     );
 
     expect(
