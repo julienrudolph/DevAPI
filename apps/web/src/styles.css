@@ -1174,12 +1174,12 @@ textarea.ui-control {
 }
 
 .body-editor > label {
-  align-items: center;
-  display: flex;
+  display: grid;
   font-size: 12px;
   font-weight: 650;
-  gap: 10px;
+  gap: 6px;
   margin-bottom: 12px;
+  max-width: 560px;
 }
 
 .body-editor select {

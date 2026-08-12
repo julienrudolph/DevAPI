@@ -49,6 +49,10 @@ export default tseslint.config(
           varsIgnorePattern: "^_",
         },
       ],
+      "jsx-a11y/label-has-associated-control": [
+        "error",
+        { controlComponents: ["Input", "Select", "Textarea"] },
+      ],
       "jsx-a11y/no-autofocus": "off",
       "no-undef": "off",
       "react-hooks/rules-of-hooks": "error",

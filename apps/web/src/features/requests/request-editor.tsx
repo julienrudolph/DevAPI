@@ -31,6 +31,8 @@ import {
   Dialog,
   DialogFooter,
   IconButton,
+  Input,
+  Select,
   Textarea,
   Tooltip,
 } from "../../components/ui";
@@ -406,7 +408,7 @@ function LoadedRequestEditor({
             <div className="body-editor">
               <label>
                 Body-Typ
-                <select
+                <Select
                   disabled={readOnly}
                   onChange={(event) => {
                     const type = event.target.value as
@@ -433,7 +435,7 @@ function LoadedRequestEditor({
                   <option value="text">Text</option>
                   <option value="form-urlencoded">Form URL-encoded</option>
                   <option value="multipart">Form-Data (nur Textfelder)</option>
-                </select>
+                </Select>
               </label>
               {bodyType === "form-urlencoded" || bodyType === "multipart" ? (
                 <p className="security-hint">
@@ -490,7 +492,7 @@ function LoadedRequestEditor({
             <div className="auth-editor">
               <label>
                 Authentifizierung
-                <select
+                <Select
                   onChange={(event) => {
                     const type = event.target.value;
                     setAuth(
@@ -506,12 +508,12 @@ function LoadedRequestEditor({
                   <option value="none">Keine</option>
                   <option value="bearer">Bearer Token</option>
                   <option value="basic">Basic Auth</option>
-                </select>
+                </Select>
               </label>
               {auth.type === "bearer" ? (
                 <label>
                   Token
-                  <input
+                  <Input
                     aria-label="Bearer Token"
                     autoComplete="off"
                     onChange={(event) =>
@@ -526,7 +528,7 @@ function LoadedRequestEditor({
                 <>
                   <label>
                     Benutzername
-                    <input
+                    <Input
                       aria-label="Basic Benutzername"
                       autoComplete="username"
                       onChange={(event) =>
@@ -537,7 +539,7 @@ function LoadedRequestEditor({
                   </label>
                   <label>
                     Passwort
-                    <input
+                    <Input
                       aria-label="Basic Passwort"
                       autoComplete="current-password"
                       onChange={(event) =>
