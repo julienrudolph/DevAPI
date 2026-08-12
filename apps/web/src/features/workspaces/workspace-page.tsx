@@ -176,6 +176,9 @@ function TreeActionMenu({
               return child;
             }
             const onClick = child.props.onClick;
+            const kids = Children.toArray(child.props.children);
+            const icon = isValidElement(kids[0]) ? kids[0] : undefined;
+            const label = icon ? kids.slice(1) : kids;
             return (
               <MenuItem
                 aria-label={child.props["aria-label"]}
@@ -185,6 +188,7 @@ function TreeActionMenu({
                     : undefined
                 }
                 disabled={child.props.disabled}
+                icon={icon}
                 onClick={(event) =>
                   onClick?.(
                     event as unknown as MouseEvent<HTMLButtonElement>,
@@ -192,7 +196,7 @@ function TreeActionMenu({
                 }
                 title={child.props.title}
               >
-                {child.props.children}
+                {label}
               </MenuItem>
             );
           })}
@@ -817,6 +821,27 @@ export function WorkspacePage() {
           </IconButton>
         </div>
 
+        {activeWorkspace.role === "owner" ? (
+          <div className="sidebar-team-actions">
+            <Button
+              className="history-link"
+              onClick={() => setManagingTeam(true)}
+              variant="ghost"
+            >
+              <People20Regular aria-hidden="true" />
+              Team
+            </Button>
+            <Button
+              className="history-link"
+              onClick={() => setInviting(true)}
+              variant="ghost"
+            >
+              <PeopleAdd20Regular aria-hidden="true" />
+              Einladen
+            </Button>
+          </div>
+        ) : null}
+
         <div className="sidebar-heading">
           <span>Collections</span>
           {canEdit ? (
@@ -1351,52 +1376,12 @@ export function WorkspacePage() {
                 <h1>{activeRequest.name}</h1>
               </div>
               <div className="toolbar-actions">
-                {activeWorkspace.role === "owner" ? (
-                  <>
-                    <Button
-                      onClick={() => setManagingTeam(true)}
-                    >
-                      <People20Regular aria-hidden="true" />
-                      Team
-                    </Button>
-                    <Button
-                      onClick={() => setInviting(true)}
-                    >
-                      <PeopleAdd20Regular aria-hidden="true" />
-                      Einladen
-                    </Button>
-                  </>
-                ) : null}
                 <EnvironmentControls
                   canEditShared={canEdit}
                   onSelect={setSelectedEnvironmentId}
                   selectedId={selectedEnvironmentId}
                   workspaceId={activeWorkspace.id}
                 />
-                {canEdit && activeRequest.collectionId ? (
-                  <>
-                    <Button
-                      disabled={duplicateRequest.isPending}
-                      onClick={() => duplicateNavigationRequest(activeRequest)}
-                      title="Dupliziert die zuletzt gespeicherte Version"
-                    >
-                      <Copy20Regular aria-hidden="true" />
-                      Duplizieren
-                    </Button>
-                    <Button
-                      disabled={dirtyRequestIds.has(activeRequest.id)}
-                      onClick={() => startMovingRequest(activeRequest)}
-                      title={
-                        dirtyRequestIds.has(activeRequest.id)
-                          ? "Speichere den Request vor dem Verschieben"
-                          : undefined
-                      }
-                    >
-                      <FolderInput aria-hidden="true" size={16} />
-                      Verschieben
-                    </Button>
-                  </>
-                ) : null}
                 {canEdit ? (
                   <Button
                     disabled={deleteRequest.isPending}
@@ -1453,22 +1438,6 @@ export function WorkspacePage() {
           <div className="centered-state workbench-empty">
             <h1>Kein Request ausgewählt</h1>
             <p>Wähle einen Request oder erstelle einen neuen.</p>
-            {activeWorkspace.role === "owner" ? (
-              <div className="empty-actions">
-                <Button
-                  onClick={() => setManagingTeam(true)}
-                >
-                  <People20Regular aria-hidden="true" />
-                  Team verwalten
-                </Button>
-                <Button
-                  onClick={() => setInviting(true)}
-                >
-                  <PeopleAdd20Regular aria-hidden="true" />
-                  Mitglied einladen
-                </Button>
-              </div>
-            ) : null}
           </div>
         )}
       </section>

@@ -245,6 +245,18 @@ button:disabled {
   text-transform: uppercase;
 }
 
+.sidebar-team-actions {
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: 2px;
+  margin: 14px 0 10px;
+  padding-bottom: 10px;
+}
+
+.sidebar-team-actions .history-link {
+  margin-top: 0;
+}
+
 .sidebar-heading {
   align-items: center;
   color: var(--foreground-muted);
@@ -500,8 +512,10 @@ button:disabled {
   color: var(--foreground-muted);
   display: flex;
   gap: 8px;
+  justify-content: flex-start;
   margin-top: auto;
   padding: 10px;
+  text-align: left;
 }
 
 .sidebar-state {
