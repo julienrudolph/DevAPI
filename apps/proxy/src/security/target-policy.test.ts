@@ -45,4 +45,38 @@ describe("target policy", () => {
       resolvePublicTarget("https://example.com", resolver),
     ).rejects.toBeInstanceOf(UnsafeTargetError);
   });
+
+  it.each([
+    ["http://2130706433/", "decimal"],
+    ["http://0x7f000001/", "hex"],
+    ["http://0177.0.0.1/", "octal"],
+  ])(
+    "blocks loopback expressed as %s IPv4 literal (%s)",
+    (rawUrl) => {
+      const url = parseAllowedUrl(rawUrl);
+      expect(() => assertPublicIp(url.hostname)).toThrow(UnsafeTargetError);
+    },
+  );
+
+  it("blocks an IPv4-mapped IPv6 loopback address", () => {
+    const url = parseAllowedUrl("http://[::ffff:127.0.0.1]/");
+    expect(() => assertPublicIp(url.hostname.replace(/^\[|\]$/g, ""))).toThrow(
+      UnsafeTargetError,
+    );
+  });
+
+  it("does not use a stale or rebindable resolver result once an address is validated", async () => {
+    let callCount = 0;
+    const rebindingResolver = async () => {
+      callCount += 1;
+      // Simulates DNS-rebinding: the first (and only) lookup the policy performs
+      // returns a private address, which must be rejected without a second lookup
+      // that an attacker's DNS server could answer differently.
+      return [{ address: "127.0.0.1", family: 4 as const }];
+    };
+    await expect(
+      resolvePublicTarget("https://rebinding.example", rebindingResolver),
+    ).rejects.toBeInstanceOf(UnsafeTargetError);
+    expect(callCount).toBe(1);
+  });
 });

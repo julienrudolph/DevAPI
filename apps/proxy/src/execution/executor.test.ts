@@ -138,6 +138,19 @@ describe("executeHttpRequest", () => {
     ).rejects.toBeInstanceOf(RedirectLimitError);
   });
 
+  it("aborts a hanging transport once the timeout elapses", async () => {
+    const transport: Transport = ({ signal }) =>
+      new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => {
+          reject(new DOMException("The operation was aborted.", "AbortError"));
+        });
+      });
+
+    await expect(
+      executeHttpRequest(input, { resolver, transport, timeoutMs: 5 }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+  });
+
   it("stops responses that exceed the byte limit", async () => {
     const transport: Transport = async () => ({
       status: 200,

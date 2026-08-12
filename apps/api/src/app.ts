@@ -27,7 +27,7 @@ import {
   workspaceIdParamsSchema,
   type PublicClientConfig,
 } from "@api-client/contracts";
-import Fastify, { type FastifyReply } from "fastify";
+import Fastify, { type FastifyBaseLogger, type FastifyReply } from "fastify";
 import { randomUUID } from "node:crypto";
 
 import type {
@@ -95,7 +95,7 @@ export function buildApp(dependencies: ApiDependencies) {
     });
 
   app.get("/health", async () => ({ status: "ok" }));
-  app.get("/ready", async (_request, reply) => {
+  app.get("/ready", async (request, reply) => {
     try {
       const checks = dependencies.readiness
         ? await dependencies.readiness()
@@ -105,7 +105,8 @@ export function buildApp(dependencies: ApiDependencies) {
         status: ready ? "ready" : "unavailable",
         checks,
       });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "READINESS_CHECK_FAILED");
       return reply
         .code(503)
         .send({ status: "unavailable", checks: { dependencies: false } });
@@ -138,6 +139,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -167,7 +169,8 @@ export function buildApp(dependencies: ApiDependencies) {
       return invitation
         ? reply.code(201).send(invitation)
         : reply.code(403).send({ code: "FORBIDDEN" });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "INVITATION_CREATE_FAILED");
       return reply.code(500).send({ code: "INVITATION_CREATE_FAILED" });
     }
   });
@@ -176,6 +179,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -203,7 +207,8 @@ export function buildApp(dependencies: ApiDependencies) {
       return teamId
         ? reply.code(200).send({ teamId })
         : reply.code(404).send({ code: "INVITATION_NOT_FOUND" });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "INVITATION_ACCEPT_FAILED");
       return reply.code(500).send({ code: "INVITATION_ACCEPT_FAILED" });
     }
   });
@@ -212,6 +217,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply.code(user.kind === "unavailable" ? 503 : 401).send({
@@ -237,7 +243,8 @@ export function buildApp(dependencies: ApiDependencies) {
       return members
         ? reply.code(200).send(members)
         : reply.code(403).send({ code: "FORBIDDEN" });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "TEAM_MEMBERS_LIST_FAILED");
       return reply.code(500).send({ code: "TEAM_MEMBERS_LIST_FAILED" });
     }
   });
@@ -246,6 +253,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply.code(user.kind === "unavailable" ? 503 : 401).send({
@@ -275,7 +283,8 @@ export function buildApp(dependencies: ApiDependencies) {
       return updated
         ? reply.code(204).send()
         : reply.code(404).send({ code: "TEAM_MEMBER_NOT_FOUND" });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "TEAM_MEMBER_UPDATE_FAILED");
       return reply.code(500).send({ code: "TEAM_MEMBER_UPDATE_FAILED" });
     }
   });
@@ -284,6 +293,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply.code(user.kind === "unavailable" ? 503 : 401).send({
@@ -311,7 +321,8 @@ export function buildApp(dependencies: ApiDependencies) {
       return removed
         ? reply.code(204).send()
         : reply.code(404).send({ code: "TEAM_MEMBER_NOT_FOUND" });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "TEAM_MEMBER_REMOVE_FAILED");
       return reply.code(500).send({ code: "TEAM_MEMBER_REMOVE_FAILED" });
     }
   });
@@ -320,6 +331,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -346,7 +358,8 @@ export function buildApp(dependencies: ApiDependencies) {
           accessToken: user.user.accessToken,
         }),
       );
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "ENVIRONMENT_LIST_FAILED");
       return reply.code(500).send({ code: "ENVIRONMENT_LIST_FAILED" });
     }
   });
@@ -355,6 +368,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -384,7 +398,8 @@ export function buildApp(dependencies: ApiDependencies) {
       return environment
         ? reply.code(201).send(environment)
         : reply.code(403).send({ code: "FORBIDDEN" });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "ENVIRONMENT_CREATE_FAILED");
       return reply.code(500).send({ code: "ENVIRONMENT_CREATE_FAILED" });
     }
   });
@@ -395,6 +410,7 @@ export function buildApp(dependencies: ApiDependencies) {
       const user = await authenticateSafely(
         dependencies.authenticate,
         request.headers.authorization,
+        request.log,
       );
       if (user.kind !== "authenticated") {
         return reply
@@ -428,7 +444,8 @@ export function buildApp(dependencies: ApiDependencies) {
           return reply.code(409).send({ code: "VARIABLE_ALREADY_EXISTS" });
         }
         return reply.code(201).send(result.variable);
-      } catch {
+      } catch (error) {
+        request.log.error({ err: error }, "ENVIRONMENT_VARIABLE_CREATE_FAILED");
         return reply
           .code(500)
           .send({ code: "ENVIRONMENT_VARIABLE_CREATE_FAILED" });
@@ -442,6 +459,7 @@ export function buildApp(dependencies: ApiDependencies) {
       const user = await authenticateSafely(
         dependencies.authenticate,
         request.headers.authorization,
+        request.log,
       );
       if (user.kind !== "authenticated") {
         return reply
@@ -486,7 +504,8 @@ export function buildApp(dependencies: ApiDependencies) {
           });
         }
         return reply.code(200).send(result.variable);
-      } catch {
+      } catch (error) {
+        request.log.error({ err: error }, "ENVIRONMENT_VARIABLE_UPDATE_FAILED");
         return reply
           .code(500)
           .send({ code: "ENVIRONMENT_VARIABLE_UPDATE_FAILED" });
@@ -498,6 +517,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -561,7 +581,7 @@ export function buildApp(dependencies: ApiDependencies) {
         successful: result.status < 400,
         userId: user.user.id,
         accessToken: user.user.accessToken,
-      });
+      }, request.log);
       return reply.code(200).send(result);
     } catch (error) {
       if (error instanceof RequestExecutionError) {
@@ -573,12 +593,13 @@ export function buildApp(dependencies: ApiDependencies) {
           successful: false,
           userId: user.user.id,
           accessToken: user.user.accessToken,
-        });
+        }, request.log);
         return reply.code(error.status).send({
           code: error.code,
           message: error.message,
         });
       }
+      request.log.error({ err: error }, "PROXY_REQUEST_FAILED");
       await recordExecutionSafely(dependencies.executionHistory, {
         requestId,
         method: executionInput.method,
@@ -587,7 +608,7 @@ export function buildApp(dependencies: ApiDependencies) {
         successful: false,
         userId: user.user.id,
         accessToken: user.user.accessToken,
-      });
+      }, request.log);
       return reply.code(502).send({
         code: "PROXY_REQUEST_FAILED",
         message: "Der Request konnte nicht sicher ausgeführt werden.",
@@ -603,6 +624,7 @@ export function buildApp(dependencies: ApiDependencies) {
       const user = await authenticateSafely(
         dependencies.authenticate,
         request.headers.authorization,
+        request.log,
       );
       if (user.kind !== "authenticated") {
         return reply.code(user.kind === "unavailable" ? 503 : 401).send({
@@ -628,7 +650,8 @@ export function buildApp(dependencies: ApiDependencies) {
         return executions
           ? reply.code(200).send(executions)
           : reply.code(404).send({ code: "WORKSPACE_NOT_FOUND" });
-      } catch {
+      } catch (error) {
+        request.log.error({ err: error }, "EXECUTION_HISTORY_LIST_FAILED");
         return reply.code(500).send({ code: "EXECUTION_HISTORY_LIST_FAILED" });
       }
     },
@@ -638,6 +661,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind === "unavailable") {
       return reply.code(503).send({ code: "AUTHENTICATION_UNAVAILABLE" });
@@ -651,7 +675,8 @@ export function buildApp(dependencies: ApiDependencies) {
         accessToken: user.user.accessToken,
       });
       return reply.code(200).send(workspaces);
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "WORKSPACE_LIST_FAILED");
       return reply.code(500).send({ code: "WORKSPACE_LIST_FAILED" });
     }
   });
@@ -660,6 +685,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -679,7 +705,8 @@ export function buildApp(dependencies: ApiDependencies) {
       return workspace
         ? reply.code(201).send(workspace)
         : reply.code(403).send({ code: "FORBIDDEN" });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "WORKSPACE_CREATE_FAILED");
       return reply.code(500).send({ code: "WORKSPACE_CREATE_FAILED" });
     }
   });
@@ -688,6 +715,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -709,7 +737,8 @@ export function buildApp(dependencies: ApiDependencies) {
       return collection
         ? reply.code(201).send(collection)
         : reply.code(403).send({ code: "FORBIDDEN" });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "COLLECTION_CREATE_FAILED");
       return reply.code(500).send({ code: "COLLECTION_CREATE_FAILED" });
     }
   });
@@ -718,6 +747,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -744,7 +774,8 @@ export function buildApp(dependencies: ApiDependencies) {
       return folder
         ? reply.code(201).send(folder)
         : reply.code(403).send({ code: "FORBIDDEN" });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "FOLDER_CREATE_FAILED");
       return reply.code(500).send({ code: "FOLDER_CREATE_FAILED" });
     }
   });
@@ -753,6 +784,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -780,7 +812,8 @@ export function buildApp(dependencies: ApiDependencies) {
         accessToken: user.user.accessToken,
       });
       return sendNavigationDeleteResult(reply, result, "COLLECTION");
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "COLLECTION_DELETE_FAILED");
       return reply.code(500).send({ code: "COLLECTION_DELETE_FAILED" });
     }
   });
@@ -789,6 +822,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -816,7 +850,8 @@ export function buildApp(dependencies: ApiDependencies) {
         accessToken: user.user.accessToken,
       });
       return sendNavigationDeleteResult(reply, result, "FOLDER");
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "FOLDER_DELETE_FAILED");
       return reply.code(500).send({ code: "FOLDER_DELETE_FAILED" });
     }
   });
@@ -825,6 +860,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -852,7 +888,8 @@ export function buildApp(dependencies: ApiDependencies) {
         accessToken: user.user.accessToken,
       });
       return sendNavigationUpdateResult(reply, result, "COLLECTION");
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "COLLECTION_UPDATE_FAILED");
       return reply.code(500).send({ code: "COLLECTION_UPDATE_FAILED" });
     }
   });
@@ -861,6 +898,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -888,7 +926,8 @@ export function buildApp(dependencies: ApiDependencies) {
         accessToken: user.user.accessToken,
       });
       return sendNavigationUpdateResult(reply, result, "FOLDER");
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "FOLDER_UPDATE_FAILED");
       return reply.code(500).send({ code: "FOLDER_UPDATE_FAILED" });
     }
   });
@@ -897,6 +936,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -923,7 +963,8 @@ export function buildApp(dependencies: ApiDependencies) {
       return createdRequest
         ? reply.code(201).send(createdRequest)
         : reply.code(403).send({ code: "FORBIDDEN" });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "REQUEST_CREATE_FAILED");
       return reply.code(500).send({ code: "REQUEST_CREATE_FAILED" });
     }
   });
@@ -932,6 +973,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind === "unavailable") {
       return reply.code(503).send({ code: "AUTHENTICATION_UNAVAILABLE" });
@@ -952,7 +994,8 @@ export function buildApp(dependencies: ApiDependencies) {
       return tree
         ? reply.code(200).send(tree)
         : reply.code(404).send({ code: "NOT_FOUND" });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "WORKSPACE_TREE_FAILED");
       return reply.code(500).send({ code: "WORKSPACE_TREE_FAILED" });
     }
   });
@@ -961,6 +1004,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply.code(user.kind === "unavailable" ? 503 : 401).send({
@@ -985,7 +1029,8 @@ export function buildApp(dependencies: ApiDependencies) {
       return revisions
         ? reply.code(200).send(revisions)
         : reply.code(404).send({ code: "NOT_FOUND" });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "REVISION_LIST_FAILED");
       return reply.code(500).send({ code: "REVISION_LIST_FAILED" });
     }
   });
@@ -994,6 +1039,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply.code(user.kind === "unavailable" ? 503 : 401).send({
@@ -1028,7 +1074,8 @@ export function buildApp(dependencies: ApiDependencies) {
         return reply.code(409).send(result.conflict);
       }
       return reply.code(200).send(result.request);
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "REVISION_RESTORE_FAILED");
       return reply.code(500).send({ code: "REVISION_RESTORE_FAILED" });
     }
   });
@@ -1037,6 +1084,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -1060,7 +1108,8 @@ export function buildApp(dependencies: ApiDependencies) {
       return persistedRequest
         ? reply.code(200).send(persistedRequest)
         : reply.code(404).send({ code: "NOT_FOUND" });
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "REQUEST_READ_FAILED");
       return reply.code(500).send({ code: "REQUEST_READ_FAILED" });
     }
   });
@@ -1069,7 +1118,8 @@ export function buildApp(dependencies: ApiDependencies) {
     let user: AuthenticatedUser | null;
     try {
       user = await dependencies.authenticate(request.headers.authorization);
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "AUTHENTICATION_UNAVAILABLE");
       return reply.code(503).send({
         code: "AUTHENTICATION_UNAVAILABLE",
         message: "Die Anmeldung kann momentan nicht geprüft werden.",
@@ -1113,7 +1163,8 @@ export function buildApp(dependencies: ApiDependencies) {
         return reply.code(409).send(result.conflict);
       }
       return reply.code(200).send(result.request);
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "INTERNAL_ERROR");
       return reply.code(500).send({
         code: "INTERNAL_ERROR",
         message: "Der Request konnte nicht gespeichert werden.",
@@ -1125,6 +1176,7 @@ export function buildApp(dependencies: ApiDependencies) {
     const user = await authenticateSafely(
       dependencies.authenticate,
       request.headers.authorization,
+      request.log,
     );
     if (user.kind !== "authenticated") {
       return reply
@@ -1164,7 +1216,8 @@ export function buildApp(dependencies: ApiDependencies) {
         return reply.code(409).send(result.conflict);
       }
       return reply.code(204).send();
-    } catch {
+    } catch (error) {
+      request.log.error({ err: error }, "REQUEST_DELETE_FAILED");
       return reply.code(500).send({
         code: "REQUEST_DELETE_FAILED",
         message: "Der Request konnte nicht gelöscht werden.",
@@ -1228,13 +1281,15 @@ function sendNavigationUpdateResult(
 async function authenticateSafely(
   authenticate: Authenticator,
   authorizationHeader: string | undefined,
+  logger?: FastifyBaseLogger,
 ): Promise<AuthenticationResult> {
   try {
     const user = await authenticate(authorizationHeader);
     return user
       ? { kind: "authenticated", user }
       : { kind: "unauthorized" };
-  } catch {
+  } catch (error) {
+    logger?.error({ err: error }, "AUTHENTICATION_UNAVAILABLE");
     return { kind: "unavailable" };
   }
 }
@@ -1242,12 +1297,14 @@ async function authenticateSafely(
 async function recordExecutionSafely(
   repository: ExecutionHistoryRepository | undefined,
   command: RecordExecutionCommand,
+  logger?: FastifyBaseLogger,
 ): Promise<void> {
   if (!repository) return;
   try {
     await repository.record(command);
-  } catch {
+  } catch (error) {
     // Die Historie enthält nur Diagnosemetadaten und darf eine ansonsten
     // erfolgreiche Request-Ausführung nicht fehlschlagen lassen.
+    logger?.warn({ err: error }, "EXECUTION_HISTORY_RECORD_FAILED");
   }
 }

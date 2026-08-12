@@ -79,6 +79,45 @@ describe("proxy API", () => {
     await app.close();
   });
 
+  it("maps an aborted target request to 504 TARGET_TIMEOUT", async () => {
+    const abortingTransport: Transport = async () => {
+      throw new DOMException("The operation was aborted.", "AbortError");
+    };
+    const app = buildProxyApp({
+      transport: abortingTransport,
+      authenticate: () => true,
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/execute",
+      headers: { authorization: "Bearer test" },
+      payload: { method: "GET", url: "https://1.1.1.1", headers: [] },
+    });
+    expect(response.statusCode).toBe(504);
+    expect(response.json()).toMatchObject({ code: "TARGET_TIMEOUT" });
+    await app.close();
+  });
+
+  it("rejects an oversized request body before executing it", async () => {
+    const app = buildProxyApp({
+      transport,
+      authenticate: () => true,
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/execute",
+      headers: { authorization: "Bearer test" },
+      payload: {
+        method: "POST",
+        url: "https://1.1.1.1",
+        headers: [],
+        body: "x".repeat(1_100_001),
+      },
+    });
+    expect(response.statusCode).toBe(413);
+    await app.close();
+  });
+
   it("rejects excess global concurrency without starting another transport", async () => {
     let releaseTransport!: () => void;
     let markTransportStarted!: () => void;
