@@ -689,7 +689,10 @@ function LoadedRequestEditor({
                 </div>
               </div>
               <div className="response-content" role="tabpanel">
-                <pre>
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex --
+                    Content can overflow and scroll; tabIndex keeps it reachable
+                    by keyboard per WCAG 2.1.1 (scrollable-region-focusable). */}
+                <pre aria-label="Response-Inhalt" role="region" tabIndex={0}>
                   {responseTab === "body"
                     ? formatResponseBody(execution.data.body)
                     : formatResponseHeaders(execution.data.headers)}
