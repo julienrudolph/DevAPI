@@ -636,7 +636,7 @@ function LoadedRequestEditor({
                   <label className="response-search">
                     <Search20Regular aria-hidden="true" />
                     <span className="sr-only">Response durchsuchen</span>
-                    <input
+                    <Input
                       aria-label="Response durchsuchen"
                       onChange={(event) => setResponseSearch(event.target.value)}
                       placeholder="Suchen"
