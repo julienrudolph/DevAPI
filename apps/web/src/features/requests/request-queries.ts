@@ -112,6 +112,36 @@ export function useDuplicateRequest(workspaceId: string) {
   });
 }
 
+export function useRenameRequest(workspaceId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { requestId: string; name: string }) => {
+      const source = await fetchRequest(input.requestId, accessToken!);
+      return updateRequest(
+        input.requestId,
+        {
+          name: input.name,
+          method: source.method,
+          url: source.url,
+          queryParams: source.queryParams,
+          headers: source.headers,
+          body: source.body,
+          assertions: source.assertions,
+          expectedVersion: source.version,
+        },
+        accessToken!,
+      );
+    },
+    onSuccess: async (request) => {
+      queryClient.setQueryData(requestKeys.detail(request.id), request);
+      await queryClient.invalidateQueries({
+        queryKey: workspaceKeys.tree(workspaceId),
+      });
+    },
+  });
+}
+
 export function useMoveRequest(workspaceId: string) {
   const { accessToken } = useAuth();
   const queryClient = useQueryClient();

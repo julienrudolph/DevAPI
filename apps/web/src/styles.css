@@ -1007,6 +1007,16 @@ h1 {
   margin: 4px 0 0;
 }
 
+.request-title {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.request-title h1 {
+  margin: 0;
+}
+
 .toolbar-actions {
   flex: 1 1 42rem;
   flex-wrap: wrap;

@@ -64,6 +64,7 @@ import {
   useDeleteRequest,
   useDuplicateRequest,
   useMoveRequest,
+  useRenameRequest,
 } from "../requests/request-queries";
 import { InvitationDialog } from "../invitations/invitation-dialog";
 import { TeamMembersDialog } from "../teams/team-members-dialog";
@@ -218,6 +219,7 @@ export function WorkspacePage() {
   const environments = useEnvironments(activeWorkspace?.id);
   const duplicateRequest = useDuplicateRequest(activeWorkspace?.id ?? "");
   const moveRequest = useMoveRequest(activeWorkspace?.id ?? "");
+  const renameRequest = useRenameRequest(activeWorkspace?.id ?? "");
   const deleteRequest = useDeleteRequest(activeWorkspace?.id ?? "");
   const deleteCollection = useDeleteCollection(activeWorkspace?.id ?? "");
   const deleteFolder = useDeleteFolder(activeWorkspace?.id ?? "");
@@ -531,6 +533,21 @@ export function WorkspacePage() {
       .then((duplicated) => selectRequest(duplicated.id))
       .catch(() =>
         setManagementError("Der Request konnte nicht dupliziert werden."),
+      );
+  }
+
+  function renameNavigationRequest(request: RequestSummary) {
+    const name = window.prompt("Neuer Request-Name", request.name);
+    if (!name?.trim() || name.trim() === request.name) return;
+    setManagementError(undefined);
+    void renameRequest
+      .mutateAsync({ requestId: request.id, name: name.trim() })
+      .catch((error: unknown) =>
+        setManagementError(
+          error instanceof RequestConflictError
+            ? "Der Request wurde zwischenzeitlich geändert. Lade den aktuellen Stand und versuche es erneut."
+            : "Der Request konnte nicht umbenannt werden.",
+        ),
       );
   }
 
@@ -1144,6 +1161,7 @@ export function WorkspacePage() {
                         }}
                         onDuplicateRequest={duplicateNavigationRequest}
                         onMoveRequest={startMovingRequest}
+                        onRenameRequest={renameNavigationRequest}
                         onUpdateFolder={updateFolderItem}
                         onStartCreating={setCreatingChild}
                         onStopCreating={() => setCreatingChild(undefined)}
@@ -1169,6 +1187,7 @@ export function WorkspacePage() {
                         }
                         onDuplicate={() => duplicateNavigationRequest(request)}
                         onMove={() => startMovingRequest(request)}
+                        onRename={() => renameNavigationRequest(request)}
                         onClick={() => selectRequest(request.id)}
                         request={request}
                       />
@@ -1190,6 +1209,7 @@ export function WorkspacePage() {
                 }
                 onDuplicate={() => duplicateNavigationRequest(request)}
                 onMove={() => startMovingRequest(request)}
+                onRename={() => renameNavigationRequest(request)}
                 onClick={() => selectRequest(request.id)}
                 request={request}
               />
@@ -1295,6 +1315,9 @@ export function WorkspacePage() {
                       aria-pressed={request.id === activeRequestId}
                       className="request-tab-select"
                       onClick={() => setActiveRequestId(request.id)}
+                      onDoubleClick={() => {
+                        if (canEdit) renameNavigationRequest(request);
+                      }}
                       onKeyDown={(event) => {
                         if (!event.altKey) return;
                         const currentIndex = openRequestIds.indexOf(request.id);
@@ -1373,7 +1396,19 @@ export function WorkspacePage() {
             <div className="request-toolbar">
               <div>
                 <span className="breadcrumb">{activeWorkspace.name} /</span>
-                <h1>{activeRequest.name}</h1>
+                <div className="request-title">
+                  <h1>{activeRequest.name}</h1>
+                  {canEdit ? (
+                    <IconButton
+                      aria-label={`${activeRequest.name} umbenennen`}
+                      className="request-title-rename"
+                      onClick={() => renameNavigationRequest(activeRequest)}
+                      size="compact"
+                    >
+                      <Pencil aria-hidden="true" size={14} />
+                    </IconButton>
+                  ) : null}
+                </div>
               </div>
               <div className="toolbar-actions">
                 <EnvironmentControls
@@ -1612,6 +1647,7 @@ interface FolderTreeNodeProps {
   onDropFolder: (collectionId: string, folderId: string) => void;
   onDuplicateRequest: (request: RequestSummary) => void;
   onMoveRequest: (request: RequestSummary) => void;
+  onRenameRequest: (request: RequestSummary) => void;
   onUpdateFolder: (
     folder: FolderSummary,
     change: {
@@ -1653,6 +1689,7 @@ function FolderTreeNode({
   onDropFolder,
   onDuplicateRequest,
   onMoveRequest,
+  onRenameRequest,
   onUpdateFolder,
   onStartCreating,
   onStopCreating,
@@ -1836,6 +1873,7 @@ function FolderTreeNode({
             onDropFolder={onDropFolder}
             onDuplicateRequest={onDuplicateRequest}
             onMoveRequest={onMoveRequest}
+            onRenameRequest={onRenameRequest}
             onUpdateFolder={onUpdateFolder}
             onStartCreating={onStartCreating}
             onStopCreating={onStopCreating}
@@ -1857,6 +1895,7 @@ function FolderTreeNode({
             }
             onDuplicate={() => onDuplicateRequest(request)}
             onMove={() => onMoveRequest(request)}
+            onRename={() => onRenameRequest(request)}
             onClick={() => onSelectRequest(request.id)}
             request={request}
           />
@@ -1875,6 +1914,7 @@ interface RequestTreeRowProps {
   onDragStart: () => void;
   onDuplicate: () => void;
   onMove: () => void;
+  onRename: () => void;
   onClick: () => void;
   request: RequestSummary;
 }
@@ -1888,6 +1928,7 @@ function RequestTreeRow({
   onDragStart,
   onDuplicate,
   onMove,
+  onRename,
   onClick,
   request,
 }: RequestTreeRowProps) {
@@ -1918,6 +1959,10 @@ function RequestTreeRow({
         <TreeActionMenu label={`${request.name} Optionen`}>
           <button onClick={onClick} role="menuitem" type="button">
             Öffnen
+          </button>
+          <button onClick={onRename} role="menuitem" type="button">
+            <Pencil aria-hidden="true" size={14} />
+            Umbenennen
           </button>
           <button
             disabled={!request.collectionId}
