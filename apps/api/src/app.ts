@@ -7,6 +7,8 @@ import {
   createTeamInvitationSchema,
   createWorkspaceSchema,
   collectionIdParamsSchema,
+  deleteEnvironmentSchema,
+  deleteEnvironmentVariableSchema,
   deleteNavigationItemSchema,
   deleteRequestSchema,
   executeRequestSchema,
@@ -20,6 +22,7 @@ import {
   teamIdParamsSchema,
   teamMemberParamsSchema,
   transferTeamOwnershipSchema,
+  updateEnvironmentSchema,
   updateEnvironmentVariableSchema,
   updateNavigationItemSchema,
   updateRequestSchema,
@@ -549,6 +552,9 @@ export function buildApp(dependencies: ApiDependencies) {
             current: result.current,
           });
         }
+        if (result.kind === "duplicate") {
+          return reply.code(409).send({ code: "VARIABLE_ALREADY_EXISTS" });
+        }
         return reply.code(200).send(result.variable);
       } catch (error) {
         request.log.error({ err: error }, "ENVIRONMENT_VARIABLE_UPDATE_FAILED");
@@ -558,6 +564,171 @@ export function buildApp(dependencies: ApiDependencies) {
       }
     },
   );
+
+  app.delete(
+    "/v1/environment-variables/:variableId",
+    async (request, reply) => {
+      const user = await authenticateSafely(
+        dependencies.authenticate,
+        request.headers.authorization,
+        request.log,
+      );
+      if (user.kind !== "authenticated") {
+        return reply
+          .code(user.kind === "unavailable" ? 503 : 401)
+          .send({
+            code:
+              user.kind === "unavailable"
+                ? "AUTHENTICATION_UNAVAILABLE"
+                : "UNAUTHORIZED",
+          });
+      }
+      const params = environmentVariableIdParamsSchema.safeParse(
+        request.params,
+      );
+      const body = deleteEnvironmentVariableSchema.safeParse(request.body);
+      if (!params.success || !body.success) {
+        return reply.code(400).send({ code: "INVALID_REQUEST" });
+      }
+      if (!dependencies.environments) {
+        return reply.code(503).send({ code: "ENVIRONMENTS_UNAVAILABLE" });
+      }
+      try {
+        const result = await dependencies.environments.removeVariable({
+          variableId: params.data.variableId,
+          userId: user.user.id,
+          accessToken: user.user.accessToken,
+          ...body.data,
+        });
+        if (result.kind === "forbidden") {
+          return reply.code(403).send({ code: "FORBIDDEN" });
+        }
+        if (result.kind === "not-found") {
+          return reply.code(404).send({ code: "NOT_FOUND" });
+        }
+        if (result.kind === "conflict") {
+          return reply.code(409).send({
+            code: "ENVIRONMENT_VARIABLE_VERSION_CONFLICT",
+            message: "Die Variable wurde zwischenzeitlich geändert.",
+            expectedVersion: body.data.expectedVersion,
+            currentVersion: result.current.version,
+            current: result.current,
+          });
+        }
+        return reply.code(204).send();
+      } catch (error) {
+        request.log.error({ err: error }, "ENVIRONMENT_VARIABLE_DELETE_FAILED");
+        return reply
+          .code(500)
+          .send({ code: "ENVIRONMENT_VARIABLE_DELETE_FAILED" });
+      }
+    },
+  );
+
+  app.patch("/v1/environments/:environmentId", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+      request.log,
+    );
+    if (user.kind !== "authenticated") {
+      return reply.code(user.kind === "unavailable" ? 503 : 401).send({
+        code:
+          user.kind === "unavailable"
+            ? "AUTHENTICATION_UNAVAILABLE"
+            : "UNAUTHORIZED",
+      });
+    }
+    const params = environmentIdParamsSchema.safeParse(request.params);
+    const body = updateEnvironmentSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.environments) {
+      return reply.code(503).send({ code: "ENVIRONMENTS_UNAVAILABLE" });
+    }
+    try {
+      const result = await dependencies.environments.update({
+        environmentId: params.data.environmentId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+        ...body.data,
+      });
+      if (result.kind === "forbidden") {
+        return reply.code(403).send({ code: "FORBIDDEN" });
+      }
+      if (result.kind === "not-found") {
+        return reply.code(404).send({ code: "NOT_FOUND" });
+      }
+      if (result.kind === "duplicate") {
+        return reply.code(409).send({ code: "ENVIRONMENT_ALREADY_EXISTS" });
+      }
+      if (result.kind === "conflict") {
+        return reply.code(409).send({
+          code: "ENVIRONMENT_VERSION_CONFLICT",
+          message: "Die Umgebung wurde zwischenzeitlich geändert.",
+          expectedVersion: body.data.expectedVersion,
+          currentVersion: result.current.version,
+          current: result.current,
+        });
+      }
+      return reply.code(200).send(result.environment);
+    } catch (error) {
+      request.log.error({ err: error }, "ENVIRONMENT_UPDATE_FAILED");
+      return reply.code(500).send({ code: "ENVIRONMENT_UPDATE_FAILED" });
+    }
+  });
+
+  app.delete("/v1/environments/:environmentId", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+      request.log,
+    );
+    if (user.kind !== "authenticated") {
+      return reply.code(user.kind === "unavailable" ? 503 : 401).send({
+        code:
+          user.kind === "unavailable"
+            ? "AUTHENTICATION_UNAVAILABLE"
+            : "UNAUTHORIZED",
+      });
+    }
+    const params = environmentIdParamsSchema.safeParse(request.params);
+    const body = deleteEnvironmentSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.environments) {
+      return reply.code(503).send({ code: "ENVIRONMENTS_UNAVAILABLE" });
+    }
+    try {
+      const result = await dependencies.environments.remove({
+        environmentId: params.data.environmentId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+        ...body.data,
+      });
+      if (result.kind === "forbidden") {
+        return reply.code(403).send({ code: "FORBIDDEN" });
+      }
+      if (result.kind === "not-found") {
+        return reply.code(404).send({ code: "NOT_FOUND" });
+      }
+      if (result.kind === "conflict") {
+        return reply.code(409).send({
+          code: "ENVIRONMENT_VERSION_CONFLICT",
+          message: "Die Umgebung wurde zwischenzeitlich geändert.",
+          expectedVersion: body.data.expectedVersion,
+          currentVersion: result.current.version,
+          current: result.current,
+        });
+      }
+      return reply.code(204).send();
+    } catch (error) {
+      request.log.error({ err: error }, "ENVIRONMENT_DELETE_FAILED");
+      return reply.code(500).send({ code: "ENVIRONMENT_DELETE_FAILED" });
+    }
+  });
 
   app.post("/v1/execute", async (request, reply) => {
     const user = await authenticateSafely(

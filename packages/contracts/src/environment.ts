@@ -12,6 +12,19 @@ export const createEnvironmentSchema = z.object({
   name: z.string().trim().min(1).max(160),
 });
 
+export const updateEnvironmentSchema = z.object({
+  name: z.string().trim().min(1).max(160),
+  expectedVersion: z.number().int().positive(),
+});
+
+export const deleteEnvironmentSchema = z.object({
+  expectedVersion: z.number().int().positive(),
+});
+
+export const deleteEnvironmentVariableSchema = z.object({
+  expectedVersion: z.number().int().positive(),
+});
+
 export const variableKeySchema = z
   .string()
   .trim()
@@ -30,10 +43,15 @@ export const upsertEnvironmentVariableSchema = z.object({
   scope: variableScopeSchema,
 });
 
-export const updateEnvironmentVariableSchema = z.object({
-  value: z.string().max(32_768),
-  expectedVersion: z.number().int().positive(),
-});
+export const updateEnvironmentVariableSchema = z
+  .object({
+    key: variableKeySchema.optional(),
+    value: z.string().max(32_768).optional(),
+    expectedVersion: z.number().int().positive(),
+  })
+  .refine((value) => value.key !== undefined || value.value !== undefined, {
+    message: "Schlüssel oder Wert ist erforderlich.",
+  });
 
 export const environmentVariableSchema = z.object({
   id: z.string().uuid(),
@@ -60,11 +78,25 @@ export const environmentVariableConflictSchema = z.object({
   current: environmentVariableSchema,
 });
 
+export const environmentConflictSchema = z.object({
+  code: z.literal("ENVIRONMENT_VERSION_CONFLICT"),
+  message: z.string(),
+  expectedVersion: z.number().int().positive(),
+  currentVersion: z.number().int().positive(),
+  current: environmentSchema,
+});
+
 export type CreateEnvironment = z.infer<typeof createEnvironmentSchema>;
+export type UpdateEnvironment = z.infer<typeof updateEnvironmentSchema>;
+export type DeleteEnvironment = z.infer<typeof deleteEnvironmentSchema>;
+export type DeleteEnvironmentVariable = z.infer<
+  typeof deleteEnvironmentVariableSchema
+>;
 export type Environment = z.infer<typeof environmentSchema>;
 export type EnvironmentVariable = z.infer<
   typeof environmentVariableSchema
 >;
+export type EnvironmentConflict = z.infer<typeof environmentConflictSchema>;
 export type EnvironmentVariableConflict = z.infer<
   typeof environmentVariableConflictSchema
 >;

@@ -395,6 +395,9 @@ describe("workspace routes", () => {
         create: async () => null,
         createVariable: async () => ({ kind: "forbidden" }),
         updateVariable: async () => ({ kind: "forbidden" }),
+        update: async () => ({ kind: "forbidden" }),
+        remove: async () => ({ kind: "forbidden" }),
+        removeVariable: async () => ({ kind: "forbidden" }),
       },
     });
     const response = await app.inject({
@@ -428,6 +431,9 @@ describe("workspace routes", () => {
           kind: "conflict",
           current: variable,
         }),
+        update: async () => ({ kind: "forbidden" }),
+        remove: async () => ({ kind: "forbidden" }),
+        removeVariable: async () => ({ kind: "forbidden" }),
       },
     });
     const response = await app.inject({
@@ -440,6 +446,152 @@ describe("workspace routes", () => {
     expect(response.json()).toMatchObject({
       currentVersion: 2,
       current: variable,
+    });
+    await app.close();
+  });
+
+  it("renames an environment through the authenticated route", async () => {
+    const environmentId = "a768f717-d11f-4ce0-a72b-8e1d439222b0";
+    const renamed = {
+      id: environmentId,
+      workspaceId: workspace.id,
+      name: "Staging",
+      version: 2,
+      variables: [],
+    };
+    let received: unknown;
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: requestRepository,
+      workspaces: emptyWorkspaceRepository,
+      environments: {
+        list: async () => [],
+        create: async () => null,
+        createVariable: async () => ({ kind: "forbidden" }),
+        updateVariable: async () => ({ kind: "forbidden" }),
+        update: async (command) => {
+          received = command;
+          return { kind: "updated", environment: renamed };
+        },
+        remove: async () => ({ kind: "forbidden" }),
+        removeVariable: async () => ({ kind: "forbidden" }),
+      },
+    });
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/v1/environments/${environmentId}`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { name: "Staging", expectedVersion: 1 },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(renamed);
+    expect(received).toMatchObject({
+      environmentId,
+      name: "Staging",
+      expectedVersion: 1,
+      userId: user.id,
+      accessToken: user.accessToken,
+    });
+    await app.close();
+  });
+
+  it("rejects renaming an environment to a name already in use", async () => {
+    const environmentId = "a768f717-d11f-4ce0-a72b-8e1d439222b0";
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: requestRepository,
+      workspaces: emptyWorkspaceRepository,
+      environments: {
+        list: async () => [],
+        create: async () => null,
+        createVariable: async () => ({ kind: "forbidden" }),
+        updateVariable: async () => ({ kind: "forbidden" }),
+        update: async () => ({ kind: "duplicate" }),
+        remove: async () => ({ kind: "forbidden" }),
+        removeVariable: async () => ({ kind: "forbidden" }),
+      },
+    });
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/v1/environments/${environmentId}`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { name: "Development", expectedVersion: 1 },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      code: "ENVIRONMENT_ALREADY_EXISTS",
+    });
+    await app.close();
+  });
+
+  it("deletes an environment through the authenticated route", async () => {
+    const environmentId = "a768f717-d11f-4ce0-a72b-8e1d439222b0";
+    let received: unknown;
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: requestRepository,
+      workspaces: emptyWorkspaceRepository,
+      environments: {
+        list: async () => [],
+        create: async () => null,
+        createVariable: async () => ({ kind: "forbidden" }),
+        updateVariable: async () => ({ kind: "forbidden" }),
+        update: async () => ({ kind: "forbidden" }),
+        remove: async (command) => {
+          received = command;
+          return { kind: "deleted" };
+        },
+        removeVariable: async () => ({ kind: "forbidden" }),
+      },
+    });
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/v1/environments/${environmentId}`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { expectedVersion: 1 },
+    });
+    expect(response.statusCode).toBe(204);
+    expect(received).toMatchObject({
+      environmentId,
+      expectedVersion: 1,
+      userId: user.id,
+      accessToken: user.accessToken,
+    });
+    await app.close();
+  });
+
+  it("deletes an environment variable through the authenticated route", async () => {
+    const variableId = "8f48a4d0-05e0-4cd2-bdbc-35c0a19a8bd8";
+    let received: unknown;
+    const app = buildApp({
+      authenticate: async () => user,
+      requests: requestRepository,
+      workspaces: emptyWorkspaceRepository,
+      environments: {
+        list: async () => [],
+        create: async () => null,
+        createVariable: async () => ({ kind: "forbidden" }),
+        updateVariable: async () => ({ kind: "forbidden" }),
+        update: async () => ({ kind: "forbidden" }),
+        remove: async () => ({ kind: "forbidden" }),
+        removeVariable: async (command) => {
+          received = command;
+          return { kind: "deleted" };
+        },
+      },
+    });
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/v1/environment-variables/${variableId}`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { expectedVersion: 3 },
+    });
+    expect(response.statusCode).toBe(204);
+    expect(received).toMatchObject({
+      variableId,
+      expectedVersion: 3,
+      userId: user.id,
+      accessToken: user.accessToken,
     });
     await app.close();
   });

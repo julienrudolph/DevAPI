@@ -7,7 +7,7 @@ import {
   type EnvironmentVariable,
   type UpsertEnvironmentVariable,
 } from "@api-client/contracts";
-import { Plus, Settings2 } from "lucide-react";
+import { Pencil, Plus, Settings2, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -18,12 +18,16 @@ import {
   Select,
 } from "../../components/ui";
 import {
+  EnvironmentConflictError,
   EnvironmentVariableConflictError,
 } from "./environment-api";
 import {
   useCreateEnvironment,
   useCreateEnvironmentVariable,
+  useDeleteEnvironment,
+  useDeleteEnvironmentVariable,
   useEnvironments,
+  useUpdateEnvironment,
   useUpdateEnvironmentVariable,
 } from "./environment-queries";
 
@@ -42,7 +46,16 @@ export function EnvironmentControls({
 }: EnvironmentControlsProps) {
   const environments = useEnvironments(workspaceId);
   const [mode, setMode] = useState<"environment" | "variable">();
+  const [error, setError] = useState<string>();
   const selected = environments.data?.find(({ id }) => id === selectedId);
+  const updateEnvironment = useUpdateEnvironment(
+    workspaceId,
+    selected?.id ?? "",
+  );
+  const deleteEnvironment = useDeleteEnvironment(
+    workspaceId,
+    selected?.id ?? "",
+  );
 
   useEffect(() => {
     if (!selectedId && environments.data?.[0]) {
@@ -85,6 +98,58 @@ export function EnvironmentControls({
           <Settings2 aria-hidden="true" size={15} />
         </IconButton>
       ) : null}
+      {selected && canEditShared ? (
+        <>
+          <IconButton
+            aria-label={`${selected.name} umbenennen`}
+            onClick={() => {
+              const name = window.prompt("Neuer Umgebungsname", selected.name);
+              if (!name?.trim() || name.trim() === selected.name) return;
+              setError(undefined);
+              void updateEnvironment
+                .mutateAsync({ name: name.trim(), expectedVersion: selected.version })
+                .catch((mutationError: unknown) =>
+                  setError(
+                    mutationError instanceof EnvironmentConflictError
+                      ? "Die Umgebung wurde zwischenzeitlich geändert."
+                      : "Die Umgebung konnte nicht umbenannt werden.",
+                  ),
+                );
+            }}
+            size="compact"
+          >
+            <Pencil aria-hidden="true" size={14} />
+          </IconButton>
+          <IconButton
+            aria-label={`${selected.name} löschen`}
+            onClick={() => {
+              if (
+                !window.confirm(
+                  `Umgebung „${selected.name}“ inklusive aller Variablen löschen?`,
+                )
+              ) {
+                return;
+              }
+              setError(undefined);
+              void deleteEnvironment
+                .mutateAsync({ expectedVersion: selected.version })
+                .then(() => onSelect(undefined))
+                .catch((mutationError: unknown) =>
+                  setError(
+                    mutationError instanceof EnvironmentConflictError
+                      ? "Die Umgebung wurde zwischenzeitlich geändert."
+                      : "Die Umgebung konnte nicht gelöscht werden.",
+                  ),
+                );
+            }}
+            size="compact"
+            variant="danger"
+          >
+            <Trash2 aria-hidden="true" size={14} />
+          </IconButton>
+        </>
+      ) : null}
+      {error ? <p className="field-error">{error}</p> : null}
       {mode === "environment" ? (
         <EnvironmentCreatePopover
           onClose={() => setMode(undefined)}
@@ -234,9 +299,14 @@ export function EnvironmentVariableRow({
   workspaceId: string;
 }) {
   const mutation = useUpdateEnvironmentVariable(workspaceId, variable.id);
+  const removeVariable = useDeleteEnvironmentVariable(
+    workspaceId,
+    variable.id,
+  );
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(variable.value);
   const [baseVersion, setBaseVersion] = useState(variable.version);
+  const [rowError, setRowError] = useState<string>();
   const conflict =
     mutation.error instanceof EnvironmentVariableConflictError
       ? mutation.error.conflict
@@ -254,12 +324,50 @@ export function EnvironmentVariableRow({
         </span>
         <code>{variable.scope === "personal" ? "••••••••" : variable.value}</code>
         {canEdit ? (
-          <Button
-            onClick={() => setEditing(true)}
-          >
-            Bearbeiten
-          </Button>
+          <>
+            <Button onClick={() => setEditing(true)}>Bearbeiten</Button>
+            <IconButton
+              aria-label={`${variable.key} umbenennen`}
+              onClick={() => {
+                const key = window.prompt("Neuer Variablenname", variable.key);
+                if (!key?.trim() || key.trim() === variable.key) return;
+                setRowError(undefined);
+                void mutation
+                  .mutateAsync({
+                    key: key.trim(),
+                    expectedVersion: variable.version,
+                  })
+                  .catch(() =>
+                    setRowError("Die Variable konnte nicht umbenannt werden."),
+                  );
+              }}
+              size="compact"
+            >
+              <Pencil aria-hidden="true" size={14} />
+            </IconButton>
+            <IconButton
+              aria-label={`${variable.key} entfernen`}
+              onClick={() => {
+                if (
+                  !window.confirm(`Variable „${variable.key}“ entfernen?`)
+                ) {
+                  return;
+                }
+                setRowError(undefined);
+                void removeVariable
+                  .mutateAsync({ expectedVersion: variable.version })
+                  .catch(() =>
+                    setRowError("Die Variable konnte nicht entfernt werden."),
+                  );
+              }}
+              size="compact"
+              variant="danger"
+            >
+              <Trash2 aria-hidden="true" size={14} />
+            </IconButton>
+          </>
         ) : null}
+        {rowError ? <p className="field-error">{rowError}</p> : null}
       </div>
     );
   }

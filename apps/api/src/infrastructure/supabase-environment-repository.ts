@@ -9,7 +9,13 @@ import type {
   CreateEnvironmentCommand,
   CreateEnvironmentVariableCommand,
   CreateVariableResult,
+  DeleteEnvironmentCommand,
+  DeleteEnvironmentResult,
+  DeleteEnvironmentVariableCommand,
+  DeleteVariableResult,
   EnvironmentRepository,
+  UpdateEnvironmentCommand,
+  UpdateEnvironmentResult,
   UpdateEnvironmentVariableCommand,
   UpdateVariableResult,
   WorkspaceEnvironmentCommand,
@@ -154,14 +160,16 @@ export class SupabaseEnvironmentRepository
     command: UpdateEnvironmentVariableCommand,
   ): Promise<UpdateVariableResult> {
     const client = this.client(command.accessToken);
+    const changes: Record<string, unknown> = {
+      version: command.expectedVersion + 1,
+      updated_by: command.userId,
+      updated_at: new Date().toISOString(),
+    };
+    if (command.key !== undefined) changes.key = command.key;
+    if (command.value !== undefined) changes.value = command.value;
     const { data, error } = await client
       .from("environment_variables")
-      .update({
-        value: command.value,
-        version: command.expectedVersion + 1,
-        updated_by: command.userId,
-        updated_at: new Date().toISOString(),
-      })
+      .update(changes)
       .eq("id", command.variableId)
       .eq("version", command.expectedVersion)
       .select("id, environment_id, key, value, scope, version")
@@ -169,6 +177,7 @@ export class SupabaseEnvironmentRepository
     if (!error && data) {
       return { kind: "updated", variable: variableRowSchema.parse(data) };
     }
+    if (error?.code === "23505") return { kind: "duplicate" };
     if (error && error.code !== "42501") {
       throw new Error("ENVIRONMENT_VARIABLE_UPDATE_FAILED", {
         cause: error,
@@ -189,6 +198,138 @@ export class SupabaseEnvironmentRepository
     return variable.version === command.expectedVersion
       ? { kind: "forbidden" }
       : { kind: "conflict", current: variable };
+  }
+
+  async removeVariable(
+    command: DeleteEnvironmentVariableCommand,
+  ): Promise<DeleteVariableResult> {
+    const client = this.client(command.accessToken);
+    const { data, error } = await client
+      .from("environment_variables")
+      .delete()
+      .eq("id", command.variableId)
+      .eq("version", command.expectedVersion)
+      .select("id, environment_id, key, value, scope, version")
+      .maybeSingle();
+    if (error) {
+      throw new Error("ENVIRONMENT_VARIABLE_DELETE_FAILED", { cause: error });
+    }
+    if (data) return { kind: "deleted" };
+    const current = await client
+      .from("environment_variables")
+      .select("id, environment_id, key, value, scope, version")
+      .eq("id", command.variableId)
+      .maybeSingle();
+    if (current.error) {
+      throw new Error("ENVIRONMENT_VARIABLE_READ_FAILED", {
+        cause: current.error,
+      });
+    }
+    if (!current.data) return { kind: "not-found" };
+    const variable = variableRowSchema.parse(current.data);
+    return variable.version === command.expectedVersion
+      ? { kind: "forbidden" }
+      : { kind: "conflict", current: variable };
+  }
+
+  async update(
+    command: UpdateEnvironmentCommand,
+  ): Promise<UpdateEnvironmentResult> {
+    const client = this.client(command.accessToken);
+    const { data, error } = await client
+      .from("environments")
+      .update({
+        name: command.name,
+        version: command.expectedVersion + 1,
+        updated_by: command.userId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", command.environmentId)
+      .eq("version", command.expectedVersion)
+      .select("id, workspace_id, name, version")
+      .maybeSingle();
+    if (!error && data) {
+      const row = environmentRowSchema.parse(data);
+      return {
+        kind: "updated",
+        environment: await this.buildEnvironment(client, row),
+      };
+    }
+    if (error?.code === "23505") return { kind: "duplicate" };
+    if (error && error.code !== "42501") {
+      throw new Error("ENVIRONMENT_UPDATE_FAILED", { cause: error });
+    }
+    const current = await this.findEnvironment(client, command.environmentId);
+    if (!current) return { kind: "not-found" };
+    return current.version === command.expectedVersion
+      ? { kind: "forbidden" }
+      : { kind: "conflict", current };
+  }
+
+  async remove(
+    command: DeleteEnvironmentCommand,
+  ): Promise<DeleteEnvironmentResult> {
+    const client = this.client(command.accessToken);
+    const { data, error } = await client
+      .from("environments")
+      .delete()
+      .eq("id", command.environmentId)
+      .eq("version", command.expectedVersion)
+      .select("id")
+      .maybeSingle();
+    if (error) {
+      throw new Error("ENVIRONMENT_DELETE_FAILED", { cause: error });
+    }
+    if (data) return { kind: "deleted" };
+    const current = await this.findEnvironment(client, command.environmentId);
+    if (!current) return { kind: "not-found" };
+    return current.version === command.expectedVersion
+      ? { kind: "forbidden" }
+      : { kind: "conflict", current };
+  }
+
+  private async fetchVariables(
+    client: ReturnType<typeof createUserSupabaseClient>,
+    environmentId: string,
+  ) {
+    const { data, error } = await client
+      .from("environment_variables")
+      .select("id, environment_id, key, value, scope, version")
+      .eq("environment_id", environmentId)
+      .order("key");
+    if (error) {
+      throw new Error("ENVIRONMENT_VARIABLE_LIST_FAILED", { cause: error });
+    }
+    return z.array(variableRowSchema).parse(data);
+  }
+
+  private async buildEnvironment(
+    client: ReturnType<typeof createUserSupabaseClient>,
+    row: z.infer<typeof environmentRowSchema>,
+  ): Promise<Environment> {
+    return environmentSchema.parse({
+      id: row.id,
+      workspaceId: row.workspace_id,
+      name: row.name,
+      version: row.version,
+      variables: await this.fetchVariables(client, row.id),
+    });
+  }
+
+  private async findEnvironment(
+    client: ReturnType<typeof createUserSupabaseClient>,
+    environmentId: string,
+  ): Promise<Environment | null> {
+    const { data, error } = await client
+      .from("environments")
+      .select("id, workspace_id, name, version")
+      .eq("id", environmentId)
+      .maybeSingle();
+    if (error) {
+      throw new Error("ENVIRONMENT_READ_FAILED", { cause: error });
+    }
+    if (!data) return null;
+    return this.buildEnvironment(client, environmentRowSchema.parse(data));
   }
 
   private client(accessToken: string) {
