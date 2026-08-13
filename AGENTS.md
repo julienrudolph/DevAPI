@@ -256,10 +256,16 @@ Die minimalen Workspace-Rollen sind:
 | Workspace und Requests ansehen | Ja | Ja | Ja |
 | Requests ausführen | Ja | Ja | Ja |
 | Requests, Collections und Ordner ändern | Ja | Ja | Nein |
-| Umgebungen ändern | Ja | Ja | Nein |
+| Geteilte (shared) Umgebungsvariablen ändern | Ja | Ja | Nein |
+| Eigene (personal) Umgebungsvariablen anlegen/ändern | Ja | Ja | Ja |
 | Konflikt bewusst überschreiben | Ja | Ja | Nein |
 | Mitglieder und Rollen verwalten | Ja | Nein | Nein |
 | Workspace oder Team löschen | Ja | Nein | Nein |
+
+Jedes Mitglied darf unabhängig von seiner Rolle beliebig viele eigene
+`personal`-scope Umgebungsvariablen in jeder für ihn sichtbaren Umgebung
+anlegen und ändern. Diese Werte sind nur für das anlegende Mitglied selbst
+lesbar und überschreiben lokal eine gleichnamige geteilte Variable.
 
 Zusätzliche Regeln:
 
