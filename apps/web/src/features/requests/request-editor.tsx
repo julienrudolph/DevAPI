@@ -26,6 +26,7 @@ import {
   type RequestDraft,
   requestDraftSchema,
 } from "@api-client/contracts";
+import { Variable } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Controller,
@@ -49,12 +50,14 @@ import { RequestConflictError } from "./request-api";
 import { RequestExecutionError } from "./request-execution-api";
 import { formatCodeSnippet, snippetLanguages } from "./code-snippets";
 import { parseCurl } from "./curl";
+import { ExtractVariableDialog } from "./extract-variable-dialog";
 import {
   useExecuteRequest,
   useRequest,
   useUpdateRequest,
 } from "./request-queries";
 import { RevisionDialog } from "../revisions/revision-dialog";
+import { useEnvironments } from "../environments/environment-queries";
 import {
   findUnresolvedVariables,
   listVariableReferences,
@@ -162,8 +165,10 @@ function LoadedRequestEditor({
   const [curlNotice, setCurlNotice] = useState<string>();
   const [responseTab, setResponseTab] = useState<"body" | "headers">("body");
   const [responseSearch, setResponseSearch] = useState("");
+  const [showingExtractVariable, setShowingExtractVariable] = useState(false);
   const mutation = useUpdateRequest(workspaceId, request.id);
   const execution = useExecuteRequest(workspaceId);
+  const environments = useEnvironments(workspaceId);
   const {
     handleSubmit,
     register,
@@ -734,6 +739,19 @@ function LoadedRequestEditor({
                       <ArrowDownload20Regular aria-hidden="true" />
                     </IconButton>
                   </Tooltip>
+                  {!readOnly ? (
+                    <Tooltip
+                      content="Wert aus der Response in eine Variable übernehmen"
+                      relationship="description"
+                    >
+                      <IconButton
+                        aria-label="Response-Wert in Variable übernehmen"
+                        onClick={() => setShowingExtractVariable(true)}
+                      >
+                        <Variable aria-hidden="true" size={18} />
+                      </IconButton>
+                    </Tooltip>
+                  ) : null}
                 </div>
               </div>
               <div className="response-content" role="tabpanel">
@@ -799,6 +817,15 @@ function LoadedRequestEditor({
               </Button>
             </DialogFooter>
         </Dialog>
+      ) : null}
+      {showingExtractVariable && execution.data ? (
+        <ExtractVariableDialog
+          canEditShared={!readOnly}
+          environments={environments.data ?? []}
+          onClose={() => setShowingExtractVariable(false)}
+          responseBody={execution.data.body}
+          workspaceId={workspaceId}
+        />
       ) : null}
       {showingRevisions ? (
         <RevisionDialog

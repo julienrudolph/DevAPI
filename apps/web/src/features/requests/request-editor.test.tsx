@@ -20,11 +20,15 @@ import {
   useRequest,
   useUpdateRequest,
 } from "./request-queries";
+import { useEnvironments } from "../environments/environment-queries";
 
 vi.mock("./request-queries", () => ({
   useRequest: vi.fn(),
   useUpdateRequest: vi.fn(),
   useExecuteRequest: vi.fn(),
+}));
+vi.mock("../environments/environment-queries", () => ({
+  useEnvironments: vi.fn(),
 }));
 vi.mock("../../components/editors/monaco-editor", () => ({
   default: ({
@@ -81,6 +85,11 @@ beforeEach(() => {
     isError: false,
     data: undefined,
   } as unknown as ReturnType<typeof useExecuteRequest>);
+  vi.mocked(useEnvironments).mockReturnValue({
+    data: [],
+    isPending: false,
+    isError: false,
+  } as unknown as ReturnType<typeof useEnvironments>);
 });
 afterEach(cleanup);
 
