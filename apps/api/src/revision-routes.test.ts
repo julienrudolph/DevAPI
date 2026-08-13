@@ -26,6 +26,7 @@ const request: ApiRequest = {
   queryParams: [],
   headers: [],
   body: { type: "none" },
+  assertions: [],
   version: 4,
   createdBy: user.id,
   updatedBy: user.id,

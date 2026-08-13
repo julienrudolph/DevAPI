@@ -54,6 +54,7 @@ function visitItems(
       queryParams,
       headers: postmanHeaders(request.header),
       body: postmanBody(request.body),
+      assertions: [],
     });
   }
 }

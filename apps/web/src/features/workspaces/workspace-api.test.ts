@@ -205,6 +205,7 @@ describe("workspace API client", () => {
         queryParams: [],
         headers: [],
         body: { type: "none" },
+        assertions: [],
       },
       "session-token",
     );

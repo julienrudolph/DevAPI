@@ -1453,6 +1453,53 @@ textarea.ui-control {
   font-weight: 750;
 }
 
+.assertions-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.assertion-row {
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+}
+
+.assertion-row > select,
+.assertion-row > input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.assertion-results {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.assertion-results li {
+  align-items: center;
+  border-radius: 7px;
+  display: flex;
+  font-size: 13px;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.assertion-passed {
+  background: var(--surface-highlight);
+  color: var(--primary);
+}
+
+.assertion-failed {
+  background: var(--surface-highlight);
+  color: var(--danger);
+}
+
 .variable-usage {
   align-items: center;
   color: var(--foreground-subtle);

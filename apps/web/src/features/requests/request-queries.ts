@@ -99,6 +99,7 @@ export function useDuplicateRequest(workspaceId: string) {
           queryParams: source.queryParams,
           headers: source.headers,
           body: source.body,
+          assertions: source.assertions,
         },
         accessToken!,
       );
@@ -130,6 +131,7 @@ export function useMoveRequest(workspaceId: string) {
           queryParams: source.queryParams,
           headers: source.headers,
           body: source.body,
+          assertions: source.assertions,
           expectedVersion: source.version,
           collectionId: input.collectionId,
           folderId: input.folderId,

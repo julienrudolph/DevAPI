@@ -57,6 +57,7 @@ const request = {
   queryParams: [],
   headers: [],
   body: { type: "none" as const },
+  assertions: [],
   version: 2,
   createdBy: "4776ac0f-28ba-474a-ad0d-d566be4199e8",
   updatedBy: "4776ac0f-28ba-474a-ad0d-d566be4199e8",

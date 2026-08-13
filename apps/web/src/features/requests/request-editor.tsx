@@ -20,6 +20,7 @@ import {
 } from "@fluentui/react-icons";
 import {
   type ApiRequest,
+  type Assertion,
   type EnvironmentVariable,
   type RequestConflict,
   type RequestAuth,
@@ -48,6 +49,7 @@ import {
 } from "../../components/ui";
 import { RequestConflictError } from "./request-api";
 import { RequestExecutionError } from "./request-execution-api";
+import { evaluateAssertions } from "./assertions";
 import { formatCodeSnippet, snippetLanguages } from "./code-snippets";
 import { parseCurl } from "./curl";
 import { ExtractVariableDialog } from "./extract-variable-dialog";
@@ -100,7 +102,12 @@ interface RequestEditorProps {
   variables?: EnvironmentVariable[];
 }
 
-type RequestConfigurationTab = "params" | "headers" | "body" | "auth";
+type RequestConfigurationTab =
+  | "params"
+  | "headers"
+  | "body"
+  | "auth"
+  | "tests";
 
 export function RequestEditor({
   formId = "request-form",
@@ -163,7 +170,9 @@ function LoadedRequestEditor({
   const [curlInput, setCurlInput] = useState("");
   const [curlError, setCurlError] = useState<string>();
   const [curlNotice, setCurlNotice] = useState<string>();
-  const [responseTab, setResponseTab] = useState<"body" | "headers">("body");
+  const [responseTab, setResponseTab] = useState<
+    "body" | "headers" | "tests"
+  >("body");
   const [responseSearch, setResponseSearch] = useState("");
   const [showingExtractVariable, setShowingExtractVariable] = useState(false);
   const mutation = useUpdateRequest(workspaceId, request.id);
@@ -187,6 +196,10 @@ function LoadedRequestEditor({
   const draftBody = watch("body.content") ?? "";
   const draftHeaders = watch("headers");
   const draftQueryParams = watch("queryParams");
+  const draftAssertions = watch("assertions");
+  const assertionResults = execution.data
+    ? evaluateAssertions(draftAssertions, execution.data)
+    : [];
   const referencedVariables = listVariableReferences(
     [
       draftUrl,
@@ -429,6 +442,7 @@ function LoadedRequestEditor({
             ["headers", "Header"],
             ["body", "Body"],
             ["auth", "Authentifizierung"],
+            ["tests", `Tests${draftAssertions.length > 0 ? ` (${draftAssertions.length})` : ""}`],
           ] as const).map(([id, label]) => (
             <Tab key={id} value={id}>
               {label}
@@ -609,6 +623,9 @@ function LoadedRequestEditor({
               </p>
             </div>
           ) : null}
+          {activeTab === "tests" ? (
+            <AssertionsEditor control={control} readOnly={readOnly} />
+          ) : null}
         </div>
 
         <section className="response-panel" aria-live="polite">
@@ -682,6 +699,13 @@ function LoadedRequestEditor({
                   <Tab value="headers">
                     Header ({Object.keys(execution.data.headers).length})
                   </Tab>
+                  {assertionResults.length > 0 ? (
+                    <Tab value="tests">
+                      Tests (
+                      {assertionResults.filter((result) => result.passed).length}/
+                      {assertionResults.length})
+                    </Tab>
+                  ) : null}
                 </TabList>
                 <div className="response-actions">
                   <label className="response-search">
@@ -755,14 +779,30 @@ function LoadedRequestEditor({
                 </div>
               </div>
               <div className="response-content" role="tabpanel">
-                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex --
-                    Content can overflow and scroll; tabIndex keeps it reachable
-                    by keyboard per WCAG 2.1.1 (scrollable-region-focusable). */}
-                <pre aria-label="Response-Inhalt" role="region" tabIndex={0}>
-                  {responseTab === "body"
-                    ? formatResponseBody(execution.data.body)
-                    : formatResponseHeaders(execution.data.headers)}
-                </pre>
+                {responseTab === "tests" ? (
+                  <ul className="assertion-results">
+                    {assertionResults.map((result) => (
+                      <li
+                        className={
+                          result.passed ? "assertion-passed" : "assertion-failed"
+                        }
+                        key={result.assertion.id}
+                      >
+                        <span aria-hidden="true">
+                          {result.passed ? "✓" : "✗"}
+                        </span>
+                        {result.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Content can overflow and scroll; tabIndex keeps it reachable by keyboard per WCAG 2.1.1 (scrollable-region-focusable).
+                  <pre aria-label="Response-Inhalt" role="region" tabIndex={0}>
+                    {responseTab === "body"
+                      ? formatResponseBody(execution.data.body)
+                      : formatResponseHeaders(execution.data.headers)}
+                  </pre>
+                )}
               </div>
             </div>
           ) : (
@@ -1026,6 +1066,7 @@ function toDraft(request: ApiRequest): RequestDraft {
     queryParams: request.queryParams,
     headers: request.headers,
     body: request.body,
+    assertions: request.assertions,
   };
 }
 
@@ -1128,6 +1169,166 @@ function KeyValueTable({
           variant="ghost"
         >
           <Add20Regular aria-hidden="true" /> {emptyLabel}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function AssertionsEditor({
+  control,
+  readOnly,
+}: {
+  control: Control<RequestDraft>;
+  readOnly: boolean;
+}) {
+  const { append, fields, remove, update } = useFieldArray({
+    control,
+    keyName: "fieldKey",
+    name: "assertions",
+  });
+
+  return (
+    <div className="assertions-editor">
+      <p className="security-hint">
+        Prüfungen werden nach jeder Ausführung automatisch gegen die Response
+        ausgewertet und mit der Request gespeichert.
+      </p>
+      {fields.length === 0 ? (
+        <div className="empty-panel">Keine Tests definiert.</div>
+      ) : null}
+      {fields.map((entry, index) => (
+        <div className="assertion-row" key={entry.fieldKey}>
+          <Select
+            aria-label="Prüfungstyp"
+            disabled={readOnly}
+            onChange={(event) => {
+              const type = event.target.value as Assertion["type"];
+              update(
+                index,
+                type === "status"
+                  ? {
+                      id: entry.id,
+                      type: "status",
+                      operator: "equals",
+                      expected: 200,
+                    }
+                  : {
+                      id: entry.id,
+                      type: "jsonPath",
+                      path: "",
+                      operator: "exists",
+                    },
+              );
+            }}
+            value={entry.type}
+          >
+            <option value="status">Status-Code</option>
+            <option value="jsonPath">JSON-Pfad</option>
+          </Select>
+          {entry.type === "status" ? (
+            <>
+              <Select
+                aria-label="Status-Operator"
+                disabled={readOnly}
+                onChange={(event) =>
+                  update(index, {
+                    ...entry,
+                    operator: event.target.value as "equals" | "notEquals",
+                  })
+                }
+                value={entry.operator}
+              >
+                <option value="equals">ist gleich</option>
+                <option value="notEquals">ist ungleich</option>
+              </Select>
+              <Input
+                aria-label="Erwarteter Status-Code"
+                disabled={readOnly}
+                min={100}
+                max={599}
+                onChange={(event) =>
+                  update(index, {
+                    ...entry,
+                    expected: Number(event.target.value),
+                  })
+                }
+                type="number"
+                value={String(entry.expected)}
+              />
+            </>
+          ) : (
+            <>
+              <Input
+                aria-label="JSON-Pfad"
+                disabled={readOnly}
+                onChange={(event) =>
+                  update(index, { ...entry, path: event.target.value })
+                }
+                placeholder="z. B. data.token"
+                value={entry.path}
+              />
+              <Select
+                aria-label="JSON-Pfad-Operator"
+                disabled={readOnly}
+                onChange={(event) =>
+                  update(index, {
+                    ...entry,
+                    operator: event.target.value as Extract<
+                      Assertion,
+                      { type: "jsonPath" }
+                    >["operator"],
+                  })
+                }
+                value={entry.operator}
+              >
+                <option value="exists">existiert</option>
+                <option value="notExists">existiert nicht</option>
+                <option value="equals">ist gleich</option>
+                <option value="notEquals">ist ungleich</option>
+                <option value="contains">enthält</option>
+              </Select>
+              {entry.operator === "equals" ||
+              entry.operator === "notEquals" ||
+              entry.operator === "contains" ? (
+                <Input
+                  aria-label="Erwarteter Wert"
+                  disabled={readOnly}
+                  onChange={(event) =>
+                    update(index, { ...entry, expected: event.target.value })
+                  }
+                  placeholder="Erwarteter Wert"
+                  value={entry.expected ?? ""}
+                />
+              ) : null}
+            </>
+          )}
+          {!readOnly ? (
+            <IconButton
+              aria-label="Test entfernen"
+              onClick={() => remove(index)}
+              size="compact"
+            >
+              <Subtract20Regular aria-hidden="true" />
+            </IconButton>
+          ) : null}
+        </div>
+      ))}
+      {!readOnly ? (
+        <Button
+          className="add-row"
+          onClick={() =>
+            append({
+              id: crypto.randomUUID(),
+              type: "jsonPath",
+              path: "",
+              operator: "exists",
+            })
+          }
+          size="small"
+          variant="ghost"
+        >
+          <Add20Regular aria-hidden="true" /> Test hinzufügen
         </Button>
       ) : null}
     </div>

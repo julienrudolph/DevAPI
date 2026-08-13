@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   apiRequestSchema,
+  assertionSchema,
   canEdit,
   deleteRequestSchema,
   requestAuthSchema,
@@ -105,6 +106,50 @@ describe("requestAuthSchema", () => {
       headers: [],
       body: { type: "none" },
     })).toBe(false);
+  });
+});
+
+describe("assertionSchema", () => {
+  it("defaults requestDraftSchema assertions to an empty array", () => {
+    const draft = requestDraftSchema.parse({
+      name: "Health",
+      method: "GET",
+      url: "https://example.test",
+      queryParams: [],
+      headers: [],
+      body: { type: "none" },
+    });
+    expect(draft.assertions).toEqual([]);
+  });
+
+  it("accepts status and jsonPath assertions", () => {
+    expect(
+      assertionSchema.safeParse({
+        id: "b9f6d0f8-9c6b-4c9a-8f0a-5a8f5b6b0c1d",
+        type: "status",
+        operator: "equals",
+        expected: 200,
+      }).success,
+    ).toBe(true);
+    expect(
+      assertionSchema.safeParse({
+        id: "b9f6d0f8-9c6b-4c9a-8f0a-5a8f5b6b0c1d",
+        type: "jsonPath",
+        path: "data.token",
+        operator: "exists",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects an out-of-range status expectation", () => {
+    expect(
+      assertionSchema.safeParse({
+        id: "b9f6d0f8-9c6b-4c9a-8f0a-5a8f5b6b0c1d",
+        type: "status",
+        operator: "equals",
+        expected: 999,
+      }).success,
+    ).toBe(false);
   });
 });
 

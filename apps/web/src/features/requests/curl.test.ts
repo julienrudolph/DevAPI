@@ -63,6 +63,7 @@ describe("cURL import and export", () => {
         },
       ],
       body: { type: "none" },
+      assertions: [],
     });
 
     expect(command).toContain("limit=20");

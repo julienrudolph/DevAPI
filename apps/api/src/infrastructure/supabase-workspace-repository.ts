@@ -265,6 +265,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
         query_params: command.queryParams,
         headers: command.headers,
         body: command.body,
+        assertions: command.assertions,
         created_by: command.userId,
         updated_by: command.userId,
       })

@@ -22,6 +22,7 @@ const persistedRequest = {
   queryParams: [],
   headers: [],
   body: { type: "none" as const },
+  assertions: [],
   version: 1,
   createdBy: user.id,
   updatedBy: user.id,

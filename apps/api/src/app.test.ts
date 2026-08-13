@@ -14,6 +14,7 @@ const draft: RequestDraft = {
   queryParams: [],
   headers: [],
   body: { type: "none" },
+  assertions: [],
 };
 const updated: ApiRequest = {
   ...draft,

@@ -109,6 +109,7 @@ function operationToRequest(
     queryParams,
     headers,
     body,
+    assertions: [],
   };
 }
 

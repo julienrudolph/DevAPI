@@ -36,6 +36,7 @@ describe("workspace export", () => {
             },
           ],
           body: { type: "none" },
+          assertions: [],
           version: 1,
           createdBy: "50000000-0000-4000-8000-000000000001",
           updatedBy: "50000000-0000-4000-8000-000000000001",

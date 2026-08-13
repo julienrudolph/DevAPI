@@ -36,6 +36,7 @@ const draft: RequestDraft = {
     },
   ],
   body: { type: "json", content: '{"message":"Hallo"}' },
+  assertions: [],
 };
 
 describe("formatCodeSnippet", () => {

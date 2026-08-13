@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  assertionSchema,
   httpMethodSchema,
   keyValueEntrySchema,
   requestBodySchema,
@@ -85,6 +86,7 @@ export const createRequestSummarySchema = z.object({
   queryParams: z.array(keyValueEntrySchema).max(200).default([]),
   headers: z.array(keyValueEntrySchema).max(200).default([]),
   body: requestBodySchema.default({ type: "none" }),
+  assertions: z.array(assertionSchema).max(50).default([]),
 });
 
 export const workspaceSummarySchema = z.object({

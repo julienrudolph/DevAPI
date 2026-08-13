@@ -49,6 +49,22 @@ export const requestBodySchema = z.discriminatedUnion("type", [
   }
 });
 
+export const assertionSchema = z.discriminatedUnion("type", [
+  z.object({
+    id: z.string().uuid(),
+    type: z.literal("status"),
+    operator: z.enum(["equals", "notEquals"]),
+    expected: z.number().int().min(100).max(599),
+  }),
+  z.object({
+    id: z.string().uuid(),
+    type: z.literal("jsonPath"),
+    path: z.string().trim().min(1).max(512),
+    operator: z.enum(["exists", "notExists", "equals", "notEquals", "contains"]),
+    expected: z.string().max(4_096).optional(),
+  }),
+]);
+
 export const requestAuthSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("none") }),
   z.object({
@@ -69,6 +85,7 @@ export const requestDraftSchema = z.object({
   queryParams: z.array(keyValueEntrySchema).max(200),
   headers: z.array(keyValueEntrySchema).max(200),
   body: requestBodySchema,
+  assertions: z.array(assertionSchema).max(50).default([]),
 });
 
 export const apiRequestSchema = requestDraftSchema.extend({
@@ -101,5 +118,6 @@ export const requestIdParamsSchema = z.object({
 export type ApiRequest = z.infer<typeof apiRequestSchema>;
 export type RequestDraft = z.infer<typeof requestDraftSchema>;
 export type RequestAuth = z.infer<typeof requestAuthSchema>;
+export type Assertion = z.infer<typeof assertionSchema>;
 export type UpdateRequest = z.infer<typeof updateRequestSchema>;
 export type DeleteRequest = z.infer<typeof deleteRequestSchema>;
