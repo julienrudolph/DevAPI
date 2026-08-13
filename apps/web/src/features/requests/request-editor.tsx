@@ -1,9 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Tab, TabList } from "@fluentui/react-components";
+import {
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
+  Tab,
+  TabList,
+} from "@fluentui/react-components";
 import {
   Add20Regular,
   ArrowDownload20Regular,
   ArrowImport20Regular,
+  ChevronDown20Regular,
   Copy20Regular,
   History20Regular,
   Search20Regular,
@@ -38,7 +47,8 @@ import {
 } from "../../components/ui";
 import { RequestConflictError } from "./request-api";
 import { RequestExecutionError } from "./request-execution-api";
-import { formatCurl, parseCurl } from "./curl";
+import { formatCodeSnippet, snippetLanguages } from "./code-snippets";
+import { parseCurl } from "./curl";
 import {
   useExecuteRequest,
   useRequest,
@@ -278,25 +288,53 @@ function LoadedRequestEditor({
                 cURL importieren
               </Button>
             ) : null}
-            <Button
-              className="revision-link"
-              onClick={() => {
-                void navigator.clipboard
-                  .writeText(formatCurl(getValues()))
-                  .then(() => {
-                    setCurlNotice("cURL wurde kopiert");
-                    window.setTimeout(() => setCurlNotice(undefined), 2_000);
-                  })
-                  .catch(() =>
-                    setCurlNotice("cURL konnte nicht kopiert werden"),
-                  );
-              }}
-              size="small"
-              variant="ghost"
-            >
-              <Copy20Regular aria-hidden="true" />
-              Als cURL kopieren
-            </Button>
+            <Menu positioning="below-start">
+              <MenuTrigger disableButtonEnhancement>
+                <Button
+                  className="revision-link"
+                  size="small"
+                  variant="ghost"
+                >
+                  <Copy20Regular aria-hidden="true" />
+                  Code kopieren
+                  <ChevronDown20Regular aria-hidden="true" />
+                </Button>
+              </MenuTrigger>
+              <MenuPopover>
+                <MenuList>
+                  {snippetLanguages.map(({ id, label }) => (
+                    <MenuItem
+                      key={id}
+                      onClick={() => {
+                        let snippet: string;
+                        try {
+                          snippet = formatCodeSnippet(getValues(), id);
+                        } catch {
+                          setCurlNotice(
+                            "Code konnte nicht erzeugt werden: URL ist ungültig",
+                          );
+                          return;
+                        }
+                        void navigator.clipboard
+                          .writeText(snippet)
+                          .then(() => {
+                            setCurlNotice(`${label}-Code wurde kopiert`);
+                            window.setTimeout(
+                              () => setCurlNotice(undefined),
+                              2_000,
+                            );
+                          })
+                          .catch(() =>
+                            setCurlNotice("Code konnte nicht kopiert werden"),
+                          );
+                      }}
+                    >
+                      {label}
+                    </MenuItem>
+                  ))}
+                </MenuList>
+              </MenuPopover>
+            </Menu>
             <Button
               className="revision-link"
               onClick={() => setShowingRevisions(true)}
