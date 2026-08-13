@@ -19,6 +19,7 @@ import {
   restoreRequestRevisionSchema,
   teamIdParamsSchema,
   teamMemberParamsSchema,
+  transferTeamOwnershipSchema,
   updateEnvironmentVariableSchema,
   updateNavigationItemSchema,
   updateRequestSchema,
@@ -328,6 +329,47 @@ export function buildApp(dependencies: ApiDependencies) {
     } catch (error) {
       request.log.error({ err: error }, "TEAM_MEMBER_REMOVE_FAILED");
       return reply.code(500).send({ code: "TEAM_MEMBER_REMOVE_FAILED" });
+    }
+  });
+
+  app.post("/v1/teams/:teamId/ownership-transfer", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+      request.log,
+    );
+    if (user.kind !== "authenticated") {
+      return reply.code(user.kind === "unavailable" ? 503 : 401).send({
+        code:
+          user.kind === "unavailable"
+            ? "AUTHENTICATION_UNAVAILABLE"
+            : "UNAUTHORIZED",
+      });
+    }
+    const params = teamIdParamsSchema.safeParse(request.params);
+    const body = transferTeamOwnershipSchema.safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.teamMembers) {
+      return reply.code(503).send({ code: "TEAM_MEMBERS_UNAVAILABLE" });
+    }
+    try {
+      const transferred = await dependencies.teamMembers.transferOwnership({
+        teamId: params.data.teamId,
+        newOwnerUserId: body.data.newOwnerUserId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      if (transferred === null) {
+        return reply.code(403).send({ code: "FORBIDDEN" });
+      }
+      return transferred
+        ? reply.code(204).send()
+        : reply.code(404).send({ code: "TEAM_MEMBER_NOT_FOUND" });
+    } catch (error) {
+      request.log.error({ err: error }, "TEAM_OWNERSHIP_TRANSFER_FAILED");
+      return reply.code(500).send({ code: "TEAM_OWNERSHIP_TRANSFER_FAILED" });
     }
   });
 

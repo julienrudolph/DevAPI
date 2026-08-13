@@ -5,6 +5,7 @@ import { workspaceKeys } from "../workspaces/workspace-queries";
 import {
   fetchTeamMembers,
   removeTeamMember,
+  transferTeamOwnership,
   updateTeamMember,
 } from "./team-member-api";
 
@@ -51,6 +52,21 @@ export function useRemoveTeamMember(teamId: string) {
       await queryClient.invalidateQueries({
         queryKey: teamMemberKeys.list(teamId),
       });
+    },
+  });
+}
+
+export function useTransferTeamOwnership(teamId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (newOwnerUserId: string) =>
+      transferTeamOwnership(teamId, { newOwnerUserId }, accessToken!),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: teamMemberKeys.list(teamId) }),
+        queryClient.invalidateQueries({ queryKey: workspaceKeys.all }),
+      ]);
     },
   });
 }

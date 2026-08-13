@@ -9,6 +9,7 @@ import type {
   RemoveTeamMemberCommand,
   TeamCommand,
   TeamMemberRepository,
+  TransferTeamOwnershipCommand,
 } from "../domain/team-member-repository.js";
 import { createUserSupabaseClient } from "./supabase-user-client.js";
 
@@ -78,6 +79,23 @@ export class SupabaseTeamMemberRepository implements TeamMemberRepository {
     if (error) {
       if (error.code === "42501") return null;
       throw new Error("TEAM_MEMBER_REMOVE_FAILED", { cause: error });
+    }
+    return z.boolean().parse(data);
+  }
+
+  async transferOwnership(
+    command: TransferTeamOwnershipCommand,
+  ): Promise<boolean | null> {
+    const { data, error } = await this.client(command.accessToken).rpc(
+      "transfer_team_ownership",
+      {
+        p_team_id: command.teamId,
+        p_new_owner_user_id: command.newOwnerUserId,
+      },
+    );
+    if (error) {
+      if (error.code === "42501") return null;
+      throw new Error("TEAM_OWNERSHIP_TRANSFER_FAILED", { cause: error });
     }
     return z.boolean().parse(data);
   }

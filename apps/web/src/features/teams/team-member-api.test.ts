@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   fetchTeamMembers,
   removeTeamMember,
+  transferTeamOwnership,
   updateTeamMember,
 } from "./team-member-api";
 
@@ -60,6 +61,27 @@ describe("team member API client", () => {
       2,
       `/api/v1/teams/${teamId}/members/${userId}`,
       expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("transfers ownership through the authenticated route", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await transferTeamOwnership(
+      teamId,
+      { newOwnerUserId: userId },
+      "token",
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/v1/teams/${teamId}/ownership-transfer`,
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ newOwnerUserId: userId }),
+      }),
     );
   });
 });

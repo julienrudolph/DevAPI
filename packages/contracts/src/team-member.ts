@@ -13,6 +13,10 @@ export const updateTeamMemberSchema = z.object({
   role: invitationRoleSchema,
 });
 
+export const transferTeamOwnershipSchema = z.object({
+  newOwnerUserId: z.string().uuid(),
+});
+
 export const teamMemberSchema = z.object({
   userId: z.string().uuid(),
   email: z.string().email(),
@@ -25,3 +29,4 @@ export const teamMembersSchema = z.array(teamMemberSchema);
 
 export type TeamMember = z.infer<typeof teamMemberSchema>;
 export type UpdateTeamMember = z.infer<typeof updateTeamMemberSchema>;
+export type TransferTeamOwnership = z.infer<typeof transferTeamOwnershipSchema>;

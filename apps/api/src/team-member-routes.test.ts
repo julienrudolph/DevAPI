@@ -36,6 +36,7 @@ const teamMembers: TeamMemberRepository = {
   list: async () => [member],
   update: async () => true,
   remove: async () => true,
+  transferOwnership: async () => true,
 };
 
 describe("team member routes", () => {
@@ -120,6 +121,76 @@ describe("team member routes", () => {
       headers: { authorization: "Bearer verified-token" },
     });
     expect(response.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it("transfers ownership to another member using the authenticated actor", async () => {
+    let received: unknown;
+    const app = buildApp({
+      authenticate: async () => actor,
+      requests,
+      workspaces,
+      teamMembers: {
+        ...teamMembers,
+        transferOwnership: async (command) => {
+          received = command;
+          return true;
+        },
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/teams/${teamId}/ownership-transfer`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { newOwnerUserId: targetUserId },
+    });
+    expect(response.statusCode).toBe(204);
+    expect(received).toMatchObject({
+      teamId,
+      newOwnerUserId: targetUserId,
+      userId: actor.id,
+      accessToken: actor.accessToken,
+    });
+    await app.close();
+  });
+
+  it("rejects ownership transfer from a non-owner without revealing member state", async () => {
+    const app = buildApp({
+      authenticate: async () => actor,
+      requests,
+      workspaces,
+      teamMembers: {
+        ...teamMembers,
+        transferOwnership: async () => null,
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/teams/${teamId}/ownership-transfer`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { newOwnerUserId: targetUserId },
+    });
+    expect(response.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it("reports a missing target member as not found", async () => {
+    const app = buildApp({
+      authenticate: async () => actor,
+      requests,
+      workspaces,
+      teamMembers: {
+        ...teamMembers,
+        transferOwnership: async () => false,
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/teams/${teamId}/ownership-transfer`,
+      headers: { authorization: "Bearer verified-token" },
+      payload: { newOwnerUserId: targetUserId },
+    });
+    expect(response.statusCode).toBe(404);
     await app.close();
   });
 });

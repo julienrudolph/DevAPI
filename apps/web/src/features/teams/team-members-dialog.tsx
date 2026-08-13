@@ -1,4 +1,4 @@
-import { Trash2, Users } from "lucide-react";
+import { Crown, Trash2, Users } from "lucide-react";
 
 import {
   Button,
@@ -9,10 +9,13 @@ import {
   FieldError,
   IconButton,
   Select,
+  Tooltip,
 } from "../../components/ui";
+import { useAuth } from "../auth/auth-context";
 import {
   useRemoveTeamMember,
   useTeamMembers,
+  useTransferTeamOwnership,
   useUpdateTeamMember,
 } from "./team-member-queries";
 
@@ -23,10 +26,14 @@ export function TeamMembersDialog({
   onClose: () => void;
   teamId: string;
 }) {
+  const { user } = useAuth();
   const members = useTeamMembers(teamId);
   const updateMember = useUpdateTeamMember(teamId);
   const removeMember = useRemoveTeamMember(teamId);
-  const busy = updateMember.isPending || removeMember.isPending;
+  const transferOwnership = useTransferTeamOwnership(teamId);
+  const busy =
+    updateMember.isPending || removeMember.isPending ||
+    transferOwnership.isPending;
 
   return (
     <Dialog
@@ -67,6 +74,8 @@ export function TeamMembersDialog({
                 </span>
                 {member.role === "owner" ? (
                   <span className="role-badge">Owner</span>
+                ) : member.userId === user?.id ? (
+                  <span className="role-badge">Du</span>
                 ) : (
                   <>
                     <Select
@@ -83,6 +92,27 @@ export function TeamMembersDialog({
                       <option value="editor">Editor</option>
                       <option value="viewer">Viewer</option>
                     </Select>
+                    <Tooltip
+                      content={`Owner-Rechte an ${member.displayName} übertragen`}
+                      relationship="description"
+                    >
+                      <IconButton
+                        aria-label={`Owner-Rechte an ${member.displayName} übertragen`}
+                        disabled={busy}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Owner-Rechte wirklich an ${member.displayName} übertragen? ` +
+                                "Du wirst danach selbst zum Editor.",
+                            )
+                          ) {
+                            transferOwnership.mutate(member.userId);
+                          }
+                        }}
+                      >
+                        <Crown aria-hidden="true" size={16} />
+                      </IconButton>
+                    </Tooltip>
                     <IconButton
                       aria-label={`${member.displayName} entfernen`}
                       disabled={busy}
@@ -106,7 +136,8 @@ export function TeamMembersDialog({
           </div>
         )}
 
-        {updateMember.isError || removeMember.isError ? (
+        {updateMember.isError || removeMember.isError ||
+        transferOwnership.isError ? (
           <FieldError>Die Änderung konnte nicht gespeichert werden.</FieldError>
         ) : null}
       </DialogBody>
