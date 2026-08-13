@@ -7,7 +7,20 @@ import type { PropsWithChildren } from "react";
 import { useState } from "react";
 
 import { AuthProvider } from "../features/auth/auth-context";
-import { relayTheme } from "./theme";
+import { relayDarkTheme, relayTheme } from "./theme";
+import { ThemeModeProvider, useThemeMode } from "./theme-mode";
+
+function ThemedFluentProvider({ children }: PropsWithChildren) {
+  const { resolvedMode } = useThemeMode();
+  return (
+    <FluentProvider
+      className="fluent-app-root"
+      theme={resolvedMode === "dark" ? relayDarkTheme : relayTheme}
+    >
+      {children}
+    </FluentProvider>
+  );
+}
 
 export function AppProviders({ children }: PropsWithChildren) {
   const [queryClient] = useState(
@@ -24,10 +37,12 @@ export function AppProviders({ children }: PropsWithChildren) {
   );
 
   return (
-    <FluentProvider className="fluent-app-root" theme={relayTheme}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>{children}</AuthProvider>
-      </QueryClientProvider>
-    </FluentProvider>
+    <ThemeModeProvider>
+      <ThemedFluentProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>{children}</AuthProvider>
+        </QueryClientProvider>
+      </ThemedFluentProvider>
+    </ThemeModeProvider>
   );
 }

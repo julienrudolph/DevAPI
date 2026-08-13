@@ -1,4 +1,5 @@
 import {
+  createDarkTheme,
   createLightTheme,
   type BrandVariants,
   type Theme,
@@ -23,6 +24,13 @@ const relayBrand: BrandVariants = {
   160: "#EDFBF1",
 };
 
+const sharedOverrides = {
+  borderRadiusMedium: "8px",
+  borderRadiusLarge: "10px",
+  fontFamilyBase:
+    'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+};
+
 export const relayTheme: Theme = {
   ...createLightTheme(relayBrand),
   colorBrandForeground1: "#17643C",
@@ -36,8 +44,14 @@ export const relayTheme: Theme = {
   colorNeutralForeground2: "#536057",
   colorNeutralStroke1: "#D8DFD9",
   colorNeutralStroke2: "#E2E7E2",
-  borderRadiusMedium: "8px",
-  borderRadiusLarge: "10px",
-  fontFamilyBase:
-    'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  ...sharedOverrides,
+};
+
+// Fluent's computed dark palette already pulls its brand colors from the
+// same relayBrand ramp and keeps AA contrast against its neutral
+// backgrounds, so unlike the light theme this one is left otherwise
+// un-tweaked instead of hand-picking near-duplicate overrides.
+export const relayDarkTheme: Theme = {
+  ...createDarkTheme(relayBrand),
+  ...sharedOverrides,
 };

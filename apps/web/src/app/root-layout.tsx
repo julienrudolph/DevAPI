@@ -1,9 +1,41 @@
 import { PersonCircle20Regular } from "@fluentui/react-icons";
-import { Braces } from "lucide-react";
+import { Braces, Monitor, Moon, Sun } from "lucide-react";
 import { Outlet } from "react-router";
 
-import { Button, Tooltip } from "../components/ui";
+import { Button, IconButton, Tooltip } from "../components/ui";
 import { useAuth } from "../features/auth/auth-context";
+import { type ThemeMode, useThemeMode } from "./theme-mode";
+
+const nextMode: Record<ThemeMode, ThemeMode> = {
+  light: "dark",
+  dark: "system",
+  system: "light",
+};
+
+const modeLabel: Record<ThemeMode, string> = {
+  light: "Hell",
+  dark: "Dunkel",
+  system: "System",
+};
+
+function ThemeModeToggle() {
+  const { mode, setMode } = useThemeMode();
+  const Icon = mode === "light" ? Sun : mode === "dark" ? Moon : Monitor;
+
+  return (
+    <Tooltip
+      content={`Design: ${modeLabel[mode]} (zu „${modeLabel[nextMode[mode]]}“ wechseln)`}
+      relationship="description"
+    >
+      <IconButton
+        aria-label={`Design wechseln, aktuell ${modeLabel[mode]}`}
+        onClick={() => setMode(nextMode[mode])}
+      >
+        <Icon aria-hidden="true" size={18} />
+      </IconButton>
+    </Tooltip>
+  );
+}
 
 export function RootLayout() {
   const { client, user } = useAuth();
@@ -25,6 +57,7 @@ export function RootLayout() {
           <span>Relay</span>
         </a>
         <div className="topbar-actions">
+          <ThemeModeToggle />
           <Tooltip
             content={`Als ${user?.email ?? "Nutzer"} abmelden`}
             relationship="description"
