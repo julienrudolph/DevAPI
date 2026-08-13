@@ -94,8 +94,12 @@ export function buildApp(dependencies: ApiDependencies) {
       maxConcurrentPerWorkspace: 10,
     });
 
-  app.get("/health", async () => ({ status: "ok" }));
-  app.get("/ready", async (request, reply) => {
+  app.get(
+    "/health",
+    { logLevel: "silent" },
+    async () => ({ status: "ok" }),
+  );
+  app.get("/ready", { logLevel: "error" }, async (request, reply) => {
     try {
       const checks = dependencies.readiness
         ? await dependencies.readiness()
@@ -112,7 +116,7 @@ export function buildApp(dependencies: ApiDependencies) {
         .send({ status: "unavailable", checks: { dependencies: false } });
     }
   });
-  app.get("/metrics", async (request, reply) => {
+  app.get("/metrics", { logLevel: "silent" }, async (request, reply) => {
     if (
       !validBearerToken(
         request.headers.authorization,

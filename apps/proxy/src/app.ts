@@ -117,9 +117,17 @@ export function buildProxyApp(options: ProxyAppOptions = {}) {
     void reply.header("X-Request-ID", request.id);
   });
 
-  app.get("/health", async () => ({ status: "ok" }));
-  app.get("/ready", async () => ({ status: "ready" }));
-  app.get("/metrics", async (request, reply) => {
+  app.get(
+    "/health",
+    { logLevel: "silent" },
+    async () => ({ status: "ok" }),
+  );
+  app.get(
+    "/ready",
+    { logLevel: "silent" },
+    async () => ({ status: "ready" }),
+  );
+  app.get("/metrics", { logLevel: "silent" }, async (request, reply) => {
     if (!validBearerToken(request.headers.authorization, options.metricsToken)) {
       return reply.code(401).send({ code: "UNAUTHORIZED" });
     }
