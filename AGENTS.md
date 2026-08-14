@@ -89,6 +89,11 @@ erste Stufe ist ausschließlich ein installierbarer Client für den zentralen
 DevAPI-Server. Eine lokale Request-Ausführung gegen `localhost` oder private
 Netze bleibt eine getrennte, sicherheitskritische Folgeentscheidung.
 
+Die mehrsprachige Oberfläche (Deutsch, Englisch, erweiterbar) wurde ebenfalls
+als bewusste Scope-Erweiterung freigegeben. Übersetzte Playwright-Tests oder
+mehrsprachige Server-/E-Mail-Inhalte gehören nicht automatisch dazu und
+benötigen eine eigene Scope-Entscheidung.
+
 ## 5. Verbindlicher Technologie-Stack
 
 ### 5.1 Frontend
@@ -106,6 +111,8 @@ Netze bleibt eine getrennte, sicherheitskritische Folgeentscheidung.
   werden bei Arbeiten am jeweiligen Feature schrittweise ersetzt
 - Monaco Editor für JSON- und Textbearbeitung
 - Electron für den installierbaren Desktop-Client
+- i18next / react-i18next für die mehrsprachige Oberfläche (Deutsch als
+  Standard, zusätzlich Englisch, erweiterbar um weitere Sprachen)
 
 TanStack Query ist die Quelle für geladenen Server-State. Zustand darf keine zweite, dauerhaft synchronisierte Kopie von Serverdaten enthalten. Lokale Formulare und ungespeicherte Entwürfe bleiben im Formular beziehungsweise in einem gezielt dafür vorgesehenen lokalen Editor-State.
 
@@ -461,6 +468,11 @@ Logs verwenden Allowlisting statt einer unvollständigen Blocklist. Fehlermeldun
 - Tastaturbedienung, sichtbare Fokuszustände, Labels und ausreichender Kontrast sind Pflicht.
 - Fehlertexte sollen handlungsorientiert sein und technische Details nur zeigen, wenn sie Nutzern helfen.
 - Die Anwendung muss zwischen `loading`, `empty`, `error`, `forbidden`, `dirty`, `saving` und `conflicted` unterscheiden.
+- Sichtbare UI-Texte werden nicht hartcodiert, sondern über `useTranslation`
+  (in reinen Funktionen über die `i18n`-Instanz) aus Feature-Namespace-JSON
+  unter `apps/web/src/locales/<sprache>/<namespace>.json` bezogen. Deutsche
+  Werte bleiben beim Hinzufügen neuer Übersetzungen möglichst wortgleich zu
+  bestehenden Texten, damit bestehende Tests stabil bleiben.
 
 ## 13. TypeScript- und Coding-Konventionen
 

@@ -213,6 +213,7 @@ Zugriffe werden auch in PostgreSQL erzwungen.
 | HTTP-Ausführung | `apps/proxy/src/execution` |
 | Schema, RLS oder Datenbankfunktion | neue Datei in `supabase/migrations` |
 | Desktop-Bridge | `apps/desktop/src` |
+| Übersetzungen / neue Sprache | `apps/web/src/locales/<sprache>/<namespace>.json`, Registrierung in `apps/web/src/lib/i18n.ts` |
 | Deployment | Compose-Dateien, `infra/` und `docs/` |
 
 Frontend und Backend teilen nur Verträge, keine internen Implementierungen.
@@ -305,6 +306,11 @@ Viewer-Rechte, Mandantentrennung und WCAG-A/AA-Verstöße. Screenshots, Traces
 und HTML-Berichte bei Fehlern liegen in den ignorierten Ordnern `test-results/` und
 `playwright-report/`. Mit `E2E_BASE_URL` kann ein anderer Testserver angegeben
 werden; dieser muss Passwortregistrierung aktiviert haben.
+
+Playwright ist in `playwright.config.ts` fest auf `de-DE` gepinnt, damit
+Assertions gegen deutschen UI-Text unabhängig von der Runner-Locale
+deterministisch bleiben. Neue oder geänderte deutsche Übersetzungswerte
+müssen daher mit den bestehenden e2e-Assertions übereinstimmen.
 
 Ein begrenzter Lasttest gegen den lokalen Health-Endpunkt:
 

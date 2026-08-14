@@ -18,6 +18,11 @@ Request-Revisionen werden pro Request auf die jüngsten 100 Einträge und
 höchstens 180 Tage begrenzt. Die Ausführungshistorie enthält maximal 100
 Einträge aus den letzten 30 Tagen.
 
+Die Weboberfläche ist mehrsprachig (Deutsch als Standard, zusätzlich
+Englisch) und über einen Sprachumschalter im Kopfbereich umschaltbar. Weitere
+Sprachen lassen sich durch eine zusätzliche Locale-Datei je Feature-Namespace
+unter `apps/web/src/locales/<sprache>/` ergänzen.
+
 ## Voraussetzungen
 
 - Node.js 22 oder neuer
