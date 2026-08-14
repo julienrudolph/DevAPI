@@ -28,6 +28,8 @@ const updateCollectionMutation = vi.hoisted(() => vi.fn());
 const updateFolderMutation = vi.hoisted(() => vi.fn());
 const moveRequestMutation = vi.hoisted(() => vi.fn());
 const renameRequestMutation = vi.hoisted(() => vi.fn());
+const duplicateCollectionMutation = vi.hoisted(() => vi.fn());
+const duplicateFolderMutation = vi.hoisted(() => vi.fn());
 
 vi.mock("./workspace-queries", () => ({
   useExportWorkspace: vi.fn(() => ({
@@ -48,6 +50,14 @@ vi.mock("./workspace-queries", () => ({
   })),
   useUpdateFolder: vi.fn(() => ({
     mutateAsync: updateFolderMutation,
+    isPending: false,
+  })),
+  useDuplicateCollection: vi.fn(() => ({
+    mutateAsync: duplicateCollectionMutation,
+    isPending: false,
+  })),
+  useDuplicateFolder: vi.fn(() => ({
+    mutateAsync: duplicateFolderMutation,
     isPending: false,
   })),
   useWorkspaces: vi.fn(),
@@ -161,6 +171,10 @@ beforeEach(() => {
   moveRequestMutation.mockResolvedValue(undefined);
   renameRequestMutation.mockReset();
   renameRequestMutation.mockResolvedValue(undefined);
+  duplicateCollectionMutation.mockReset();
+  duplicateCollectionMutation.mockResolvedValue(undefined);
+  duplicateFolderMutation.mockReset();
+  duplicateFolderMutation.mockResolvedValue(undefined);
   vi.mocked(useWorkspaces).mockReturnValue({
     data: [
       {
@@ -501,9 +515,19 @@ describe("WorkspacePage", () => {
       screen.getByRole("menuitem", { name: "Mutations umbenennen" }),
     ).toBeVisible();
     expect(
+      screen.getByRole("menuitem", { name: "Mutations duplizieren" }),
+    ).toBeVisible();
+    expect(
       screen.getByRole("menuitem", {
         name: "Request in Mutations erstellen",
       }),
+    ).toBeVisible();
+
+    await user.click(
+      screen.getByRole("button", { name: "Customers Optionen" }),
+    );
+    expect(
+      screen.getByRole("menuitem", { name: "Customers duplizieren" }),
     ).toBeVisible();
 
     await user.click(
@@ -519,6 +543,42 @@ describe("WorkspacePage", () => {
       screen.getByRole("menuitem", { name: "Verschieben" }),
     ).toBeVisible();
     expect(screen.getByRole("menuitem", { name: "Löschen" })).toBeVisible();
+  });
+
+  it("duplicates a collection from its tree menu", async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+
+    await user.click(
+      screen.getByRole("button", { name: "Customers Optionen" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", { name: "Customers duplizieren" }),
+    );
+
+    expect(duplicateCollectionMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: expect.objectContaining({ name: "Customers" }),
+      }),
+    );
+  });
+
+  it("duplicates a folder from its tree menu", async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+
+    await user.click(
+      screen.getByRole("button", { name: "Mutations Optionen" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", { name: "Mutations duplizieren" }),
+    );
+
+    expect(duplicateFolderMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folder: expect.objectContaining({ name: "Mutations" }),
+      }),
+    );
   });
 
   it("renames a request from the tree menu, the tab and the workbench title", async () => {

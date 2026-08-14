@@ -1,0 +1,19 @@
+{
+  "title": "Versionen",
+  "description": "Frühere gespeicherte Fassungen dieses Requests.",
+  "loading": "Versionen werden geladen …",
+  "loadError": "Die Versionen konnten nicht geladen werden.",
+  "empty": "Noch keine frühere Version vorhanden.",
+  "versionLabel": "Version {{version}} · {{name}}",
+  "changeType": {
+    "update": "Bearbeitung",
+    "overwrite": "Überschreiben",
+    "restore": "Wiederherstellung",
+    "delete": "Löschen"
+  },
+  "restore": "Wiederherstellen",
+  "restoreConfirm": "Version {{version}} als neue Version wiederherstellen?",
+  "conflictError": "Der Request wurde zwischenzeitlich geändert. Schließe den Dialog und lade die aktuelle Version.",
+  "restoreError": "Die Version konnte nicht wiederhergestellt werden.",
+  "headerSecurityHint": "Gespeicherte Header-Werte werden aus Sicherheitsgründen nicht wiederhergestellt."
+}

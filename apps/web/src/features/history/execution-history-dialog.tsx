@@ -1,5 +1,6 @@
 import { Clock3, ExternalLink, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   Button,
@@ -14,6 +15,11 @@ import {
 } from "../../components/ui";
 import { useExecutionHistory } from "./execution-history-queries";
 
+const dateFormatLocales: Record<string, string> = {
+  de: "de-DE",
+  en: "en-US",
+};
+
 export function ExecutionHistoryDialog({
   onClose,
   onOpenRequest,
@@ -23,6 +29,7 @@ export function ExecutionHistoryDialog({
   onOpenRequest?: (requestId: string) => void;
   workspaceId: string;
 }) {
+  const { i18n, t } = useTranslation(["history", "common"]);
   const history = useExecutionHistory(workspaceId);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | "successful" | "failed">("all");
@@ -56,10 +63,8 @@ export function ExecutionHistoryDialog({
           <Clock3 aria-hidden="true" size={18} />
         </span>
         <div>
-          <h2 id="execution-history-title">Request-Verlauf</h2>
-          <p id="execution-history-description">
-            Maximal 100 Einträge aus den letzten 30 Tagen.
-          </p>
+          <h2 id="execution-history-title">{t("title")}</h2>
+          <p id="execution-history-description">{t("description")}</p>
         </div>
       </DialogHeader>
 
@@ -68,17 +73,17 @@ export function ExecutionHistoryDialog({
           <div className="history-filters">
             <div className="history-search-field">
               <Search aria-hidden="true" size={15} />
-              <span className="sr-only">Verlauf durchsuchen</span>
+              <span className="sr-only">{t("searchLabel")}</span>
               <Input
-                aria-label="Verlauf durchsuchen"
+                aria-label={t("searchLabel")}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Request, Methode, Status, Person"
+                placeholder={t("searchPlaceholder")}
                 type="search"
                 value={query}
               />
             </div>
             <Select
-              aria-label="Verlauf nach Status filtern"
+              aria-label={t("statusFilterLabel")}
               onChange={(event) =>
                 setStatus(
                   event.target.value as "all" | "successful" | "failed",
@@ -86,21 +91,21 @@ export function ExecutionHistoryDialog({
               }
               value={status}
             >
-              <option value="all">Alle Ergebnisse</option>
-              <option value="successful">Erfolgreich</option>
-              <option value="failed">Fehlgeschlagen</option>
+              <option value="all">{t("statusAll")}</option>
+              <option value="successful">{t("statusSuccessful")}</option>
+              <option value="failed">{t("statusFailed")}</option>
             </Select>
           </div>
         ) : null}
 
         {history.isPending ? (
-          <p className="dialog-state">Verlauf wird geladen …</p>
+          <p className="dialog-state">{t("loading")}</p>
         ) : history.isError ? (
-          <FieldError>Der Verlauf konnte nicht geladen werden.</FieldError>
+          <FieldError>{t("loadError")}</FieldError>
         ) : history.data.length === 0 ? (
-          <p className="dialog-state">Noch keine Requests ausgeführt.</p>
+          <p className="dialog-state">{t("empty")}</p>
         ) : filteredHistory.length === 0 ? (
-          <p className="dialog-state">Keine passenden Einträge gefunden.</p>
+          <p className="dialog-state">{t("noMatches")}</p>
         ) : (
           <div className="execution-history-list">
             {filteredHistory.map((execution) => (
@@ -112,10 +117,10 @@ export function ExecutionHistoryDialog({
                   <strong>{execution.requestName}</strong>
                   <small>
                     {execution.executedBy.displayName} ·{" "}
-                    {new Intl.DateTimeFormat("de-DE", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    }).format(new Date(execution.executedAt))}
+                    {new Intl.DateTimeFormat(
+                      dateFormatLocales[i18n.language] ?? "en-US",
+                      { dateStyle: "short", timeStyle: "short" },
+                    ).format(new Date(execution.executedAt))}
                   </small>
                 </span>
                 <span
@@ -130,12 +135,14 @@ export function ExecutionHistoryDialog({
                 </span>
                 {onOpenRequest ? (
                   <IconButton
-                    aria-label={`${execution.requestName} öffnen`}
+                    aria-label={t("openRequest", {
+                      name: execution.requestName,
+                    })}
                     onClick={() => {
                       onOpenRequest(execution.requestId);
                       onClose();
                     }}
-                    title="Request in einem Tab öffnen"
+                    title={t("openRequestTitle")}
                     size="compact"
                   >
                     <ExternalLink aria-hidden="true" size={14} />
@@ -146,14 +153,11 @@ export function ExecutionHistoryDialog({
           </div>
         )}
 
-        <p className="security-hint">
-          URL, Header, Zugangsdaten sowie Request- und Response-Inhalte werden
-          nicht im Verlauf gespeichert.
-        </p>
+        <p className="security-hint">{t("securityHint")}</p>
       </DialogBody>
       <DialogFooter>
         <Button onClick={onClose} variant="primary">
-          Schließen
+          {t("actions.close", { ns: "common" })}
         </Button>
       </DialogFooter>
     </Dialog>

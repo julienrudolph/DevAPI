@@ -1,0 +1,34 @@
+{
+  "members": {
+    "title": "Team verwalten",
+    "description": "Rollen gelten für alle Workspaces dieses Teams.",
+    "loading": "Mitglieder werden geladen …",
+    "loadError": "Die Mitglieder konnten nicht geladen werden.",
+    "roleOwner": "Owner",
+    "roleYou": "Du",
+    "roleEditor": "Editor",
+    "roleViewer": "Viewer",
+    "roleOf": "Rolle von {{name}}",
+    "transferOwnership": "Owner-Rechte an {{name}} übertragen",
+    "transferOwnershipConfirm": "Owner-Rechte wirklich an {{name}} übertragen? Du wirst danach selbst zum Editor.",
+    "removeMember": "{{name}} entfernen",
+    "removeMemberConfirm": "{{name}} wirklich aus dem Team entfernen?",
+    "saveError": "Die Änderung konnte nicht gespeichert werden."
+  },
+  "invitation": {
+    "title": "Teammitglied einladen",
+    "linkHint": "Dieser Link ist sieben Tage gültig und kann einmal angenommen werden. Der Token wird serverseitig nur gehasht gespeichert.",
+    "linkLabel": "Einladungslink",
+    "copied": "Kopiert",
+    "copyLink": "Link kopieren",
+    "roleLabel": "Rolle",
+    "createError": "Der Einladungslink konnte nicht erstellt werden.",
+    "createLink": "Link erstellen"
+  },
+  "acceptPage": {
+    "title": "Teameinladung annehmen",
+    "description": "Nach der Annahme erscheinen die freigegebenen Workspaces automatisch in deiner Navigation.",
+    "invalidLink": "Der Link ist ungültig, abgelaufen oder wurde bereits verwendet.",
+    "accept": "Einladung annehmen"
+  }
+}

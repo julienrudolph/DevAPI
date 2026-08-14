@@ -1,5 +1,6 @@
 import type { Environment } from "@api-client/contracts";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   Button,
@@ -37,6 +38,7 @@ export function ExtractVariableDialog({
   responseBody: string;
   workspaceId: string;
 }) {
+  const { t } = useTranslation(["requests", "common"]);
   const [path, setPath] = useState("");
   const [environmentId, setEnvironmentId] = useState(
     environments[0]?.id ?? "",
@@ -99,44 +101,42 @@ export function ExtractVariableDialog({
     >
       <DialogHeader>
         <div>
-          <h2 id="extract-variable-title">Wert in Variable speichern</h2>
+          <h2 id="extract-variable-title">{t("extractVariable.title")}</h2>
           <p id="extract-variable-description">
-            Extrahiert einen Wert aus der JSON-Response in eine
-            Umgebungsvariable.
+            {t("extractVariable.description")}
           </p>
         </div>
       </DialogHeader>
       <DialogBody>
         {parsedBody === undefined ? (
-          <FieldError>
-            Die Response ist kein gültiges JSON und kann nicht durchsucht
-            werden.
-          </FieldError>
+          <FieldError>{t("extractVariable.invalidJson")}</FieldError>
         ) : (
           <>
             <Field>
               <FieldLabel htmlFor="extract-variable-path">
-                Pfad in der Response
+                {t("extractVariable.pathLabel")}
               </FieldLabel>
               <Input
                 aria-describedby="extract-variable-preview"
                 autoFocus
                 id="extract-variable-path"
                 onChange={(event) => setPath(event.target.value)}
-                placeholder="z. B. data.token oder items[0].id"
+                placeholder={t("extractVariable.pathPlaceholder")}
                 value={path}
               />
               <p id="extract-variable-preview" className="security-hint">
                 {path.trim() === ""
-                  ? "Gib einen Pfad ein, z. B. token oder data.items[0].id."
+                  ? t("extractVariable.pathHintEmpty")
                   : resolution.found
-                    ? `Gefunden: ${extractedValue}`
-                    : "Unter diesem Pfad wurde kein Wert gefunden."}
+                    ? t("extractVariable.pathHintFound", {
+                        value: extractedValue,
+                      })
+                    : t("extractVariable.pathHintNotFound")}
               </p>
             </Field>
             <Field>
               <FieldLabel htmlFor="extract-variable-environment">
-                Umgebung
+                {t("extractVariable.environmentLabel")}
               </FieldLabel>
               <Select
                 id="extract-variable-environment"
@@ -144,7 +144,7 @@ export function ExtractVariableDialog({
                 value={environmentId}
               >
                 {environments.length === 0 ? (
-                  <option value="">Keine Umgebung vorhanden</option>
+                  <option value="">{t("extractVariable.noEnvironment")}</option>
                 ) : null}
                 {environments.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -155,7 +155,7 @@ export function ExtractVariableDialog({
             </Field>
             <Field>
               <FieldLabel htmlFor="extract-variable-name">
-                Variablenname
+                {t("extractVariable.nameLabel")}
               </FieldLabel>
               <Input
                 id="extract-variable-name"
@@ -166,16 +166,18 @@ export function ExtractVariableDialog({
             </Field>
             {existingVariable ? (
               <p className="security-hint">
-                Es gibt bereits eine Variable „{existingVariable.key}“
-                ({existingVariable.scope === "personal"
-                  ? "nur für mich"
-                  : "mit Team geteilt"}) in dieser Umgebung. Sie wird
-                überschrieben.
+                {t("extractVariable.existingVariable", {
+                  key: existingVariable.key,
+                  scope:
+                    existingVariable.scope === "personal"
+                      ? t("extractVariable.scopePersonal")
+                      : t("extractVariable.scopeShared"),
+                })}
               </p>
             ) : (
               <Field>
                 <FieldLabel htmlFor="extract-variable-scope">
-                  Sichtbarkeit
+                  {t("extractVariable.visibilityLabel")}
                 </FieldLabel>
                 <Select
                   id="extract-variable-scope"
@@ -185,30 +187,34 @@ export function ExtractVariableDialog({
                   value={scope}
                 >
                   {canEditShared ? (
-                    <option value="shared">Mit Team geteilt</option>
+                    <option value="shared">
+                      {t("extractVariable.sharedOption")}
+                    </option>
                   ) : null}
-                  <option value="personal">Nur für mich</option>
+                  <option value="personal">
+                    {t("extractVariable.personalOption")}
+                  </option>
                 </Select>
               </Field>
             )}
             {mutationError ? (
               <FieldError>
                 {mutationError instanceof EnvironmentVariableConflictError
-                  ? "Die Variable wurde zwischenzeitlich geändert."
-                  : "Die Variable konnte nicht gespeichert werden."}
+                  ? t("extractVariable.conflictError")
+                  : t("extractVariable.saveError")}
               </FieldError>
             ) : null}
           </>
         )}
       </DialogBody>
       <DialogFooter>
-        <Button onClick={onClose}>Abbrechen</Button>
+        <Button onClick={onClose}>{t("actions.cancel", { ns: "common" })}</Button>
         <Button
           disabled={!canSave || isPending}
           onClick={save}
           variant="primary"
         >
-          Speichern
+          {t("actions.save", { ns: "common" })}
         </Button>
       </DialogFooter>
     </Dialog>

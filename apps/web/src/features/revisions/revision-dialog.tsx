@@ -1,5 +1,6 @@
 import type { ApiRequest } from "@api-client/contracts";
 import { History, RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import {
   Button,
@@ -15,12 +16,10 @@ import {
   useRestoreRequestRevision,
 } from "./revision-queries";
 
-const changeTypeLabels = {
-  update: "Bearbeitung",
-  overwrite: "Überschreiben",
-  restore: "Wiederherstellung",
-  delete: "Löschen",
-} as const;
+const dateFormatLocales: Record<string, string> = {
+  de: "de-DE",
+  en: "en-US",
+};
 
 export function RevisionDialog({
   canRestore,
@@ -37,6 +36,7 @@ export function RevisionDialog({
   requestId: string;
   workspaceId: string;
 }) {
+  const { i18n, t } = useTranslation(["revisions", "common"]);
   const revisions = useRequestRevisions(requestId);
   const restore = useRestoreRequestRevision(workspaceId, requestId);
 
@@ -52,20 +52,18 @@ export function RevisionDialog({
           <History aria-hidden="true" size={18} />
         </span>
         <div>
-          <h2 id="revision-title">Versionen</h2>
-          <p id="revision-description">
-            Frühere gespeicherte Fassungen dieses Requests.
-          </p>
+          <h2 id="revision-title">{t("title")}</h2>
+          <p id="revision-description">{t("description")}</p>
         </div>
       </DialogHeader>
 
       <DialogBody>
         {revisions.isPending ? (
-          <p className="dialog-state">Versionen werden geladen …</p>
+          <p className="dialog-state">{t("loading")}</p>
         ) : revisions.isError ? (
-          <FieldError>Die Versionen konnten nicht geladen werden.</FieldError>
+          <FieldError>{t("loadError")}</FieldError>
         ) : revisions.data.length === 0 ? (
-          <p className="dialog-state">Noch keine frühere Version vorhanden.</p>
+          <p className="dialog-state">{t("empty")}</p>
         ) : (
           <div className="revision-list">
             {revisions.data.map((revision) => (
@@ -75,15 +73,18 @@ export function RevisionDialog({
                 </span>
                 <span className="revision-identity">
                   <strong>
-                    Version {revision.version} · {revision.name}
+                    {t("versionLabel", {
+                      version: revision.version,
+                      name: revision.name,
+                    })}
                   </strong>
                   <small>
-                    {changeTypeLabels[revision.changeType]} ·{" "}
+                    {t(`changeType.${revision.changeType}`)} ·{" "}
                     {revision.createdBy.displayName} ·{" "}
-                    {new Intl.DateTimeFormat("de-DE", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    }).format(new Date(revision.createdAt))}
+                    {new Intl.DateTimeFormat(
+                      dateFormatLocales[i18n.language] ?? "en-US",
+                      { dateStyle: "short", timeStyle: "short" },
+                    ).format(new Date(revision.createdAt))}
                   </small>
                 </span>
                 {canRestore ? (
@@ -92,7 +93,7 @@ export function RevisionDialog({
                     onClick={() => {
                       if (
                         !window.confirm(
-                          `Version ${revision.version} als neue Version wiederherstellen?`,
+                          t("restoreConfirm", { version: revision.version }),
                         )
                       ) {
                         return;
@@ -108,7 +109,7 @@ export function RevisionDialog({
                     type="button"
                   >
                     <RotateCcw aria-hidden="true" size={14} />
-                    Wiederherstellen
+                    {t("restore")}
                   </Button>
                 ) : null}
               </article>
@@ -117,23 +118,15 @@ export function RevisionDialog({
         )}
 
         {restore.error instanceof RequestConflictError ? (
-          <FieldError>
-            Der Request wurde zwischenzeitlich geändert. Schließe den Dialog
-            und lade die aktuelle Version.
-          </FieldError>
+          <FieldError>{t("conflictError")}</FieldError>
         ) : restore.isError ? (
-          <FieldError>
-            Die Version konnte nicht wiederhergestellt werden.
-          </FieldError>
+          <FieldError>{t("restoreError")}</FieldError>
         ) : null}
-        <p className="security-hint">
-          Gespeicherte Header-Werte werden aus Sicherheitsgründen nicht
-          wiederhergestellt.
-        </p>
+        <p className="security-hint">{t("headerSecurityHint")}</p>
       </DialogBody>
       <DialogFooter>
         <Button onClick={onClose} variant="primary">
-          Schließen
+          {t("actions.close", { ns: "common" })}
         </Button>
       </DialogFooter>
     </Dialog>

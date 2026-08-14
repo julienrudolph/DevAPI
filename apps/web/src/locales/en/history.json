@@ -1,0 +1,17 @@
+{
+  "title": "Request history",
+  "description": "Up to 100 entries from the last 30 days.",
+  "searchLabel": "Search history",
+  "searchPlaceholder": "Request, method, status, person",
+  "statusFilterLabel": "Filter history by status",
+  "statusAll": "All results",
+  "statusSuccessful": "Successful",
+  "statusFailed": "Failed",
+  "loading": "Loading history …",
+  "loadError": "The history could not be loaded.",
+  "empty": "No requests executed yet.",
+  "noMatches": "No matching entries found.",
+  "openRequest": "Open {{name}}",
+  "openRequestTitle": "Open request in a tab",
+  "securityHint": "URL, headers, credentials, and request/response bodies are not stored in the history."
+}

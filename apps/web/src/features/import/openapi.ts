@@ -1,6 +1,8 @@
 import type { CreateRequestSummary } from "@api-client/contracts";
 import { parseDocument } from "yaml";
 
+import i18n from "../../lib/i18n";
+
 const supportedMethods = ["get", "post", "put", "patch", "delete"] as const;
 type HttpMethod = CreateRequestSummary["method"];
 
@@ -20,17 +22,17 @@ export function parseOpenApi(source: string): OpenApiImport {
     uniqueKeys: true,
   });
   if (document.errors.length > 0) {
-    throw new Error("Die Datei enthält ungültiges JSON oder YAML.");
+    throw new Error(i18n.t("errors.invalidJsonOrYaml", { ns: "import" }));
   }
   const value: unknown = document.toJS({ maxAliasCount: 50 });
   if (!isRecord(value) || typeof value.openapi !== "string") {
-    throw new Error("Es wurde kein OpenAPI-Dokument erkannt.");
+    throw new Error(i18n.t("errors.notOpenApiDocument", { ns: "import" }));
   }
   if (!value.openapi.startsWith("3.")) {
-    throw new Error("Aktuell werden OpenAPI-Dokumente ab Version 3 unterstützt.");
+    throw new Error(i18n.t("errors.unsupportedVersion", { ns: "import" }));
   }
   if (!isRecord(value.paths)) {
-    throw new Error("Das OpenAPI-Dokument enthält keine gültigen Pfade.");
+    throw new Error(i18n.t("errors.noValidPaths", { ns: "import" }));
   }
 
   const title =
@@ -56,7 +58,9 @@ export function parseOpenApi(source: string): OpenApiImport {
     }
   }
   if (requests.length === 0) {
-    throw new Error("Es wurden keine unterstützten REST-Operationen gefunden.");
+    throw new Error(
+      i18n.t("errors.noSupportedOperations", { ns: "import" }),
+    );
   }
   return { title, requests };
 }

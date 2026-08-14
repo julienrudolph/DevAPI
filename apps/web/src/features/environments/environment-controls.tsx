@@ -10,6 +10,7 @@ import {
 import { Pencil, Plus, Settings2, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 
 import {
   Button,
@@ -44,6 +45,7 @@ export function EnvironmentControls({
   onSelect,
   workspaceId,
 }: EnvironmentControlsProps) {
+  const { t } = useTranslation(["environments", "common"]);
   const environments = useEnvironments(workspaceId);
   const [mode, setMode] = useState<"environment" | "variable">();
   const [error, setError] = useState<string>();
@@ -66,13 +68,13 @@ export function EnvironmentControls({
   return (
     <div className="environment-controls">
       <label>
-        <span className="sr-only">Aktive Umgebung</span>
+        <span className="sr-only">{t("activeEnvironment")}</span>
         <Select
-          aria-label="Aktive Umgebung"
+          aria-label={t("activeEnvironment")}
           onChange={(event) => onSelect(event.target.value || undefined)}
           value={selectedId ?? ""}
         >
-          <option value="">Keine Umgebung</option>
+          <option value="">{t("noEnvironment")}</option>
           {environments.data?.map((environment) => (
             <option key={environment.id} value={environment.id}>
               {environment.name}
@@ -82,7 +84,7 @@ export function EnvironmentControls({
       </label>
       {canEditShared ? (
         <IconButton
-          aria-label="Umgebung erstellen"
+          aria-label={t("createEnvironment")}
           onClick={() => setMode("environment")}
           size="compact"
         >
@@ -91,7 +93,7 @@ export function EnvironmentControls({
       ) : null}
       {selected ? (
         <IconButton
-          aria-label="Variable hinzufügen"
+          aria-label={t("addVariable")}
           onClick={() => setMode("variable")}
           size="compact"
         >
@@ -101,9 +103,12 @@ export function EnvironmentControls({
       {selected && canEditShared ? (
         <>
           <IconButton
-            aria-label={`${selected.name} umbenennen`}
+            aria-label={t("renameEnvironment", { name: selected.name })}
             onClick={() => {
-              const name = window.prompt("Neuer Umgebungsname", selected.name);
+              const name = window.prompt(
+                t("newEnvironmentNamePrompt"),
+                selected.name,
+              );
               if (!name?.trim() || name.trim() === selected.name) return;
               setError(undefined);
               void updateEnvironment
@@ -111,8 +116,8 @@ export function EnvironmentControls({
                 .catch((mutationError: unknown) =>
                   setError(
                     mutationError instanceof EnvironmentConflictError
-                      ? "Die Umgebung wurde zwischenzeitlich geändert."
-                      : "Die Umgebung konnte nicht umbenannt werden.",
+                      ? t("environmentChangedConflict")
+                      : t("environmentRenameFailed"),
                   ),
                 );
             }}
@@ -121,11 +126,11 @@ export function EnvironmentControls({
             <Pencil aria-hidden="true" size={14} />
           </IconButton>
           <IconButton
-            aria-label={`${selected.name} löschen`}
+            aria-label={t("deleteEnvironment", { name: selected.name })}
             onClick={() => {
               if (
                 !window.confirm(
-                  `Umgebung „${selected.name}“ inklusive aller Variablen löschen?`,
+                  t("deleteEnvironmentConfirm", { name: selected.name }),
                 )
               ) {
                 return;
@@ -137,8 +142,8 @@ export function EnvironmentControls({
                 .catch((mutationError: unknown) =>
                   setError(
                     mutationError instanceof EnvironmentConflictError
-                      ? "Die Umgebung wurde zwischenzeitlich geändert."
-                      : "Die Umgebung konnte nicht gelöscht werden.",
+                      ? t("environmentChangedConflict")
+                      : t("environmentDeleteFailed"),
                   ),
                 );
             }}
@@ -178,6 +183,7 @@ function EnvironmentCreatePopover({
   onCreated: (id: string) => void;
   workspaceId: string;
 }) {
+  const { t } = useTranslation("environments");
   const mutation = useCreateEnvironment(workspaceId);
   const { handleSubmit, register, formState } = useForm<CreateEnvironment>({
     resolver: zodResolver(createEnvironmentSchema),
@@ -192,11 +198,11 @@ function EnvironmentCreatePopover({
         onClose();
       })}
     >
-      <strong>Umgebung erstellen</strong>
+      <strong>{t("createEnvironment")}</strong>
       <Input
-        aria-label="Umgebungsname"
+        aria-label={t("environmentNameLabel")}
         autoFocus
-        placeholder="z. B. Entwicklung"
+        placeholder={t("environmentNamePlaceholder")}
         {...register("name")}
       />
       <PopoverActions
@@ -205,8 +211,7 @@ function EnvironmentCreatePopover({
       />
       {formState.errors.name || mutation.isError ? (
         <p className="field-error">
-          {formState.errors.name?.message ??
-            "Umgebung konnte nicht erstellt werden."}
+          {formState.errors.name?.message ?? t("environmentCreateError")}
         </p>
       ) : null}
     </form>
@@ -224,6 +229,7 @@ function VariableCreatePopover({
   onClose: () => void;
   workspaceId: string;
 }) {
+  const { t } = useTranslation("environments");
   const mutation = useCreateEnvironmentVariable(
     workspaceId,
     environment.id,
@@ -246,7 +252,7 @@ function VariableCreatePopover({
         onClose();
       })}
     >
-      <strong>Variable hinzufügen</strong>
+      <strong>{t("addVariable")}</strong>
       <div className="environment-variable-list">
         {environment.variables.map((variable) => (
           <EnvironmentVariableRow
@@ -258,31 +264,30 @@ function VariableCreatePopover({
         ))}
       </div>
       <Input
-        aria-label="Variablenname"
+        aria-label={t("variableNameLabel")}
         placeholder="baseUrl"
         {...register("key")}
       />
       <Input
-        aria-label="Variablenwert"
+        aria-label={t("variableValueLabel")}
         autoComplete="off"
-        placeholder="Wert"
+        placeholder={t("valuePlaceholder")}
         type={scope === "personal" ? "password" : "text"}
         {...register("value")}
       />
-      <Select aria-label="Variablenbereich" {...register("scope")}>
-        {canEditShared ? <option value="shared">Mit Team geteilt</option> : null}
-        <option value="personal">Nur für mich</option>
+      <Select aria-label={t("variableScopeLabel")} {...register("scope")}>
+        {canEditShared ? (
+          <option value="shared">{t("scopeShared")}</option>
+        ) : null}
+        <option value="personal">{t("scopePersonal")}</option>
       </Select>
       <p className="security-hint">
-        {scope === "shared"
-          ? "Dieser Wert ist für alle Workspace-Mitglieder sichtbar. Hier keine Tokens oder Passwörter speichern."
-          : "Dieser Wert ist nur über deine eigene Anmeldung lesbar und überschreibt einen gleichnamigen Teamwert."}
+        {scope === "shared" ? t("sharedHint") : t("personalHint")}
       </p>
       <PopoverActions isPending={mutation.isPending} onClose={onClose} />
       {formState.errors.key || mutation.isError ? (
         <p className="field-error">
-          {formState.errors.key?.message ??
-            "Variable konnte nicht erstellt werden."}
+          {formState.errors.key?.message ?? t("variableCreateError")}
         </p>
       ) : null}
     </form>
@@ -298,6 +303,7 @@ export function EnvironmentVariableRow({
   variable: EnvironmentVariable;
   workspaceId: string;
 }) {
+  const { t } = useTranslation(["environments", "common"]);
   const mutation = useUpdateEnvironmentVariable(workspaceId, variable.id);
   const removeVariable = useDeleteEnvironmentVariable(
     workspaceId,
@@ -318,18 +324,25 @@ export function EnvironmentVariableRow({
         <span>
           <strong>{variable.key}</strong>
           <small>
-            {variable.scope === "personal" ? "Nur für mich" : "Teamwert"} ·
-            Version {variable.version}
+            {variable.scope === "personal"
+              ? t("variableScopePersonalLabel")
+              : t("variableScopeTeamLabel")}{" "}
+            · {t("versionLabel", { version: variable.version })}
           </small>
         </span>
         <code>{variable.scope === "personal" ? "••••••••" : variable.value}</code>
         {canEdit ? (
           <>
-            <Button onClick={() => setEditing(true)}>Bearbeiten</Button>
+            <Button onClick={() => setEditing(true)}>
+              {t("actions.edit", { ns: "common" })}
+            </Button>
             <IconButton
-              aria-label={`${variable.key} umbenennen`}
+              aria-label={t("renameVariable", { key: variable.key })}
               onClick={() => {
-                const key = window.prompt("Neuer Variablenname", variable.key);
+                const key = window.prompt(
+                  t("newVariableNamePrompt"),
+                  variable.key,
+                );
                 if (!key?.trim() || key.trim() === variable.key) return;
                 setRowError(undefined);
                 void mutation
@@ -337,28 +350,26 @@ export function EnvironmentVariableRow({
                     key: key.trim(),
                     expectedVersion: variable.version,
                   })
-                  .catch(() =>
-                    setRowError("Die Variable konnte nicht umbenannt werden."),
-                  );
+                  .catch(() => setRowError(t("variableRenameFailed")));
               }}
               size="compact"
             >
               <Pencil aria-hidden="true" size={14} />
             </IconButton>
             <IconButton
-              aria-label={`${variable.key} entfernen`}
+              aria-label={t("removeVariable", { key: variable.key })}
               onClick={() => {
                 if (
-                  !window.confirm(`Variable „${variable.key}“ entfernen?`)
+                  !window.confirm(
+                    t("removeVariableConfirm", { key: variable.key }),
+                  )
                 ) {
                   return;
                 }
                 setRowError(undefined);
                 void removeVariable
                   .mutateAsync({ expectedVersion: variable.version })
-                  .catch(() =>
-                    setRowError("Die Variable konnte nicht entfernt werden."),
-                  );
+                  .catch(() => setRowError(t("variableRemoveFailed")));
               }}
               size="compact"
               variant="danger"
@@ -377,7 +388,7 @@ export function EnvironmentVariableRow({
     <div className="environment-variable-edit">
       <strong>{variable.key}</strong>
       <Input
-        aria-label={`${variable.key} bearbeiten`}
+        aria-label={t("editVariable", { key: variable.key })}
         autoFocus
         onChange={(event) => setValue(event.target.value)}
         type={variable.scope === "personal" ? "password" : "text"}
@@ -385,8 +396,7 @@ export function EnvironmentVariableRow({
       />
       {conflict ? (
         <p className="field-error">
-          Die Variable ist inzwischen Version {conflict.currentVersion}. Dein
-          eingegebener Wert bleibt erhalten.
+          {t("conflictNotice", { version: conflict.currentVersion })}
         </p>
       ) : null}
       <div className="dialog-actions">
@@ -398,7 +408,7 @@ export function EnvironmentVariableRow({
               mutation.reset();
             }}
           >
-            Aktuellen Wert übernehmen
+            {t("useCurrentValue")}
           </Button>
         ) : null}
         <Button
@@ -409,7 +419,7 @@ export function EnvironmentVariableRow({
             setEditing(false);
           }}
         >
-          Abbrechen
+          {t("actions.cancel", { ns: "common" })}
         </Button>
         <Button
           disabled={mutation.isPending}
@@ -421,7 +431,7 @@ export function EnvironmentVariableRow({
           }}
           variant="primary"
         >
-          {conflict ? "Meinen Wert speichern" : "Speichern"}
+          {conflict ? t("saveMyValue") : t("actions.save", { ns: "common" })}
         </Button>
       </div>
     </div>
@@ -435,13 +445,14 @@ function PopoverActions({
   isPending: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("common");
   return (
     <div className="dialog-actions">
       <Button onClick={onClose}>
-        Abbrechen
+        {t("actions.cancel")}
       </Button>
       <Button disabled={isPending} type="submit" variant="primary">
-        Speichern
+        {t("actions.save")}
       </Button>
     </div>
   );

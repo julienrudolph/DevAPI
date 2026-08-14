@@ -1,5 +1,6 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
 import { useAuth } from "./auth-context";
@@ -20,6 +21,7 @@ export function readAuthConfirmation(
 }
 
 export function AuthConfirmPage() {
+  const { t } = useTranslation("auth");
   const { client } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -60,14 +62,14 @@ export function AuthConfirmPage() {
   if (error) {
     return (
       <main className="centered-state">
-        <h1>Anmeldelink ungültig</h1>
-        <p>Der Link ist abgelaufen oder wurde bereits verwendet.</p>
+        <h1>{t("confirm.invalidTitle")}</h1>
+        <p>{t("confirm.invalidDescription")}</p>
         <Link className="button primary" to="/login">
-          Neuen Anmeldelink anfordern
+          {t("confirm.requestNewLink")}
         </Link>
       </main>
     );
   }
 
-  return <main className="centered-state">Anmeldung wird abgeschlossen …</main>;
+  return <main className="centered-state">{t("confirm.completing")}</main>;
 }

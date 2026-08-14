@@ -5,6 +5,7 @@ import {
 } from "@api-client/contracts";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 
 import {
   Button,
@@ -26,6 +27,7 @@ export function InvitationDialog({
   onClose: () => void;
   teamId: string;
 }) {
+  const { t } = useTranslation(["teams", "common"]);
   const mutation = useCreateInvitation(teamId);
   const [copied, setCopied] = useState(false);
   const { handleSubmit, register } = useForm<CreateTeamInvitation>({
@@ -38,16 +40,13 @@ export function InvitationDialog({
 
   return (
     <Dialog onClose={onClose} titleId="invitation-title">
-      <h2 id="invitation-title">Teammitglied einladen</h2>
+      <h2 id="invitation-title">{t("invitation.title")}</h2>
       <DialogBody>
         {invitationUrl ? (
           <>
-            <p>
-              Dieser Link ist sieben Tage gültig und kann einmal angenommen
-              werden. Der Token wird serverseitig nur gehasht gespeichert.
-            </p>
+            <p>{t("invitation.linkHint")}</p>
             <Input
-              aria-label="Einladungslink"
+              aria-label={t("invitation.linkLabel")}
               className="invitation-link"
               readOnly
               value={invitationUrl}
@@ -62,37 +61,37 @@ export function InvitationDialog({
                 }}
                 type="button"
               >
-                {copied ? "Kopiert" : "Link kopieren"}
+                {copied ? t("invitation.copied") : t("invitation.copyLink")}
               </Button>
               <Button onClick={onClose} variant="primary">
-                Fertig
+                {t("actions.done", { ns: "common" })}
               </Button>
             </DialogFooter>
           </>
         ) : (
           <form onSubmit={handleSubmit((input) => mutation.mutate(input))}>
             <Field className="invitation-role">
-              <FieldLabel htmlFor="invitation-role">Rolle</FieldLabel>
+              <FieldLabel htmlFor="invitation-role">
+                {t("invitation.roleLabel")}
+              </FieldLabel>
               <Select id="invitation-role" {...register("role")}>
-                <option value="editor">Editor</option>
-                <option value="viewer">Viewer</option>
+                <option value="editor">{t("members.roleEditor")}</option>
+                <option value="viewer">{t("members.roleViewer")}</option>
               </Select>
             </Field>
             {mutation.isError ? (
-              <FieldError>
-                Der Einladungslink konnte nicht erstellt werden.
-              </FieldError>
+              <FieldError>{t("invitation.createError")}</FieldError>
             ) : null}
             <DialogFooter>
               <Button onClick={onClose}>
-                Abbrechen
+                {t("actions.cancel", { ns: "common" })}
               </Button>
               <Button
                 disabled={mutation.isPending}
                 type="submit"
                 variant="primary"
               >
-                Link erstellen
+                {t("invitation.createLink")}
               </Button>
             </DialogFooter>
           </form>

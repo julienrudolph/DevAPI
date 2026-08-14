@@ -1,10 +1,17 @@
 import type { EnvironmentVariable } from "@api-client/contracts";
 
+import i18n from "../../lib/i18n";
+
 const placeholderPattern = /\{\{([A-Za-z_][A-Za-z0-9_.-]*)\}\}/g;
 
 export class UnresolvedVariableError extends Error {
   constructor(readonly keys: string[]) {
-    super(`Nicht aufgelöste Variablen: ${keys.join(", ")}`);
+    super(
+      i18n.t("unresolvedVariablesError", {
+        ns: "environments",
+        keys: keys.join(", "),
+      }),
+    );
   }
 }
 

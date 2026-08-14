@@ -1,5 +1,6 @@
 import type { Assertion } from "@api-client/contracts";
 
+import i18n from "../../lib/i18n";
 import {
   resolveJsonPath,
   stringifyExtractedValue,
@@ -10,6 +11,10 @@ export interface AssertionResult {
   assertion: Assertion;
   passed: boolean;
   message: string;
+}
+
+function t(key: string, options?: Record<string, unknown>): string {
+  return i18n.t(key, { ns: "requests", ...options });
 }
 
 export function evaluateAssertions(
@@ -36,8 +41,13 @@ function evaluateAssertion(
       assertion,
       passed,
       message: passed
-        ? `Status ist ${status}`
-        : `Status ist ${status}, erwartet ${assertion.operator === "equals" ? "" : "nicht "}${assertion.expected}`,
+        ? t("assertionMessages.statusPass", { status })
+        : t(
+            assertion.operator === "equals"
+              ? "assertionMessages.statusFailEquals"
+              : "assertionMessages.statusFailNotEquals",
+            { status, expected: assertion.expected },
+          ),
     };
   }
 
@@ -45,7 +55,7 @@ function evaluateAssertion(
     return {
       assertion,
       passed: false,
-      message: "Die Response ist kein gültiges JSON.",
+      message: t("assertionMessages.invalidJson"),
     };
   }
 
@@ -60,16 +70,16 @@ function evaluateAssertion(
         assertion,
         passed: resolution.found,
         message: resolution.found
-          ? `${assertion.path} existiert`
-          : `${assertion.path} wurde nicht gefunden`,
+          ? t("assertionMessages.existsPass", { path: assertion.path })
+          : t("assertionMessages.existsFail", { path: assertion.path }),
       };
     case "notExists":
       return {
         assertion,
         passed: !resolution.found,
         message: !resolution.found
-          ? `${assertion.path} existiert nicht`
-          : `${assertion.path} wurde gefunden`,
+          ? t("assertionMessages.notExistsPass", { path: assertion.path })
+          : t("assertionMessages.notExistsFail", { path: assertion.path }),
       };
     case "equals": {
       const passed = resolution.found && actual === assertion.expected;
@@ -77,8 +87,15 @@ function evaluateAssertion(
         assertion,
         passed,
         message: passed
-          ? `${assertion.path} ist ${assertion.expected}`
-          : `${assertion.path} ist ${actual ?? "nicht vorhanden"}, erwartet ${assertion.expected}`,
+          ? t("assertionMessages.equalsPass", {
+              path: assertion.path,
+              expected: assertion.expected,
+            })
+          : t("assertionMessages.equalsFail", {
+              path: assertion.path,
+              actual: actual ?? t("assertionMessages.noValue"),
+              expected: assertion.expected,
+            }),
       };
     }
     case "notEquals": {
@@ -87,8 +104,14 @@ function evaluateAssertion(
         assertion,
         passed,
         message: passed
-          ? `${assertion.path} ist nicht ${assertion.expected}`
-          : `${assertion.path} ist ${assertion.expected}`,
+          ? t("assertionMessages.notEqualsPass", {
+              path: assertion.path,
+              expected: assertion.expected,
+            })
+          : t("assertionMessages.notEqualsFail", {
+              path: assertion.path,
+              expected: assertion.expected,
+            }),
       };
     }
     case "contains": {
@@ -101,8 +124,14 @@ function evaluateAssertion(
         assertion,
         passed,
         message: passed
-          ? `${assertion.path} enthält "${assertion.expected}"`
-          : `${assertion.path} enthält "${assertion.expected}" nicht`,
+          ? t("assertionMessages.containsPass", {
+              path: assertion.path,
+              expected: assertion.expected,
+            })
+          : t("assertionMessages.containsFail", {
+              path: assertion.path,
+              expected: assertion.expected,
+            }),
       };
     }
     default:

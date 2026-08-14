@@ -1,0 +1,40 @@
+{
+  "app": {
+    "name": "Relay"
+  },
+  "layout": {
+    "skipToContent": "Skip to main content"
+  },
+  "theme": {
+    "toggleAriaLabel": "Switch theme, currently {{mode}}",
+    "toggleTooltip": "Theme: {{mode}} (switch to „{{nextMode}}“)",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "language": {
+    "switchAriaLabel": "Switch language, currently {{language}}",
+    "switchTooltip": "Choose language"
+  },
+  "auth": {
+    "signOutTooltip": "Sign out as {{email}}",
+    "signOutFallback": "Sign out"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "create": "Create",
+    "edit": "Edit",
+    "close": "Close",
+    "done": "Done",
+    "open": "Open",
+    "duplicate": "Duplicate",
+    "rename": "Rename",
+    "move": "Move",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "send": "Send",
+    "retry": "Try again"
+  }
+}

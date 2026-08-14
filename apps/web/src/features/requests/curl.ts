@@ -1,5 +1,11 @@
 import type { RequestDraft } from "@api-client/contracts";
 
+import i18n from "../../lib/i18n";
+
+function t(key: string, options?: Record<string, unknown>): string {
+  return i18n.t(key, { ns: "requests", ...options });
+}
+
 export type CurlRequestDraft = Pick<
   RequestDraft,
   "method" | "url" | "queryParams" | "headers" | "body"
@@ -16,7 +22,7 @@ const methods = new Set<RequestDraft["method"]>([
 export function parseCurl(command: string): CurlRequestDraft {
   const tokens = tokenize(command.trim());
   if (tokens.shift()?.toLowerCase() !== "curl") {
-    throw new Error("Der Import muss mit curl beginnen.");
+    throw new Error(t("curl.mustStartWithCurl"));
   }
 
   let explicitMethod: RequestDraft["method"] | undefined;
@@ -29,7 +35,7 @@ export function parseCurl(command: string): CurlRequestDraft {
     const nextValue = () => {
       const value = tokens[index + 1];
       if (value === undefined) {
-        throw new Error(`Für ${token} fehlt ein Wert.`);
+        throw new Error(t("curl.missingValueFor", { token }));
       }
       index += 1;
       return value;
@@ -69,19 +75,19 @@ export function parseCurl(command: string): CurlRequestDraft {
     ) {
       continue;
     } else if (token.startsWith("-")) {
-      throw new Error(`Die cURL-Option ${token} wird noch nicht unterstützt.`);
+      throw new Error(t("curl.unsupportedOption", { token }));
     } else if (!url) {
       url = token;
     } else {
-      throw new Error(`Unerwarteter Wert im cURL-Kommando: ${token}`);
+      throw new Error(t("curl.unexpectedValue", { token }));
     }
   }
 
-  if (!url) throw new Error("Das cURL-Kommando enthält keine URL.");
+  if (!url) throw new Error(t("curl.missingUrl"));
   try {
     new URL(url);
   } catch {
-    throw new Error("Die cURL-URL ist ungültig.");
+    throw new Error(t("curl.invalidUrl"));
   }
 
   const method = explicitMethod ?? (bodyContent === undefined ? "GET" : "POST");
@@ -123,7 +129,7 @@ export function formatCurl(draft: RequestDraft): string {
 function parseMethod(rawMethod: string): RequestDraft["method"] {
   const method = rawMethod.toUpperCase() as RequestDraft["method"];
   if (!methods.has(method)) {
-    throw new Error(`Die HTTP-Methode ${rawMethod} wird nicht unterstützt.`);
+    throw new Error(t("curl.unsupportedMethod", { method: rawMethod }));
   }
   return method;
 }
@@ -131,7 +137,7 @@ function parseMethod(rawMethod: string): RequestDraft["method"] {
 function parseHeader(rawHeader: string): RequestDraft["headers"][number] {
   const separator = rawHeader.indexOf(":");
   if (separator <= 0) {
-    throw new Error(`Der Header "${rawHeader}" ist ungültig.`);
+    throw new Error(t("curl.invalidHeader", { header: rawHeader }));
   }
   return {
     id: crypto.randomUUID(),
@@ -187,7 +193,7 @@ function tokenize(command: string): string[] {
       token += character;
     }
   }
-  if (quote) throw new Error("Das cURL-Kommando enthält ein offenes Anführungszeichen.");
+  if (quote) throw new Error(t("curl.unclosedQuote"));
   if (escaping) token += "\\";
   if (token) tokens.push(token);
   return tokens;

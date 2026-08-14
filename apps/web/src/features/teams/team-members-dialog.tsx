@@ -1,4 +1,5 @@
 import { Crown, Trash2, Users } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import {
   Button,
@@ -26,6 +27,7 @@ export function TeamMembersDialog({
   onClose: () => void;
   teamId: string;
 }) {
+  const { t } = useTranslation(["teams", "common"]);
   const { user } = useAuth();
   const members = useTeamMembers(teamId);
   const updateMember = useUpdateTeamMember(teamId);
@@ -47,20 +49,16 @@ export function TeamMembersDialog({
           <Users aria-hidden="true" size={19} />
         </span>
         <div>
-          <h2 id="team-members-title">Team verwalten</h2>
-          <p id="team-members-description">
-            Rollen gelten für alle Workspaces dieses Teams.
-          </p>
+          <h2 id="team-members-title">{t("members.title")}</h2>
+          <p id="team-members-description">{t("members.description")}</p>
         </div>
       </DialogHeader>
 
       <DialogBody>
         {members.isPending ? (
-          <p className="dialog-state">Mitglieder werden geladen …</p>
+          <p className="dialog-state">{t("members.loading")}</p>
         ) : members.isError ? (
-          <p className="field-error">
-            Die Mitglieder konnten nicht geladen werden.
-          </p>
+          <p className="field-error">{t("members.loadError")}</p>
         ) : (
           <div className="team-member-list">
             {members.data.map((member) => (
@@ -73,13 +71,15 @@ export function TeamMembersDialog({
                   <small>{member.email}</small>
                 </span>
                 {member.role === "owner" ? (
-                  <span className="role-badge">Owner</span>
+                  <span className="role-badge">{t("members.roleOwner")}</span>
                 ) : member.userId === user?.id ? (
-                  <span className="role-badge">Du</span>
+                  <span className="role-badge">{t("members.roleYou")}</span>
                 ) : (
                   <>
                     <Select
-                      aria-label={`Rolle von ${member.displayName}`}
+                      aria-label={t("members.roleOf", {
+                        name: member.displayName,
+                      })}
                       disabled={busy}
                       onChange={(event) =>
                         updateMember.mutate({
@@ -89,21 +89,26 @@ export function TeamMembersDialog({
                       }
                       value={member.role}
                     >
-                      <option value="editor">Editor</option>
-                      <option value="viewer">Viewer</option>
+                      <option value="editor">{t("members.roleEditor")}</option>
+                      <option value="viewer">{t("members.roleViewer")}</option>
                     </Select>
                     <Tooltip
-                      content={`Owner-Rechte an ${member.displayName} übertragen`}
+                      content={t("members.transferOwnership", {
+                        name: member.displayName,
+                      })}
                       relationship="description"
                     >
                       <IconButton
-                        aria-label={`Owner-Rechte an ${member.displayName} übertragen`}
+                        aria-label={t("members.transferOwnership", {
+                          name: member.displayName,
+                        })}
                         disabled={busy}
                         onClick={() => {
                           if (
                             window.confirm(
-                              `Owner-Rechte wirklich an ${member.displayName} übertragen? ` +
-                                "Du wirst danach selbst zum Editor.",
+                              t("members.transferOwnershipConfirm", {
+                                name: member.displayName,
+                              }),
                             )
                           ) {
                             transferOwnership.mutate(member.userId);
@@ -114,12 +119,16 @@ export function TeamMembersDialog({
                       </IconButton>
                     </Tooltip>
                     <IconButton
-                      aria-label={`${member.displayName} entfernen`}
+                      aria-label={t("members.removeMember", {
+                        name: member.displayName,
+                      })}
                       disabled={busy}
                       onClick={() => {
                         if (
                           window.confirm(
-                            `${member.displayName} wirklich aus dem Team entfernen?`,
+                            t("members.removeMemberConfirm", {
+                              name: member.displayName,
+                            }),
                           )
                         ) {
                           removeMember.mutate(member.userId);
@@ -138,12 +147,12 @@ export function TeamMembersDialog({
 
         {updateMember.isError || removeMember.isError ||
         transferOwnership.isError ? (
-          <FieldError>Die Änderung konnte nicht gespeichert werden.</FieldError>
+          <FieldError>{t("members.saveError")}</FieldError>
         ) : null}
       </DialogBody>
       <DialogFooter>
         <Button onClick={onClose} variant="primary">
-          Fertig
+          {t("actions.done", { ns: "common" })}
         </Button>
       </DialogFooter>
     </Dialog>

@@ -1,0 +1,17 @@
+{
+  "title": "Request-Verlauf",
+  "description": "Maximal 100 Einträge aus den letzten 30 Tagen.",
+  "searchLabel": "Verlauf durchsuchen",
+  "searchPlaceholder": "Request, Methode, Status, Person",
+  "statusFilterLabel": "Verlauf nach Status filtern",
+  "statusAll": "Alle Ergebnisse",
+  "statusSuccessful": "Erfolgreich",
+  "statusFailed": "Fehlgeschlagen",
+  "loading": "Verlauf wird geladen …",
+  "loadError": "Der Verlauf konnte nicht geladen werden.",
+  "empty": "Noch keine Requests ausgeführt.",
+  "noMatches": "Keine passenden Einträge gefunden.",
+  "openRequest": "{{name}} öffnen",
+  "openRequestTitle": "Request in einem Tab öffnen",
+  "securityHint": "URL, Header, Zugangsdaten sowie Request- und Response-Inhalte werden nicht im Verlauf gespeichert."
+}

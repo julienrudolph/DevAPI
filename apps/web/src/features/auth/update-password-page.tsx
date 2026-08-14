@@ -1,25 +1,31 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import type { TFunction } from "i18next";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { z } from "zod";
 
 import { Button, Input } from "../../components/ui";
 import { useAuth } from "./auth-context";
 
-const schema = z
-  .object({
-    password: z.string().min(12, "Das Passwort muss mindestens 12 Zeichen haben."),
-    confirmation: z.string(),
-  })
-  .refine(({ password, confirmation }) => password === confirmation, {
-    path: ["confirmation"],
-    message: "Die Passwörter stimmen nicht überein.",
-  });
+function createPasswordSchema(t: TFunction<"auth">) {
+  return z
+    .object({
+      password: z.string().min(12, t("updatePassword.passwordTooShort")),
+      confirmation: z.string(),
+    })
+    .refine(({ password, confirmation }) => password === confirmation, {
+      path: ["confirmation"],
+      message: t("updatePassword.passwordsMismatch"),
+    });
+}
 
-type PasswordUpdate = z.infer<typeof schema>;
+type PasswordUpdate = z.infer<ReturnType<typeof createPasswordSchema>>;
 
 export function UpdatePasswordPage() {
+  const { t } = useTranslation("auth");
+  const schema = useMemo(() => createPasswordSchema(t), [t]);
   const { client } = useAuth();
   const navigate = useNavigate();
   const [message, setMessage] = useState<string>();
@@ -31,20 +37,22 @@ export function UpdatePasswordPage() {
     <main className="login-page">
       <section className="login-card">
         <span className="login-mark">{"{ }"}</span>
-        <h1>Neues Passwort festlegen</h1>
-        <p>Verwende mindestens zwölf Zeichen.</p>
+        <h1>{t("updatePassword.title")}</h1>
+        <p>{t("updatePassword.subtitle")}</p>
         <form
           onSubmit={handleSubmit(async ({ password }) => {
             if (!client) return;
             const { error } = await client.auth.updateUser({ password });
             if (error) {
-              setMessage("Das Passwort konnte nicht geändert werden.");
+              setMessage(t("updatePassword.updateFailed"));
               return;
             }
             navigate("/", { replace: true });
           })}
         >
-          <label htmlFor="new-password">Neues Passwort</label>
+          <label htmlFor="new-password">
+            {t("updatePassword.newPasswordLabel")}
+          </label>
           <Input
             autoComplete="new-password"
             className="login-password"
@@ -55,7 +63,9 @@ export function UpdatePasswordPage() {
           {formState.errors.password ? (
             <p className="field-error">{formState.errors.password.message}</p>
           ) : null}
-          <label htmlFor="password-confirmation">Passwort wiederholen</label>
+          <label htmlFor="password-confirmation">
+            {t("updatePassword.confirmationLabel")}
+          </label>
           <Input
             autoComplete="new-password"
             className="login-password"
@@ -69,7 +79,7 @@ export function UpdatePasswordPage() {
             </p>
           ) : null}
           <Button className="login-submit" type="submit" variant="primary">
-            Passwort speichern
+            {t("updatePassword.save")}
           </Button>
         </form>
         {message ? <p className="login-message" role="alert">{message}</p> : null}

@@ -6,6 +6,7 @@ import {
   type CreateRequestSummary,
 } from "@api-client/contracts";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 
 import { Button, Input } from "../../components/ui";
 import { useCreateFolder, useCreateRequest } from "./workspace-queries";
@@ -26,6 +27,7 @@ export function FolderCreateForm({
   onClose,
   parentFolderId = null,
 }: FolderCreateFormProps) {
+  const { t } = useTranslation("workspaces");
   const mutation = useCreateFolder(workspaceId);
   const { formState, handleSubmit, register } = useForm<CreateFolder>({
     resolver: zodResolver(createFolderSchema),
@@ -41,16 +43,16 @@ export function FolderCreateForm({
       })}
     >
       <Input
-        aria-label="Ordnername"
+        aria-label={t("forms.folderNameLabel")}
         autoFocus
-        placeholder="Neuer Ordner"
+        placeholder={t("forms.folderNamePlaceholder")}
         {...register("name")}
       />
       <CreateActions isPending={mutation.isPending} onClose={onClose} />
       <CreateError
         message={formState.errors.name?.message}
         mutationError={mutation.isError}
-        fallback="Ordner konnte nicht erstellt werden."
+        fallback={t("forms.folderCreateError")}
       />
     </form>
   );
@@ -68,6 +70,7 @@ export function RequestCreateForm({
   onClose,
   onCreated,
 }: RequestCreateFormProps) {
+  const { t } = useTranslation("workspaces");
   const mutation = useCreateRequest(workspaceId);
   const { formState, handleSubmit, register } =
     useForm<CreateRequestSummary>({
@@ -91,16 +94,16 @@ export function RequestCreateForm({
       })}
     >
       <Input
-        aria-label="Request-Name"
+        aria-label={t("forms.requestNameLabel")}
         autoFocus
-        placeholder="Neuer Request"
+        placeholder={t("forms.requestNamePlaceholder")}
         {...register("name")}
       />
       <CreateActions isPending={mutation.isPending} onClose={onClose} />
       <CreateError
         message={formState.errors.name?.message}
         mutationError={mutation.isError}
-        fallback="Request konnte nicht erstellt werden."
+        fallback={t("forms.requestCreateError")}
       />
     </form>
   );
@@ -113,13 +116,14 @@ function CreateActions({
   isPending: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("common");
   return (
     <div>
       <Button disabled={isPending} type="submit" variant="primary">
-        Erstellen
+        {t("actions.create")}
       </Button>
       <Button onClick={onClose}>
-        Abbrechen
+        {t("actions.cancel")}
       </Button>
     </div>
   );

@@ -1,0 +1,19 @@
+{
+  "title": "Versions",
+  "description": "Earlier saved versions of this request.",
+  "loading": "Loading versions …",
+  "loadError": "The versions could not be loaded.",
+  "empty": "No earlier version yet.",
+  "versionLabel": "Version {{version}} · {{name}}",
+  "changeType": {
+    "update": "Edit",
+    "overwrite": "Overwrite",
+    "restore": "Restore",
+    "delete": "Delete"
+  },
+  "restore": "Restore",
+  "restoreConfirm": "Restore version {{version}} as a new version?",
+  "conflictError": "The request was changed in the meantime. Close the dialog and load the current version.",
+  "restoreError": "The version could not be restored.",
+  "headerSecurityHint": "Saved header values are not restored for security reasons."
+}

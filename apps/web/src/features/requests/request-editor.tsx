@@ -36,6 +36,7 @@ import {
   useForm,
   type UseFormRegister,
 } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 
 import {
   Button,
@@ -47,6 +48,7 @@ import {
   Textarea,
   Tooltip,
 } from "../../components/ui";
+import i18n from "../../lib/i18n";
 import { RequestConflictError } from "./request-api";
 import { RequestExecutionError } from "./request-execution-api";
 import { evaluateAssertions } from "./assertions";
@@ -117,18 +119,17 @@ export function RequestEditor({
   readOnly = false,
   variables = [],
 }: RequestEditorProps) {
+  const { t } = useTranslation("requests");
   const request = useRequest(requestId);
 
   if (request.isPending) {
-    return <div className="centered-state">Request wird geladen …</div>;
+    return <div className="centered-state">{t("loading")}</div>;
   }
   if (request.isError) {
     return (
       <div className="centered-state">
-        <p>Der Request konnte nicht geladen werden.</p>
-        <Button onClick={() => request.refetch()}>
-          Erneut versuchen
-        </Button>
+        <p>{t("loadError")}</p>
+        <Button onClick={() => request.refetch()}>{t("retry")}</Button>
       </div>
     );
   }
@@ -160,6 +161,7 @@ function LoadedRequestEditor({
   readOnly: boolean;
   variables: EnvironmentVariable[];
 }) {
+  const { t } = useTranslation("requests");
   const [activeTab, setActiveTab] =
     useState<RequestConfigurationTab>("params");
   const [auth, setAuth] = useState<RequestAuth>({ type: "none" });
@@ -284,12 +286,12 @@ function LoadedRequestEditor({
           <span aria-live="polite">
             {curlNotice ??
             (mutation.isPending
-              ? "Wird gespeichert …"
+              ? t("status.saving")
               : conflict
-                ? "Konflikt erkannt"
+                ? t("status.conflict")
                 : isDirty
-                  ? "Ungespeicherte Änderungen"
-                  : `Version ${baseVersion} gespeichert`)}
+                  ? t("status.unsaved")
+                  : t("status.saved", { version: baseVersion }))}
           </span>
           <div className="editor-tools">
             {!readOnly ? (
@@ -303,7 +305,7 @@ function LoadedRequestEditor({
                 variant="ghost"
               >
                 <ArrowImport20Regular aria-hidden="true" />
-                cURL importieren
+                {t("toolbar.importCurl")}
               </Button>
             ) : null}
             <Menu positioning="below-start">
@@ -314,7 +316,7 @@ function LoadedRequestEditor({
                   variant="ghost"
                 >
                   <Copy20Regular aria-hidden="true" />
-                  Code kopieren
+                  {t("toolbar.copyCode")}
                   <ChevronDown20Regular aria-hidden="true" />
                 </Button>
               </MenuTrigger>
@@ -328,22 +330,22 @@ function LoadedRequestEditor({
                         try {
                           snippet = formatCodeSnippet(getValues(), id);
                         } catch {
-                          setCurlNotice(
-                            "Code konnte nicht erzeugt werden: URL ist ungültig",
-                          );
+                          setCurlNotice(t("toolbar.codeGenerationFailed"));
                           return;
                         }
                         void navigator.clipboard
                           .writeText(snippet)
                           .then(() => {
-                            setCurlNotice(`${label}-Code wurde kopiert`);
+                            setCurlNotice(
+                              t("toolbar.codeCopied", { label }),
+                            );
                             window.setTimeout(
                               () => setCurlNotice(undefined),
                               2_000,
                             );
                           })
                           .catch(() =>
-                            setCurlNotice("Code konnte nicht kopiert werden"),
+                            setCurlNotice(t("toolbar.codeCopyFailed")),
                           );
                       }}
                     >
@@ -360,7 +362,7 @@ function LoadedRequestEditor({
               variant="ghost"
             >
               <History20Regular aria-hidden="true" />
-              Versionen
+              {t("toolbar.versions")}
             </Button>
           </div>
         </div>
@@ -369,7 +371,11 @@ function LoadedRequestEditor({
             control={control}
             name="method"
             render={({ field }) => (
-              <Select aria-label="HTTP-Methode" disabled={readOnly} {...field}>
+              <Select
+                aria-label={t("methodAriaLabel")}
+                disabled={readOnly}
+                {...field}
+              >
                 <option>GET</option>
                 <option>POST</option>
                 <option>PUT</option>
@@ -383,7 +389,7 @@ function LoadedRequestEditor({
             name="url"
             render={({ field }) => (
               <Input
-                aria-label="Request-URL"
+                aria-label={t("urlAriaLabel")}
                 autoComplete="off"
                 disabled={readOnly}
                 list="request-variable-suggestions"
@@ -405,7 +411,7 @@ function LoadedRequestEditor({
         {referencedVariables.length > 0 ? (
           <div className="variable-usage" aria-live="polite">
             <span>
-              Variablen:{" "}
+              {t("variables.label")}{" "}
               {referencedVariables.map((key) => (
                 <code
                   className={
@@ -419,18 +425,22 @@ function LoadedRequestEditor({
             </span>
             {unresolvedVariables.length > 0 ? (
               <strong>
-                Nicht definiert: {unresolvedVariables.join(", ")}
+                {t("variables.undefined", {
+                  keys: unresolvedVariables.join(", "),
+                })}
               </strong>
             ) : (
               <span className="resolved-url">
-                Vorschau: {resolveVariables(draftUrl, variables)}
+                {t("variables.preview", {
+                  url: resolveVariables(draftUrl, variables),
+                })}
               </span>
             )}
           </div>
         ) : null}
 
         <TabList
-          aria-label="Request-Konfiguration"
+          aria-label={t("tabsAriaLabel")}
           className="fluent-tabs"
           onTabSelect={(_, data) =>
             setActiveTab(data.value as RequestConfigurationTab)
@@ -438,11 +448,16 @@ function LoadedRequestEditor({
           selectedValue={activeTab}
         >
           {([
-            ["params", "Parameter"],
-            ["headers", "Header"],
-            ["body", "Body"],
-            ["auth", "Authentifizierung"],
-            ["tests", `Tests${draftAssertions.length > 0 ? ` (${draftAssertions.length})` : ""}`],
+            ["params", t("tabs.params")],
+            ["headers", t("tabs.headers")],
+            ["body", t("tabs.body")],
+            ["auth", t("tabs.auth")],
+            [
+              "tests",
+              draftAssertions.length > 0
+                ? t("tabs.testsWithCount", { count: draftAssertions.length })
+                : t("tabs.tests"),
+            ],
           ] as const).map(([id, label]) => (
             <Tab key={id} value={id}>
               {label}
@@ -453,7 +468,7 @@ function LoadedRequestEditor({
         <div className="editor-panel">
           {activeTab === "params" ? (
             <KeyValueTable
-              emptyLabel="Query-Parameter hinzufügen"
+              emptyLabel={t("params.addLabel")}
               control={control}
               field="queryParams"
               register={register}
@@ -462,7 +477,7 @@ function LoadedRequestEditor({
           ) : null}
           {activeTab === "headers" ? (
             <KeyValueTable
-              emptyLabel="Header hinzufügen"
+              emptyLabel={t("headersTab.addLabel")}
               control={control}
               field="headers"
               register={register}
@@ -472,7 +487,7 @@ function LoadedRequestEditor({
           {activeTab === "body" ? (
             <div className="body-editor">
               <label>
-                Body-Typ
+                {t("body.typeLabel")}
                 <Select
                   disabled={readOnly}
                   onChange={(event) => {
@@ -495,18 +510,15 @@ function LoadedRequestEditor({
                   }}
                   value={bodyType}
                 >
-                  <option value="none">Kein Body</option>
+                  <option value="none">{t("body.none")}</option>
                   <option value="json">JSON</option>
                   <option value="text">Text</option>
-                  <option value="form-urlencoded">Form URL-encoded</option>
-                  <option value="multipart">Form-Data (nur Textfelder)</option>
+                  <option value="form-urlencoded">{t("body.form")}</option>
+                  <option value="multipart">{t("body.multipart")}</option>
                 </Select>
               </label>
               {bodyType === "form-urlencoded" || bodyType === "multipart" ? (
-                <p className="security-hint">
-                  Ein Feld pro Zeile im Format <code>name=wert</code>. Dateien
-                  werden in dieser Version nicht unterstützt.
-                </p>
+                <p className="security-hint">{t("body.formUrlencodedHint")}</p>
               ) : null}
               {bodyType !== "none" ? (
                 <Controller
@@ -516,7 +528,7 @@ function LoadedRequestEditor({
                     <Suspense
                       fallback={
                         <div className="editor-loading">
-                          Body-Editor wird geladen …
+                          {t("body.editorLoading")}
                         </div>
                       }
                     >
@@ -538,9 +550,7 @@ function LoadedRequestEditor({
                   )}
                 />
               ) : (
-                <div className="empty-panel">
-                  Dieser Request sendet keinen Body.
-                </div>
+                <div className="empty-panel">{t("body.noBody")}</div>
               )}
               {errors.body?.message ? (
                 <p className="field-error">{errors.body.message}</p>
@@ -556,7 +566,7 @@ function LoadedRequestEditor({
           {activeTab === "auth" ? (
             <div className="auth-editor">
               <label>
-                Authentifizierung
+                {t("auth.label")}
                 <Select
                   onChange={(event) => {
                     const type = event.target.value;
@@ -570,16 +580,16 @@ function LoadedRequestEditor({
                   }}
                   value={auth.type}
                 >
-                  <option value="none">Keine</option>
-                  <option value="bearer">Bearer Token</option>
-                  <option value="basic">Basic Auth</option>
+                  <option value="none">{t("auth.none")}</option>
+                  <option value="bearer">{t("auth.bearer")}</option>
+                  <option value="basic">{t("auth.basic")}</option>
                 </Select>
               </label>
               {auth.type === "bearer" ? (
                 <label>
-                  Token
+                  {t("auth.token")}
                   <Input
-                    aria-label="Bearer Token"
+                    aria-label={t("auth.tokenAriaLabel")}
                     autoComplete="off"
                     onChange={(event) =>
                       setAuth({ type: "bearer", token: event.target.value })
@@ -592,9 +602,9 @@ function LoadedRequestEditor({
               {auth.type === "basic" ? (
                 <>
                   <label>
-                    Benutzername
+                    {t("auth.username")}
                     <Input
-                      aria-label="Basic Benutzername"
+                      aria-label={t("auth.usernameAriaLabel")}
                       autoComplete="username"
                       onChange={(event) =>
                         setAuth({ ...auth, username: event.target.value })
@@ -603,9 +613,9 @@ function LoadedRequestEditor({
                     />
                   </label>
                   <label>
-                    Passwort
+                    {t("auth.password")}
                     <Input
-                      aria-label="Basic Passwort"
+                      aria-label={t("auth.passwordAriaLabel")}
                       autoComplete="current-password"
                       onChange={(event) =>
                         setAuth({ ...auth, password: event.target.value })
@@ -616,11 +626,7 @@ function LoadedRequestEditor({
                   </label>
                 </>
               ) : null}
-              <p className="security-hint">
-                Zugangsdaten gelten nur für diesen geöffneten Editor. Sie
-                werden nicht im Workspace, in Revisionen oder im Browser-Cache
-                gespeichert.
-              </p>
+              <p className="security-hint">{t("auth.securityHint")}</p>
             </div>
           ) : null}
           {activeTab === "tests" ? (
@@ -630,7 +636,7 @@ function LoadedRequestEditor({
 
         <section className="response-panel" aria-live="polite">
           <div className="response-heading">
-            <h2>Response</h2>
+            <h2>{t("response.heading")}</h2>
             {execution.data ? (
               <div className="response-meta">
                 <span
@@ -645,13 +651,15 @@ function LoadedRequestEditor({
             ) : null}
           </div>
           {execution.isPending ? (
-            <div className="response-empty">Request wird ausgeführt …</div>
+            <div className="response-empty">{t("response.running")}</div>
           ) : execution.isError ? (
             <div className="response-error" role="alert">
-              <strong>Request konnte nicht ausgeführt werden</strong>
+              <strong>{t("response.failedHeading")}</strong>
               <p>{execution.error.message}</p>
               {execution.error instanceof RequestExecutionError ? (
-                <code>Fehlercode: {execution.error.code}</code>
+                <code>
+                  {t("response.errorCode", { code: execution.error.code })}
+                </code>
               ) : null}
             </div>
           ) : execution.data ? (
@@ -666,26 +674,23 @@ function LoadedRequestEditor({
                 >
                   <strong>
                     {execution.data.status >= 400
-                      ? `HTTP ${execution.data.status}: Die Ziel-API meldet einen Fehler`
-                      : "HTML-Antwort empfangen"}
+                      ? t("response.httpError", {
+                          status: execution.data.status,
+                        })
+                      : t("response.htmlReceived")}
                   </strong>
                   <p>{describeHttpStatus(execution.data.status)}</p>
                   {isHtmlResponse(
                     execution.data.headers,
                     execution.data.body,
                   ) ? (
-                    <p>
-                      Der Server hat HTML zurückgegeben. Das ist häufig eine
-                      Fehlerseite eines Webservers, Reverse Proxys oder einer
-                      falsch adressierten Route. Der HTML-Quelltext wird unten
-                      sicher als Text angezeigt und nicht ausgeführt.
-                    </p>
+                    <p>{t("response.htmlNotice")}</p>
                   ) : null}
                 </div>
               ) : null}
               <div className="response-toolbar">
                 <TabList
-                  aria-label="Response-Ansicht"
+                  aria-label={t("response.viewAriaLabel")}
                   className="response-tabs"
                   onTabSelect={(_, data) =>
                     setResponseTab(data.value as "body" | "headers")
@@ -693,49 +698,55 @@ function LoadedRequestEditor({
                   selectedValue={responseTab}
                   size="small"
                 >
-                  <Tab value="body">
-                    Body
-                  </Tab>
+                  <Tab value="body">{t("response.body")}</Tab>
                   <Tab value="headers">
-                    Header ({Object.keys(execution.data.headers).length})
+                    {t("response.headers", {
+                      count: Object.keys(execution.data.headers).length,
+                    })}
                   </Tab>
                   {assertionResults.length > 0 ? (
                     <Tab value="tests">
-                      Tests (
-                      {assertionResults.filter((result) => result.passed).length}/
-                      {assertionResults.length})
+                      {t("response.tests", {
+                        passed: assertionResults.filter(
+                          (result) => result.passed,
+                        ).length,
+                        total: assertionResults.length,
+                      })}
                     </Tab>
                   ) : null}
                 </TabList>
                 <div className="response-actions">
                   <label className="response-search">
                     <Search20Regular aria-hidden="true" />
-                    <span className="sr-only">Response durchsuchen</span>
+                    <span className="sr-only">
+                      {t("response.searchAriaLabel")}
+                    </span>
                     <Input
-                      aria-label="Response durchsuchen"
+                      aria-label={t("response.searchAriaLabel")}
                       onChange={(event) => setResponseSearch(event.target.value)}
-                      placeholder="Suchen"
+                      placeholder={t("response.searchPlaceholder")}
                       type="search"
                       value={responseSearch}
                     />
                     {responseSearch ? (
                       <span>
-                        {countMatches(
-                          responseTab === "body"
-                            ? formatResponseBody(execution.data.body)
-                            : formatResponseHeaders(execution.data.headers),
-                          responseSearch,
-                        )}{" "}
-                        Treffer
+                        {t("response.matches", {
+                          count: countMatches(
+                            responseTab === "body"
+                              ? formatResponseBody(execution.data.body)
+                              : formatResponseHeaders(execution.data.headers),
+                            responseSearch,
+                          ),
+                        })}
                       </span>
                     ) : null}
                   </label>
                   <Tooltip
-                    content="Aktuelle Response-Ansicht kopieren"
+                    content={t("response.copyTooltip")}
                     relationship="description"
                   >
                     <IconButton
-                      aria-label="Response kopieren"
+                      aria-label={t("response.copyAriaLabel")}
                       onClick={() =>
                         void navigator.clipboard.writeText(
                           responseTab === "body"
@@ -748,11 +759,11 @@ function LoadedRequestEditor({
                     </IconButton>
                   </Tooltip>
                   <Tooltip
-                    content="Response-Body herunterladen"
+                    content={t("response.downloadTooltip")}
                     relationship="description"
                   >
                     <IconButton
-                      aria-label="Response-Body herunterladen"
+                      aria-label={t("response.downloadAriaLabel")}
                       onClick={() =>
                         downloadResponseBody(
                           execution.data.body,
@@ -765,11 +776,11 @@ function LoadedRequestEditor({
                   </Tooltip>
                   {!readOnly ? (
                     <Tooltip
-                      content="Wert aus der Response in eine Variable übernehmen"
+                      content={t("response.extractTooltip")}
                       relationship="description"
                     >
                       <IconButton
-                        aria-label="Response-Wert in Variable übernehmen"
+                        aria-label={t("response.extractAriaLabel")}
                         onClick={() => setShowingExtractVariable(true)}
                       >
                         <Variable aria-hidden="true" size={18} />
@@ -797,7 +808,7 @@ function LoadedRequestEditor({
                   </ul>
                 ) : (
                   // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Content can overflow and scroll; tabIndex keeps it reachable by keyboard per WCAG 2.1.1 (scrollable-region-focusable).
-                  <pre aria-label="Response-Inhalt" role="region" tabIndex={0}>
+                  <pre aria-label={t("response.contentAriaLabel")} role="region" tabIndex={0}>
                     {responseTab === "body"
                       ? formatResponseBody(execution.data.body)
                       : formatResponseHeaders(execution.data.headers)}
@@ -806,9 +817,7 @@ function LoadedRequestEditor({
               </div>
             </div>
           ) : (
-            <div className="response-empty">
-              Sende den Request, um die Response hier zu sehen.
-            </div>
+            <div className="response-empty">{t("response.empty")}</div>
           )}
         </section>
       </form>
@@ -818,18 +827,17 @@ function LoadedRequestEditor({
           onClose={() => setConflict(undefined)}
           titleId="conflict-title"
         >
-            <h2 id="conflict-title">Request wurde zwischenzeitlich geändert</h2>
+            <h2 id="conflict-title">{t("conflict.title")}</h2>
             <p>
-              Die Team-Version ist jetzt Version {conflict.currentVersion}.
-              Dein lokaler Entwurf bleibt erhalten.
+              {t("conflict.description", { version: conflict.currentVersion })}
             </p>
             <dl className="conflict-comparison">
               <div>
-                <dt>Deine URL</dt>
+                <dt>{t("conflict.yourUrl")}</dt>
                 <dd>{getValues("url")}</dd>
               </div>
               <div>
-                <dt>Team-URL</dt>
+                <dt>{t("conflict.teamUrl")}</dt>
                 <dd>{conflict.current.url}</dd>
               </div>
             </dl>
@@ -841,19 +849,19 @@ function LoadedRequestEditor({
                   setConflict(undefined);
                 }}
               >
-                Team-Version übernehmen
+                {t("conflict.useTeamVersion")}
               </Button>
               <Button
                 onClick={() => setConflict(undefined)}
               >
-                Weiter bearbeiten
+                {t("conflict.keepEditing")}
               </Button>
               <Button
                 disabled={mutation.isPending}
                 onClick={() => void save(getValues(), true)}
                 variant="primary"
               >
-                Meine Version speichern
+                {t("conflict.saveMine")}
               </Button>
             </DialogFooter>
         </Dialog>
@@ -888,14 +896,10 @@ function LoadedRequestEditor({
           onClose={() => setShowingCurlImport(false)}
           titleId="curl-import-title"
         >
-            <h2 id="curl-import-title">cURL importieren</h2>
-            <p>
-              Das Kommando wird nur lokal ausgewertet und nicht ausgeführt.
-              Vorhandene Request-Felder werden erst nach deiner Bestätigung
-              ersetzt.
-            </p>
+            <h2 id="curl-import-title">{t("curlImport.title")}</h2>
+            <p>{t("curlImport.description")}</p>
             <Textarea
-              aria-label="cURL-Kommando"
+              aria-label={t("curlImport.commandAriaLabel")}
               autoFocus
               onChange={(event) => {
                 setCurlInput(event.target.value);
@@ -914,7 +918,7 @@ function LoadedRequestEditor({
               <Button
                 onClick={() => setShowingCurlImport(false)}
               >
-                Abbrechen
+                {t("actions.cancel", { ns: "common" })}
               </Button>
               <Button
                 onClick={() => {
@@ -943,18 +947,18 @@ function LoadedRequestEditor({
                     setShowingCurlImport(false);
                     setCurlInput("");
                     setCurlError(undefined);
-                    setCurlNotice("cURL wurde als Entwurf übernommen");
+                    setCurlNotice(t("curlImport.applied"));
                   } catch (error) {
                     setCurlError(
                       error instanceof Error
                         ? error.message
-                        : "Das cURL-Kommando ist ungültig.",
+                        : t("curlImport.invalid"),
                     );
                   }
                 }}
                 variant="primary"
               >
-                Als Entwurf übernehmen
+                {t("curlImport.apply")}
               </Button>
             </DialogFooter>
         </Dialog>
@@ -983,37 +987,14 @@ export function isHtmlResponse(
 }
 
 export function describeHttpStatus(status: number): string {
-  const descriptions: Record<number, string> = {
-    400: "Die Ziel-API lehnt den Request als ungültig ab. Prüfe URL, Parameter, Header und Body.",
-    401: "Die Ziel-API verlangt eine gültige Authentifizierung. Prüfe Authorization-Header oder den Authentifizierungs-Tab.",
-    403: "Die Ziel-API hat den Request verstanden, erlaubt deinem Benutzer oder Token den Zugriff aber nicht.",
-    404: "Die angeforderte Route wurde auf dem Zielserver nicht gefunden. Prüfe insbesondere Pfad und Basis-URL.",
-    405: "Die verwendete HTTP-Methode ist für diese Route nicht erlaubt.",
-    408: "Die Ziel-API hat den Request wegen einer Zeitüberschreitung beendet.",
-    409: "Die Ziel-API meldet einen Konflikt mit dem aktuellen Zustand der Ressource.",
-    413: "Der gesendete Request ist für die Ziel-API zu groß.",
-    415: "Die Ziel-API unterstützt den gesendeten Content-Type nicht.",
-    422: "Der Request ist syntaktisch gültig, enthält aber fachlich ungültige Daten.",
-    429: "Die Ziel-API hat ihr Anfragelimit erreicht. Warte kurz und versuche es erneut.",
-    500: "Auf der Ziel-API ist ein interner Fehler aufgetreten.",
-    502: "Ein Gateway oder Reverse Proxy hat vom nachgelagerten Zielserver keine gültige Antwort erhalten.",
-    503: "Die Ziel-API ist momentan nicht verfügbar oder wird gewartet.",
-    504: "Ein Gateway oder Reverse Proxy hat beim Warten auf den Zielserver das Zeitlimit erreicht.",
-  };
-  if (descriptions[status]) return descriptions[status];
-  if (status >= 500) {
-    return "Die Ziel-API oder ein vorgeschalteter Server hat einen internen Fehler gemeldet.";
+  if (i18n.exists(`httpStatus.${status}`, { ns: "requests" })) {
+    return i18n.t(`httpStatus.${status}`, { ns: "requests" });
   }
-  if (status >= 400) {
-    return "Die Ziel-API hat den Request abgelehnt. Prüfe Response-Body und Header für weitere Details.";
-  }
-  if (status >= 300) {
-    return "Die Ziel-API meldet eine Weiterleitung. Ohne gültiges Location-Ziel kann sie nicht automatisch verfolgt werden.";
-  }
-  if (status >= 200) {
-    return "Die Ziel-API hat den Request erfolgreich beantwortet.";
-  }
-  return "Die Ziel-API hat eine informative Zwischenantwort geliefert.";
+  if (status >= 500) return i18n.t("httpStatus.fallback5xx", { ns: "requests" });
+  if (status >= 400) return i18n.t("httpStatus.fallback4xx", { ns: "requests" });
+  if (status >= 300) return i18n.t("httpStatus.fallback3xx", { ns: "requests" });
+  if (status >= 200) return i18n.t("httpStatus.fallback2xx", { ns: "requests" });
+  return i18n.t("httpStatus.fallback1xx", { ns: "requests" });
 }
 
 function formatResponseHeaders(headers: Record<string, string>): string {
@@ -1083,6 +1064,7 @@ function KeyValueTable({
   register: UseFormRegister<RequestDraft>;
   readOnly: boolean;
 }) {
+  const { t } = useTranslation("requests");
   const { append, fields, remove } = useFieldArray({
     control,
     keyName: "fieldKey",
@@ -1100,14 +1082,14 @@ function KeyValueTable({
       ) : null}
       <div className="table-head">
         <span />
-        <span>Schlüssel</span>
-        <span>Wert</span>
+        <span>{t("table.key")}</span>
+        <span>{t("table.value")}</span>
         <span />
       </div>
       {fields.map((entry, index) => (
         <div className="table-row" key={entry.fieldKey}>
           <input
-            aria-label="Eintrag aktivieren"
+            aria-label={t("table.enableEntry")}
             disabled={readOnly}
             type="checkbox"
             {...register(`${field}.${index}.enabled`)}
@@ -1117,7 +1099,7 @@ function KeyValueTable({
             name={`${field}.${index}.key`}
             render={({ field: controllerField }) => (
               <Input
-                aria-label="Schlüssel"
+                aria-label={t("table.key")}
                 autoComplete="off"
                 disabled={readOnly}
                 list={
@@ -1135,7 +1117,7 @@ function KeyValueTable({
             name={`${field}.${index}.value`}
             render={({ field: controllerField }) => (
               <Input
-                aria-label="Wert"
+                aria-label={t("table.value")}
                 disabled={readOnly}
                 placeholder="value"
                 {...controllerField}
@@ -1145,7 +1127,7 @@ function KeyValueTable({
           <input type="hidden" {...register(`${field}.${index}.id`)} />
           {!readOnly ? (
             <IconButton
-              aria-label="Eintrag entfernen"
+              aria-label={t("table.removeEntry")}
               onClick={() => remove(index)}
               size="compact"
             >
@@ -1182,6 +1164,7 @@ function AssertionsEditor({
   control: Control<RequestDraft>;
   readOnly: boolean;
 }) {
+  const { t } = useTranslation("requests");
   const { append, fields, remove, update } = useFieldArray({
     control,
     keyName: "fieldKey",
@@ -1190,17 +1173,14 @@ function AssertionsEditor({
 
   return (
     <div className="assertions-editor">
-      <p className="security-hint">
-        Prüfungen werden nach jeder Ausführung automatisch gegen die Response
-        ausgewertet und mit der Request gespeichert.
-      </p>
+      <p className="security-hint">{t("assertions.hint")}</p>
       {fields.length === 0 ? (
-        <div className="empty-panel">Keine Tests definiert.</div>
+        <div className="empty-panel">{t("assertions.empty")}</div>
       ) : null}
       {fields.map((entry, index) => (
         <div className="assertion-row" key={entry.fieldKey}>
           <Select
-            aria-label="Prüfungstyp"
+            aria-label={t("assertions.typeAriaLabel")}
             disabled={readOnly}
             onChange={(event) => {
               const type = event.target.value as Assertion["type"];
@@ -1223,13 +1203,13 @@ function AssertionsEditor({
             }}
             value={entry.type}
           >
-            <option value="status">Status-Code</option>
-            <option value="jsonPath">JSON-Pfad</option>
+            <option value="status">{t("assertions.statusCode")}</option>
+            <option value="jsonPath">{t("assertions.jsonPath")}</option>
           </Select>
           {entry.type === "status" ? (
             <>
               <Select
-                aria-label="Status-Operator"
+                aria-label={t("assertions.statusOperatorAriaLabel")}
                 disabled={readOnly}
                 onChange={(event) =>
                   update(index, {
@@ -1239,11 +1219,11 @@ function AssertionsEditor({
                 }
                 value={entry.operator}
               >
-                <option value="equals">ist gleich</option>
-                <option value="notEquals">ist ungleich</option>
+                <option value="equals">{t("assertions.equals")}</option>
+                <option value="notEquals">{t("assertions.notEquals")}</option>
               </Select>
               <Input
-                aria-label="Erwarteter Status-Code"
+                aria-label={t("assertions.expectedStatusAriaLabel")}
                 disabled={readOnly}
                 min={100}
                 max={599}
@@ -1260,16 +1240,16 @@ function AssertionsEditor({
           ) : (
             <>
               <Input
-                aria-label="JSON-Pfad"
+                aria-label={t("assertions.jsonPathAriaLabel")}
                 disabled={readOnly}
                 onChange={(event) =>
                   update(index, { ...entry, path: event.target.value })
                 }
-                placeholder="z. B. data.token"
+                placeholder={t("assertions.jsonPathPlaceholder")}
                 value={entry.path}
               />
               <Select
-                aria-label="JSON-Pfad-Operator"
+                aria-label={t("assertions.jsonPathOperatorAriaLabel")}
                 disabled={readOnly}
                 onChange={(event) =>
                   update(index, {
@@ -1282,22 +1262,22 @@ function AssertionsEditor({
                 }
                 value={entry.operator}
               >
-                <option value="exists">existiert</option>
-                <option value="notExists">existiert nicht</option>
-                <option value="equals">ist gleich</option>
-                <option value="notEquals">ist ungleich</option>
-                <option value="contains">enthält</option>
+                <option value="exists">{t("assertions.exists")}</option>
+                <option value="notExists">{t("assertions.notExists")}</option>
+                <option value="equals">{t("assertions.equals")}</option>
+                <option value="notEquals">{t("assertions.notEquals")}</option>
+                <option value="contains">{t("assertions.contains")}</option>
               </Select>
               {entry.operator === "equals" ||
               entry.operator === "notEquals" ||
               entry.operator === "contains" ? (
                 <Input
-                  aria-label="Erwarteter Wert"
+                  aria-label={t("assertions.expectedValueAriaLabel")}
                   disabled={readOnly}
                   onChange={(event) =>
                     update(index, { ...entry, expected: event.target.value })
                   }
-                  placeholder="Erwarteter Wert"
+                  placeholder={t("assertions.expectedValuePlaceholder")}
                   value={entry.expected ?? ""}
                 />
               ) : null}
@@ -1305,7 +1285,7 @@ function AssertionsEditor({
           )}
           {!readOnly ? (
             <IconButton
-              aria-label="Test entfernen"
+              aria-label={t("assertions.removeAriaLabel")}
               onClick={() => remove(index)}
               size="compact"
             >
@@ -1328,7 +1308,7 @@ function AssertionsEditor({
           size="small"
           variant="ghost"
         >
-          <Add20Regular aria-hidden="true" /> Test hinzufügen
+          <Add20Regular aria-hidden="true" /> {t("assertions.add")}
         </Button>
       ) : null}
     </div>

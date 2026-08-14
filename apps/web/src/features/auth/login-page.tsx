@@ -1,8 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Provider } from "@supabase/supabase-js";
+import type { TFunction } from "i18next";
 import { Building2, Mail } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { Navigate, useLocation } from "react-router";
 import { z } from "zod";
 
@@ -10,16 +12,20 @@ import { Button, Input } from "../../components/ui";
 import { useAuth } from "./auth-context";
 import { DesktopServerSetup } from "./desktop-server-setup";
 
-const credentialSchema = z.object({
-  email: z.string().trim().email("Bitte gib eine gültige E-Mail-Adresse ein."),
-  password: z
-    .string()
-    .min(1, "Bitte gib dein Passwort ein.")
-    .max(128, "Das Passwort ist zu lang."),
-});
-type Credentials = z.infer<typeof credentialSchema>;
+function createCredentialSchema(t: TFunction<"auth">) {
+  return z.object({
+    email: z.string().trim().email(t("login.emailInvalid")),
+    password: z
+      .string()
+      .min(1, t("login.passwordRequired"))
+      .max(128, t("login.passwordTooLong")),
+  });
+}
+type Credentials = z.infer<ReturnType<typeof createCredentialSchema>>;
 
 export function LoginPage() {
+  const { t } = useTranslation("auth");
+  const credentialSchema = useMemo(() => createCredentialSchema(t), [t]);
   const { client, configurationError, env, user } = useAuth();
   const location = useLocation();
   const [message, setMessage] = useState<string>();
@@ -59,9 +65,7 @@ export function LoginPage() {
     });
     setSubmitting(false);
     setMessage(
-      error
-        ? "Der Anmeldelink konnte nicht versendet werden."
-        : "Prüfe dein Postfach und öffne den Anmeldelink.",
+      error ? t("login.magicLinkSendFailed") : t("login.magicLinkSent"),
     );
   }
 
@@ -70,7 +74,7 @@ export function LoginPage() {
     setMessage(undefined);
     if (mode === "signup" && password.length < 12) {
       setError("password", {
-        message: "Für neue Konten muss das Passwort mindestens 12 Zeichen haben.",
+        message: t("login.signupPasswordTooShort"),
       });
       return;
     }
@@ -86,16 +90,12 @@ export function LoginPage() {
     setSubmitting(false);
     if (error) {
       setMessage(
-        mode === "signup"
-          ? "Das Konto konnte nicht erstellt werden."
-          : "E-Mail-Adresse oder Passwort ist nicht korrekt.",
+        mode === "signup" ? t("login.signupFailed") : t("login.signinFailed"),
       );
       return;
     }
     if (mode === "signup" && !data.session) {
-      setMessage(
-        "Das Konto wurde erstellt. Dieser Server verlangt vor der Anmeldung eine E-Mail-Bestätigung.",
-      );
+      setMessage(t("login.signupConfirmationRequired"));
     }
   }
 
@@ -114,9 +114,7 @@ export function LoginPage() {
     );
     setSubmitting(false);
     setMessage(
-      error
-        ? "Die Wiederherstellungs-E-Mail konnte nicht versendet werden. Prüfe, ob SMTP auf dem Server eingerichtet ist."
-        : "Prüfe dein Postfach, um ein neues Passwort festzulegen.",
+      error ? t("login.resetEmailFailed") : t("login.resetEmailSent"),
     );
   }
 
@@ -137,17 +135,15 @@ export function LoginPage() {
       try {
         await window.devapiDesktop.openAuthUrl(data.url);
         setSubmitting(false);
-        setMessage(
-          "Die Anmeldung wurde im Systembrowser geöffnet. Kehre danach zu Relay zurück.",
-        );
+        setMessage(t("login.oidcBrowserOpened"));
       } catch {
         setSubmitting(false);
-        setMessage("Der Systembrowser konnte nicht sicher geöffnet werden.");
+        setMessage(t("login.oidcBrowserFailed"));
       }
     }
     if (error) {
       setSubmitting(false);
-      setMessage("Die OIDC-Anmeldung konnte nicht gestartet werden.");
+      setMessage(t("login.oidcStartFailed"));
     }
   }
 
@@ -155,8 +151,8 @@ export function LoginPage() {
     <main className="login-page">
       <section className="login-card">
         <span className="login-mark">{"{ }"}</span>
-        <h1>Bei Relay anmelden</h1>
-        <p>Öffne die gemeinsamen API-Workspaces deines Teams.</p>
+        <h1>{t("login.title")}</h1>
+        <p>{t("login.subtitle")}</p>
 
         {env?.oidcProvider ? (
           <>
@@ -166,16 +162,20 @@ export function LoginPage() {
               onClick={signInWithOidc}
             >
               <Building2 aria-hidden="true" size={17} />
-              {env.oidcLabel ?? "Mit Firmenkonto anmelden"}
+              {env.oidcLabel ?? t("login.oidcButtonFallback")}
             </Button>
             <div className="login-divider">
-              <span>oder</span>
+              <span>{t("login.or")}</span>
             </div>
           </>
         ) : null}
 
         {env?.passwordAuthEnabled && env.passwordSignupEnabled ? (
-          <div className="auth-mode-switch" role="group" aria-label="Anmeldemodus">
+          <div
+            className="auth-mode-switch"
+            role="group"
+            aria-label={t("login.modeGroupLabel")}
+          >
             <Button
               aria-pressed={mode === "signin"}
               className={mode === "signin" ? "active" : undefined}
@@ -185,7 +185,7 @@ export function LoginPage() {
               }}
               variant="ghost"
             >
-              Anmelden
+              {t("login.signIn")}
             </Button>
             <Button
               aria-pressed={mode === "signup"}
@@ -196,20 +196,20 @@ export function LoginPage() {
               }}
               variant="ghost"
             >
-              Registrieren
+              {t("login.signUp")}
             </Button>
           </div>
         ) : null}
 
         {env?.passwordAuthEnabled || env?.magicLinkAuthEnabled ? (
         <form onSubmit={handleSubmit(submitCredentials)}>
-          <label htmlFor="email">E-Mail-Adresse</label>
+          <label htmlFor="email">{t("login.emailLabel")}</label>
             <Input
               autoComplete="email"
               className="login-input"
               contentBefore={<Mail aria-hidden="true" size={17} />}
               id="email"
-              placeholder="name@unternehmen.de"
+              placeholder={t("login.emailPlaceholder")}
               type="email"
               {...register("email")}
             />
@@ -218,7 +218,7 @@ export function LoginPage() {
           ) : null}
           {env?.passwordAuthEnabled ? (
             <>
-              <label htmlFor="password">Passwort</label>
+              <label htmlFor="password">{t("login.passwordLabel")}</label>
               <Input
                 autoComplete={
                   mode === "signup" ? "new-password" : "current-password"
@@ -239,7 +239,9 @@ export function LoginPage() {
                 type="submit"
                 variant="primary"
               >
-                {mode === "signup" ? "Konto erstellen" : "Anmelden"}
+                {mode === "signup"
+                  ? t("login.createAccount")
+                  : t("login.signIn")}
               </Button>
               {mode === "signin" ? (
                 <Button
@@ -249,7 +251,7 @@ export function LoginPage() {
                   size="small"
                   variant="ghost"
                 >
-                  Passwort vergessen?
+                  {t("login.forgotPassword")}
                 </Button>
               ) : null}
             </>
@@ -261,7 +263,7 @@ export function LoginPage() {
               onClick={() => void sendMagicLink()}
               variant={env.passwordAuthEnabled ? "secondary" : "primary"}
             >
-              Anmeldelink senden
+              {t("login.sendMagicLink")}
             </Button>
           ) : null}
         </form>

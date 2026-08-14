@@ -1,0 +1,34 @@
+{
+  "members": {
+    "title": "Manage team",
+    "description": "Roles apply to all workspaces in this team.",
+    "loading": "Loading members …",
+    "loadError": "The members could not be loaded.",
+    "roleOwner": "Owner",
+    "roleYou": "You",
+    "roleEditor": "Editor",
+    "roleViewer": "Viewer",
+    "roleOf": "Role of {{name}}",
+    "transferOwnership": "Transfer owner rights to {{name}}",
+    "transferOwnershipConfirm": "Really transfer owner rights to {{name}}? You will then become an editor yourself.",
+    "removeMember": "Remove {{name}}",
+    "removeMemberConfirm": "Really remove {{name}} from the team?",
+    "saveError": "The change could not be saved."
+  },
+  "invitation": {
+    "title": "Invite team member",
+    "linkHint": "This link is valid for seven days and can be accepted once. The token is only stored hashed on the server.",
+    "linkLabel": "Invitation link",
+    "copied": "Copied",
+    "copyLink": "Copy link",
+    "roleLabel": "Role",
+    "createError": "The invitation link could not be created.",
+    "createLink": "Create link"
+  },
+  "acceptPage": {
+    "title": "Accept team invitation",
+    "description": "Once accepted, the shared workspaces automatically appear in your navigation.",
+    "invalidLink": "The link is invalid, expired, or was already used.",
+    "accept": "Accept invitation"
+  }
+}

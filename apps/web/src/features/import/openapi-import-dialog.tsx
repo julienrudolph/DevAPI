@@ -1,6 +1,7 @@
 import type { CollectionSummary, RequestSummary } from "@api-client/contracts";
 import { FileUp } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   Button,
@@ -24,6 +25,7 @@ export function OpenApiImportDialog({
   onImported: (requests: RequestSummary[]) => void;
   workspaceId: string;
 }) {
+  const { t } = useTranslation(["import", "common"]);
   const createRequest = useCreateRequest(workspaceId);
   const [source, setSource] = useState("");
   const [parsed, setParsed] = useState<OpenApiImport>();
@@ -47,35 +49,32 @@ export function OpenApiImportDialog({
             <FileUp aria-hidden="true" size={18} />
           </span>
           <div>
-            <h2 id="openapi-import-title">API-Definition importieren</h2>
-            <p>
-              OpenAPI 3.x als JSON/YAML oder Postman Collection 2.x als JSON.
-              Externe Referenzen und Dateianhänge werden nicht geladen.
-            </p>
+            <h2 id="openapi-import-title">{t("title")}</h2>
+            <p>{t("description")}</p>
           </div>
         </div>
         {!parsed ? (
           <>
             <label className="openapi-source" htmlFor="openapi-document">
-              OpenAPI-Dokument
+              {t("documentLabel")}
               <Textarea
-                aria-label="OpenAPI-Dokument"
+                aria-label={t("documentLabel")}
                 autoFocus
                 id="openapi-document"
                 onChange={(event) => setSource(event.target.value)}
-                placeholder="Datei hier einfügen oder auswählen …"
+                placeholder={t("documentPlaceholder")}
                 rows={12}
                 value={source}
               />
             </label>
             <input
               accept=".json,.yaml,.yml,application/json,application/yaml,text/yaml"
-              aria-label="OpenAPI-Datei auswählen"
+              aria-label={t("fileSelectLabel")}
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
                 if (file.size > 2_000_000) {
-                  setError("Die OpenAPI-Datei darf maximal 2 MB groß sein.");
+                  setError(t("fileTooLarge"));
                   return;
                 }
                 void file.text().then(setSource);
@@ -87,12 +86,14 @@ export function OpenApiImportDialog({
           <>
             <div className="openapi-import-summary">
               <strong>{parsed.title}</strong>
-              <span>{parsed.requests.length} unterstützte Requests erkannt</span>
+              <span>
+                {t("requestsDetected", { count: parsed.requests.length })}
+              </span>
             </div>
             <label>
-              Ziel-Collection
+              {t("targetCollectionLabel")}
               <Select
-                aria-label="Ziel-Collection"
+                aria-label={t("targetCollectionLabel")}
                 onChange={(event) => setCollectionId(event.target.value)}
                 value={collectionId}
               >
@@ -137,7 +138,7 @@ export function OpenApiImportDialog({
         {progress ? <p aria-live="polite">{progress}</p> : null}
         <DialogFooter>
           <Button onClick={onClose}>
-            Abbrechen
+            {t("actions.cancel", { ns: "common" })}
           </Button>
           {!parsed ? (
             <Button
@@ -163,13 +164,13 @@ export function OpenApiImportDialog({
                   setError(
                     parseError instanceof Error
                       ? parseError.message
-                      : "Das Dokument konnte nicht gelesen werden.",
+                      : t("documentUnreadable"),
                   );
                 }
               }}
               variant="primary"
             >
-              Vorschau erstellen
+              {t("createPreview")}
             </Button>
           ) : (
             <Button
@@ -184,7 +185,10 @@ export function OpenApiImportDialog({
                 try {
                   for (const [index, request] of selectedRequests.entries()) {
                     setProgress(
-                      `${index + 1} von ${selectedRequests.length} Requests …`,
+                      t("importProgress", {
+                        current: index + 1,
+                        total: selectedRequests.length,
+                      }),
                     );
                     const { importId: _importId, path: _path, ...draft } = request;
                     imported.push(
@@ -198,14 +202,14 @@ export function OpenApiImportDialog({
                   onImported(imported);
                 } catch {
                   setError(
-                    `${imported.length} Requests wurden importiert. Der Import wurde danach wegen eines Fehlers angehalten.`,
+                    t("importPartialFailure", { count: imported.length }),
                   );
                   setProgress(undefined);
                 }
               }}
               variant="primary"
             >
-              {selectedRequests.length} Requests importieren
+              {t("importCount", { count: selectedRequests.length })}
             </Button>
           )}
         </DialogFooter>

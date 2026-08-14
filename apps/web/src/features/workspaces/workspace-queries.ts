@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  CollectionSummary,
+  FolderSummary,
   WorkspaceSummary,
   WorkspaceTree,
 } from "@api-client/contracts";
@@ -17,6 +19,7 @@ import {
   updateCollection,
   updateFolder,
 } from "./workspace-api";
+import { duplicateCollection, duplicateFolder } from "./duplicate-tree";
 import { fetchRequest } from "../requests/request-api";
 import {
   createWorkspaceExport,
@@ -111,6 +114,39 @@ export function useCreateRequest(workspaceId: string) {
   return useMutation({
     mutationFn: (input: Parameters<typeof createRequest>[1]) =>
       createRequest(workspaceId, input, accessToken!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceKeys.tree(workspaceId),
+      });
+    },
+  });
+}
+
+export function useDuplicateCollection(workspaceId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      collection: CollectionSummary;
+      tree: Pick<WorkspaceTree, "folders" | "requests">;
+    }) =>
+      duplicateCollection(workspaceId, input.collection, input.tree, accessToken!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceKeys.tree(workspaceId),
+      });
+    },
+  });
+}
+
+export function useDuplicateFolder(workspaceId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      folder: FolderSummary;
+      tree: Pick<WorkspaceTree, "folders" | "requests">;
+    }) => duplicateFolder(workspaceId, input.folder, input.tree, accessToken!),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: workspaceKeys.tree(workspaceId),

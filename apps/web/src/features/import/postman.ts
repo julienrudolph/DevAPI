@@ -1,5 +1,6 @@
 import type { CreateRequestSummary } from "@api-client/contracts";
 
+import i18n from "../../lib/i18n";
 import type { OpenApiImport, OpenApiRequestDraft } from "./openapi";
 
 const supportedMethods = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
@@ -9,10 +10,10 @@ export function parsePostmanCollection(source: string): OpenApiImport {
   try {
     value = JSON.parse(source);
   } catch {
-    throw new Error("Die Postman Collection enthält ungültiges JSON.");
+    throw new Error(i18n.t("errors.invalidPostmanJson", { ns: "import" }));
   }
   if (!isRecord(value) || !Array.isArray(value.item)) {
-    throw new Error("Es wurde keine Postman Collection erkannt.");
+    throw new Error(i18n.t("errors.notPostmanCollection", { ns: "import" }));
   }
   const title =
     isRecord(value.info) && typeof value.info.name === "string"
@@ -21,7 +22,7 @@ export function parsePostmanCollection(source: string): OpenApiImport {
   const requests: OpenApiRequestDraft[] = [];
   visitItems(value.item, [], requests);
   if (requests.length === 0) {
-    throw new Error("Es wurden keine unterstützten REST-Requests gefunden.");
+    throw new Error(i18n.t("errors.noSupportedRequests", { ns: "import" }));
   }
   return { title, requests };
 }

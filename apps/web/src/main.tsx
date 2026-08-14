@@ -3,7 +3,10 @@ import { createRoot } from "react-dom/client";
 
 import { AppProviders } from "./app/providers";
 import { AppRouter } from "./app/router";
+import { initI18n } from "./lib/i18n";
 import "./styles.css";
+
+initI18n();
 
 const rootElement = document.getElementById("root");
 

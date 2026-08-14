@@ -9,6 +9,7 @@ import {
 } from "@api-client/contracts";
 import { z } from "zod";
 
+import i18n from "../../lib/i18n";
 import { resolveVariables } from "../environments/resolve-variables";
 
 const executionErrorSchema = z.object({
@@ -22,56 +23,16 @@ export class RequestExecutionError extends Error {
   }
 }
 
-const executionErrorMessages: Record<string, string> = {
-  INVALID_URL:
-    "Die URL ist ungültig. Prüfe insbesondere Protokoll, Domain und Sonderzeichen.",
-  UNSAFE_TARGET:
-    "Das Ziel wurde aus Sicherheitsgründen blockiert. Lokale, private und reservierte Netzwerkadressen sind über den Server-Proxy nicht erlaubt.",
-  UNSAFE_HEADER:
-    "Mindestens ein Header ist nicht zulässig. Prüfe Headernamen und entferne Zeilenumbrüche aus den Werten.",
-  TARGET_DNS_FAILED:
-    "Der Hostname konnte nicht aufgelöst werden. Prüfe die Schreibweise der Domain und die DNS-Konfiguration des Servers.",
-  TARGET_CONNECTION_REFUSED:
-    "Der Zielserver hat die Verbindung abgelehnt. Prüfe Host, Port und ob der Zieldienst läuft.",
-  TARGET_UNREACHABLE:
-    "Der Zielserver ist aus dem DevAPI-Servernetz nicht erreichbar. Prüfe URL, Port, Firewall und DNS.",
-  TARGET_TLS_FAILED:
-    "Die TLS-Verbindung ist fehlgeschlagen. Prüfe Zertifikat, Hostnamen und Zertifikatskette des Zielservers.",
-  TARGET_TIMEOUT:
-    "Der Zielserver hat nicht rechtzeitig geantwortet. Prüfe seine Erreichbarkeit oder versuche es später erneut.",
-  REDIRECT_LIMIT_EXCEEDED:
-    "Der Zielserver hat zu oft weitergeleitet. Prüfe die URL und mögliche Redirect-Schleifen.",
-  RESPONSE_TOO_LARGE:
-    "Die Antwort überschreitet das Sicherheitslimit des Proxys und wurde abgebrochen.",
-  TARGET_REQUEST_FAILED:
-    "Der Zielserver konnte nicht erreicht werden. Prüfe URL, DNS, Port und Erreichbarkeit vom DevAPI-Server.",
-  PROXY_REQUEST_FAILED:
-    "Der interne Request-Proxy hat keine gültige Antwort geliefert. Prüfe den Proxy-Container und dessen Logs.",
-  PROXY_UNAVAILABLE:
-    "Der Request-Proxy ist momentan nicht verfügbar. Prüfe den Serverstatus und versuche es erneut.",
-  EXECUTION_RATE_LIMITED:
-    "Du hast in kurzer Zeit zu viele Requests gesendet. Warte kurz und versuche es erneut.",
-  EXECUTION_CONCURRENCY_LIMITED:
-    "Es laufen bereits zu viele Requests. Warte auf deren Abschluss und versuche es erneut.",
-  PROXY_CAPACITY_LIMITED:
-    "Der Request-Proxy ist momentan ausgelastet. Warte kurz und versuche es erneut.",
-  AUTHENTICATION_UNAVAILABLE:
-    "Die Anmeldung konnte serverseitig nicht geprüft werden. Melde dich gegebenenfalls erneut an.",
-  UNAUTHORIZED: "Deine Sitzung ist abgelaufen. Melde dich erneut an.",
-  REQUEST_NOT_FOUND:
-    "Der gespeicherte Request ist nicht mehr verfügbar oder du hast keinen Zugriff darauf.",
-  API_UNREACHABLE:
-    "Das DevAPI-Backend ist nicht erreichbar. Prüfe Netzwerkverbindung und Serverstatus.",
-  INVALID_RESPONSE:
-    "Das DevAPI-Backend hat eine unerwartete Antwort geliefert. Prüfe die Server- und Proxy-Logs.",
-};
-
 export function executionErrorMessage(
   code: string,
   safeServerMessage?: string,
 ): string {
-  return executionErrorMessages[code] ?? safeServerMessage ??
-    "Der Request konnte nicht ausgeführt werden. Prüfe Eingaben und Serverstatus.";
+  if (i18n.exists(`executionErrors.${code}`, { ns: "requests" })) {
+    return i18n.t(`executionErrors.${code}`, { ns: "requests" });
+  }
+  return (
+    safeServerMessage ?? i18n.t("executionErrors.fallback", { ns: "requests" })
+  );
 }
 
 export async function executeRequest(
@@ -246,7 +207,9 @@ function parseFormLines(content: string): [string, string][] {
       const key = (separator < 0 ? line : line.slice(0, separator)).trim();
       const value = separator < 0 ? "" : line.slice(separator + 1);
       if (!key || /["\r\n]/.test(key)) {
-        throw new Error("Formularfeldname ist ungültig.");
+        throw new Error(
+          i18n.t("executionErrors.invalidFormFieldName", { ns: "requests" }),
+        );
       }
       return [key, value];
     });

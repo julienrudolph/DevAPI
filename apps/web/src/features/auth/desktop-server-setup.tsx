@@ -1,9 +1,11 @@
 import { ServerCog } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button, Input } from "../../components/ui";
 
 export function DesktopServerSetup() {
+  const { t } = useTranslation("auth");
   const bridge = window.devapiDesktop;
   const [serverUrl, setServerUrl] = useState("");
   const [error, setError] = useState<string>();
@@ -19,11 +21,8 @@ export function DesktopServerSetup() {
   if (!bridge) {
     return (
       <main className="centered-state">
-        <h1>Authentifizierung nicht konfiguriert</h1>
-        <p>
-          Der Server stellt keine gültige öffentliche Clientkonfiguration
-          bereit.
-        </p>
+        <h1>{t("desktopServerSetup.notConfiguredTitle")}</h1>
+        <p>{t("desktopServerSetup.notConfiguredDescription")}</p>
       </main>
     );
   }
@@ -40,33 +39,29 @@ export function DesktopServerSetup() {
             .setServerUrl(serverUrl)
             .catch(() => {
               setSaving(false);
-              setError(
-                "Der Server konnte nicht übernommen werden. Prüfe HTTPS-Adresse und Erreichbarkeit.",
-              );
+              setError(t("desktopServerSetup.connectFailed"));
             });
         }}
       >
         <span className="login-mark">
           <ServerCog aria-hidden="true" size={22} />
         </span>
-        <h1>DevAPI-Server verbinden</h1>
-        <p>
-          Die Desktop-App lädt Teams und Requests von deinem zentralen
-          DevAPI-Server.
-        </p>
-        <label htmlFor="desktop-server-url">Serveradresse</label>
+        <h1>{t("desktopServerSetup.title")}</h1>
+        <p>{t("desktopServerSetup.description")}</p>
+        <label htmlFor="desktop-server-url">
+          {t("desktopServerSetup.serverAddressLabel")}
+        </label>
         <Input
           autoFocus
           id="desktop-server-url"
           onChange={(event) => setServerUrl(event.target.value)}
-          placeholder="https://devapi.example.de"
+          placeholder={t("desktopServerSetup.serverAddressPlaceholder")}
           required
           type="url"
           value={serverUrl}
         />
         <p className="security-hint">
-          Installierte Versionen akzeptieren ausschließlich HTTPS. Zugangsdaten
-          gehören nicht in die URL.
+          {t("desktopServerSetup.securityHint")}
         </p>
         {error ? (
           <p className="field-error" role="alert">
@@ -79,7 +74,9 @@ export function DesktopServerSetup() {
           type="submit"
           variant="primary"
         >
-          {saving ? "Verbindung wird gespeichert …" : "Mit Server verbinden"}
+          {saving
+            ? t("desktopServerSetup.saving")
+            : t("desktopServerSetup.connect")}
         </Button>
       </form>
     </main>

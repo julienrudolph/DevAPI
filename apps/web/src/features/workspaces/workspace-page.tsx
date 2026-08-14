@@ -1,4 +1,5 @@
 import {
+  type CollectionSummary,
   type FolderSummary,
   type RequestSummary,
 } from "@api-client/contracts";
@@ -49,6 +50,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 
 import {
@@ -82,6 +84,8 @@ import { NavigationMutationError } from "./workspace-api";
 import {
   useDeleteCollection,
   useDeleteFolder,
+  useDuplicateCollection,
+  useDuplicateFolder,
   useExportWorkspace,
   useUpdateCollection,
   useUpdateFolder,
@@ -209,6 +213,7 @@ function TreeActionMenu({
 }
 
 export function WorkspacePage() {
+  const { t } = useTranslation(["workspaces", "common"]);
   const { workspaceId: routeWorkspaceId } = useParams();
   const navigate = useNavigate();
   const workspaces = useWorkspaces();
@@ -225,6 +230,8 @@ export function WorkspacePage() {
   const deleteFolder = useDeleteFolder(activeWorkspace?.id ?? "");
   const updateCollection = useUpdateCollection(activeWorkspace?.id ?? "");
   const updateFolder = useUpdateFolder(activeWorkspace?.id ?? "");
+  const duplicateCollection = useDuplicateCollection(activeWorkspace?.id ?? "");
+  const duplicateFolder = useDuplicateFolder(activeWorkspace?.id ?? "");
   const exportWorkspace = useExportWorkspace();
   const canEdit =
     activeWorkspace?.role === "owner" || activeWorkspace?.role === "editor";
@@ -363,10 +370,7 @@ export function WorkspacePage() {
   }
 
   function closeRequest(requestId: string) {
-    closeRequests(
-      [requestId],
-      "Dieser Request enthält ungespeicherte Änderungen. Möchtest du den Tab wirklich schließen?",
-    );
+    closeRequests([requestId], t("confirmations.closeTab"));
   }
 
   function closeRequests(requestIds: string[], dirtyConfirmation: string) {
@@ -417,23 +421,39 @@ export function WorkspacePage() {
 
   function navigationDeleteMessage(
     error: unknown,
-    item: "Collection" | "Ordner",
-    action: "gelöscht" | "bearbeitet" = "gelöscht",
+    kind: "collection" | "folder",
+    action: "delete" | "edit" = "delete",
   ): string {
     if (error instanceof NavigationMutationError) {
       if (error.code.endsWith("_NOT_EMPTY")) {
-        return item === "Collection"
-          ? "Die Collection enthält noch Requests oder Ordner. Verschiebe oder lösche diese zuerst."
-          : "Der Ordner enthält noch Requests oder Unterordner. Verschiebe oder lösche diese zuerst.";
+        return kind === "collection"
+          ? t("errors.collectionNotEmpty")
+          : t("errors.folderNotEmpty");
       }
       if (error.code.endsWith("_VERSION_CONFLICT")) {
-        return `${item} wurde zwischenzeitlich geändert. Lade den Workspace neu und versuche es erneut.`;
+        return kind === "collection"
+          ? t("errors.collectionVersionConflict")
+          : t("errors.folderVersionConflict");
       }
       if (error.code === "FORBIDDEN") {
-        return `Du darfst diesen ${item} nicht ${action === "gelöscht" ? "löschen" : "bearbeiten"}.`;
+        if (kind === "collection") {
+          return action === "delete"
+            ? t("errors.collectionForbiddenDelete")
+            : t("errors.collectionForbiddenEdit");
+        }
+        return action === "delete"
+          ? t("errors.folderForbiddenDelete")
+          : t("errors.folderForbiddenEdit");
       }
     }
-    return `${item} konnte nicht ${action} werden.`;
+    if (kind === "collection") {
+      return action === "delete"
+        ? t("errors.collectionDeleteFailed")
+        : t("errors.collectionEditFailed");
+    }
+    return action === "delete"
+      ? t("errors.folderDeleteFailed")
+      : t("errors.folderEditFailed");
   }
 
   function removeCollection(collection: {
@@ -443,7 +463,7 @@ export function WorkspacePage() {
   }) {
     if (
       !window.confirm(
-        `Leere Collection „${collection.name}“ löschen? Enthaltene Requests oder Ordner werden nicht automatisch gelöscht.`,
+        t("confirmations.removeCollection", { name: collection.name }),
       )
     ) {
       return;
@@ -455,15 +475,13 @@ export function WorkspacePage() {
         expectedVersion: collection.version,
       })
       .catch((error: unknown) =>
-        setManagementError(navigationDeleteMessage(error, "Collection")),
+        setManagementError(navigationDeleteMessage(error, "collection")),
       );
   }
 
   function removeFolder(folder: FolderSummary) {
     if (
-      !window.confirm(
-        `Leeren Ordner „${folder.name}“ löschen? Enthaltene Requests oder Unterordner werden nicht automatisch gelöscht.`,
-      )
+      !window.confirm(t("confirmations.removeFolder", { name: folder.name }))
     ) {
       return;
     }
@@ -474,7 +492,7 @@ export function WorkspacePage() {
         expectedVersion: folder.version,
       })
       .catch((error: unknown) =>
-        setManagementError(navigationDeleteMessage(error, "Ordner")),
+        setManagementError(navigationDeleteMessage(error, "folder")),
       );
   }
 
@@ -491,7 +509,7 @@ export function WorkspacePage() {
       })
       .catch((error: unknown) =>
         setManagementError(
-          navigationDeleteMessage(error, "Collection", "bearbeitet"),
+          navigationDeleteMessage(error, "collection", "edit"),
         ),
       );
   }
@@ -515,10 +533,26 @@ export function WorkspacePage() {
         ...change,
       })
       .catch((error: unknown) =>
-        setManagementError(
-          navigationDeleteMessage(error, "Ordner", "bearbeitet"),
-        ),
+        setManagementError(navigationDeleteMessage(error, "folder", "edit")),
       );
+  }
+
+  function duplicateNavigationCollection(collection: CollectionSummary) {
+    if (!tree.data) return;
+    setManagementError(undefined);
+    void duplicateCollection
+      .mutateAsync({ collection, tree: tree.data })
+      .catch(() =>
+        setManagementError(t("errors.collectionDuplicateFailed")),
+      );
+  }
+
+  function duplicateNavigationFolder(folder: FolderSummary) {
+    if (!tree.data) return;
+    setManagementError(undefined);
+    void duplicateFolder
+      .mutateAsync({ folder, tree: tree.data })
+      .catch(() => setManagementError(t("errors.folderDuplicateFailed")));
   }
 
   function duplicateNavigationRequest(request: RequestSummary) {
@@ -531,13 +565,11 @@ export function WorkspacePage() {
         folderId: request.folderId,
       })
       .then((duplicated) => selectRequest(duplicated.id))
-      .catch(() =>
-        setManagementError("Der Request konnte nicht dupliziert werden."),
-      );
+      .catch(() => setManagementError(t("errors.requestDuplicateFailed")));
   }
 
   function renameNavigationRequest(request: RequestSummary) {
-    const name = window.prompt("Neuer Request-Name", request.name);
+    const name = window.prompt(t("tree.newRequestNamePrompt"), request.name);
     if (!name?.trim() || name.trim() === request.name) return;
     setManagementError(undefined);
     void renameRequest
@@ -545,8 +577,8 @@ export function WorkspacePage() {
       .catch((error: unknown) =>
         setManagementError(
           error instanceof RequestConflictError
-            ? "Der Request wurde zwischenzeitlich geändert. Lade den aktuellen Stand und versuche es erneut."
-            : "Der Request konnte nicht umbenannt werden.",
+            ? t("errors.requestRenameConflict")
+            : t("errors.requestRenameFailed"),
         ),
       );
   }
@@ -562,11 +594,14 @@ export function WorkspacePage() {
 
   function removeRequestItem(request: RequestSummary) {
     const dirtyWarning = dirtyRequestIds.has(request.id)
-      ? " Ungespeicherte Änderungen gehen ebenfalls verloren."
+      ? t("confirmations.removeRequestDirtyWarning")
       : "";
     if (
       !window.confirm(
-        `Request „${request.name}“ löschen?${dirtyWarning} Die gespeicherte Fassung bleibt intern als Revision erhalten.`,
+        t("confirmations.removeRequest", {
+          name: request.name,
+          dirtyWarning,
+        }),
       )
     ) {
       return;
@@ -581,8 +616,8 @@ export function WorkspacePage() {
       .catch((error: unknown) => {
         setManagementError(
           error instanceof RequestConflictError
-            ? "Der Request wurde zwischenzeitlich geändert. Lade den aktuellen Stand und versuche das Löschen erneut."
-            : "Der Request konnte nicht gelöscht werden.",
+            ? t("errors.requestDeleteConflict")
+            : t("errors.requestDeleteFailed"),
         );
       });
   }
@@ -626,11 +661,7 @@ export function WorkspacePage() {
           collectionId,
           folderId: parentFolderId,
         })
-        .catch(() =>
-          setManagementError(
-            "Der Request konnte nicht verschoben werden. Lade bei einem Konflikt die aktuelle Version.",
-          ),
-        );
+        .catch(() => setManagementError(t("errors.requestMoveFailed")));
       return;
     }
     updateFolderItem(dragged.item, {
@@ -736,14 +767,14 @@ export function WorkspacePage() {
   }, [tree.data]);
 
   if (workspaces.isPending) {
-    return <main className="centered-state">Workspaces werden geladen …</main>;
+    return <main className="centered-state">{t("loading")}</main>;
   }
   if (workspaces.isError) {
     return (
       <main className="centered-state">
-        <h1>Workspaces konnten nicht geladen werden</h1>
+        <h1>{t("loadError")}</h1>
         <Button onClick={() => workspaces.refetch()}>
-          Erneut versuchen
+          {t("actions.retry", { ns: "common" })}
         </Button>
       </main>
     );
@@ -751,8 +782,8 @@ export function WorkspacePage() {
   if (!activeWorkspace) {
     return (
       <main className="centered-state">
-        <h1>Noch kein Workspace</h1>
-        <p>Erstelle als Nächstes den ersten gemeinsamen Team-Workspace.</p>
+        <h1>{t("empty.title")}</h1>
+        <p>{t("empty.description")}</p>
         <WorkspaceCreateForm />
       </main>
     );
@@ -765,7 +796,7 @@ export function WorkspacePage() {
       <IconButton
         aria-controls="workspace-sidebar"
         aria-expanded={sidebarOpen}
-        aria-label="Workspace-Navigation öffnen"
+        aria-label={t("sidebar.openNavigation")}
         className="mobile-sidebar-trigger"
         onClick={() => setSidebarOpen(true)}
         ref={sidebarTriggerRef}
@@ -774,7 +805,7 @@ export function WorkspacePage() {
       </IconButton>
       {compactNavigation && sidebarOpen ? (
         <button
-          aria-label="Workspace-Navigation schließen"
+          aria-label={t("sidebar.closeNavigation")}
           className="sidebar-backdrop"
           onClick={closeSidebar}
           type="button"
@@ -782,13 +813,13 @@ export function WorkspacePage() {
       ) : null}
       <aside
         aria-hidden={compactNavigation && !sidebarOpen}
-        aria-label="Workspace-Navigation"
+        aria-label={t("sidebar.navigationLabel")}
         className="sidebar"
         id="workspace-sidebar"
         inert={compactNavigation && !sidebarOpen ? true : undefined}
       >
         <IconButton
-          aria-label="Workspace-Navigation schließen"
+          aria-label={t("sidebar.closeNavigation")}
           className="mobile-sidebar-close"
           onClick={closeSidebar}
           ref={sidebarCloseRef}
@@ -797,17 +828,15 @@ export function WorkspacePage() {
         </IconButton>
         <div className="workspace-switcher">
           <div className="workspace-select">
-            <span className="eyebrow">Workspace</span>
+            <span className="eyebrow">{t("sidebar.workspaceEyebrow")}</span>
             <Dropdown
-              aria-label="Workspace auswählen"
+              aria-label={t("sidebar.selectWorkspace")}
               className="workspace-select-dropdown"
               onOptionSelect={(_, data) => {
                 if (!data.optionValue) return;
                 if (
                   hasDirtyRequests &&
-                  !window.confirm(
-                    "In offenen Tabs gibt es ungespeicherte Änderungen. Möchtest du den Workspace wirklich wechseln?",
-                  )
+                  !window.confirm(t("sidebar.switchWorkspaceConfirm"))
                 ) {
                   return;
                 }
@@ -824,14 +853,14 @@ export function WorkspacePage() {
             </Dropdown>
           </div>
           <IconButton
-            aria-label="Workspace erstellen"
+            aria-label={t("sidebar.createWorkspace")}
             className="workspace-create-button"
             disabled={activeWorkspace.role !== "owner"}
             onClick={() => setCreatingWorkspace(true)}
             title={
               activeWorkspace.role === "owner"
-                ? "Workspace in diesem Team erstellen"
-                : "Nur Team-Owner können Workspaces erstellen"
+                ? t("sidebar.createWorkspaceTitleOwner")
+                : t("sidebar.createWorkspaceTitleNonOwner")
             }
           >
             <Add20Regular aria-hidden="true" />
@@ -846,7 +875,7 @@ export function WorkspacePage() {
               variant="ghost"
             >
               <People20Regular aria-hidden="true" />
-              Team
+              {t("sidebar.team")}
             </Button>
             <Button
               className="history-link"
@@ -854,16 +883,16 @@ export function WorkspacePage() {
               variant="ghost"
             >
               <PeopleAdd20Regular aria-hidden="true" />
-              Einladen
+              {t("sidebar.invite")}
             </Button>
           </div>
         ) : null}
 
         <div className="sidebar-heading">
-          <span>Collections</span>
+          <span>{t("sidebar.collections")}</span>
           {canEdit ? (
             <IconButton
-              aria-label="Collection erstellen"
+              aria-label={t("sidebar.createCollection")}
               onClick={() => setCreatingCollection(true)}
               size="compact"
             >
@@ -881,11 +910,11 @@ export function WorkspacePage() {
 
         <label className="workspace-search">
           <Search aria-hidden="true" size={14} />
-          <span className="sr-only">Workspace durchsuchen</span>
+          <span className="sr-only">{t("sidebar.searchLabel")}</span>
           <input
-            aria-label="Workspace durchsuchen"
+            aria-label={t("sidebar.searchLabel")}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Requests durchsuchen"
+            placeholder={t("sidebar.searchPlaceholder")}
             ref={searchInputRef}
             type="search"
             value={searchQuery}
@@ -894,14 +923,14 @@ export function WorkspacePage() {
         </label>
 
         {tree.isPending ? (
-          <p className="sidebar-state">Navigation wird geladen …</p>
+          <p className="sidebar-state">{t("sidebar.navigationLoading")}</p>
         ) : tree.isError ? (
           <Button
             className="sidebar-state retry-link"
             onClick={() => tree.refetch()}
             variant="ghost"
           >
-            Laden erneut versuchen
+            {t("sidebar.retryLoadNavigation")}
           </Button>
         ) : normalizedSearch ? (
           <div className="workspace-search-results">
@@ -921,7 +950,7 @@ export function WorkspacePage() {
                 <FolderClosed aria-hidden="true" size={14} />
                 <span>
                   <strong>{collection.name}</strong>
-                  <small>Collection</small>
+                  <small>{t("sidebar.collectionResultLabel")}</small>
                 </span>
               </button>
             ))}
@@ -947,7 +976,7 @@ export function WorkspacePage() {
             ))}
             {matchingCollections.length === 0 &&
             matchingRequests.length === 0 ? (
-              <p className="sidebar-state">Keine Treffer gefunden.</p>
+              <p className="sidebar-state">{t("sidebar.noResults")}</p>
             ) : null}
           </div>
         ) : (
@@ -994,9 +1023,15 @@ export function WorkspacePage() {
                     <span>{collection.name}</span>
                   </button>
                   {canEdit ? (
-                    <TreeActionMenu label={`${collection.name} Optionen`}>
+                    <TreeActionMenu
+                      label={t("tree.collectionOptions", {
+                        name: collection.name,
+                      })}
+                    >
                       <button
-                        aria-label={`${collection.name} nach oben`}
+                        aria-label={t("tree.collectionMoveUp", {
+                          name: collection.name,
+                        })}
                         disabled={
                           collectionIndex === 0 || updateCollection.isPending
                         }
@@ -1009,10 +1044,12 @@ export function WorkspacePage() {
                         type="button"
                       >
                         <ArrowUp aria-hidden="true" size={14} />
-                        Nach oben
+                        {t("actions.moveUp", { ns: "common" })}
                       </button>
                       <button
-                        aria-label={`${collection.name} nach unten`}
+                        aria-label={t("tree.collectionMoveDown", {
+                          name: collection.name,
+                        })}
                         disabled={
                           collectionIndex ===
                             (tree.data?.collections.length ?? 0) - 1 ||
@@ -1027,13 +1064,15 @@ export function WorkspacePage() {
                         type="button"
                       >
                         <ArrowDown aria-hidden="true" size={14} />
-                        Nach unten
+                        {t("actions.moveDown", { ns: "common" })}
                       </button>
                       <button
-                        aria-label={`${collection.name} umbenennen`}
+                        aria-label={t("tree.collectionRename", {
+                          name: collection.name,
+                        })}
                         onClick={() => {
                           const name = window.prompt(
-                            "Neuer Collection-Name",
+                            t("tree.newCollectionNamePrompt"),
                             collection.name,
                           );
                           if (name?.trim() && name.trim() !== collection.name) {
@@ -1046,10 +1085,24 @@ export function WorkspacePage() {
                         type="button"
                       >
                         <Pencil aria-hidden="true" size={14} />
-                        Umbenennen
+                        {t("actions.rename", { ns: "common" })}
                       </button>
                       <button
-                        aria-label={`Request in ${collection.name} erstellen`}
+                        aria-label={t("tree.collectionDuplicate", {
+                          name: collection.name,
+                        })}
+                        disabled={duplicateCollection.isPending}
+                        onClick={() => duplicateNavigationCollection(collection)}
+                        role="menuitem"
+                        type="button"
+                      >
+                        <Copy20Regular aria-hidden="true" />
+                        {t("actions.duplicate", { ns: "common" })}
+                      </button>
+                      <button
+                        aria-label={t("tree.createRequestIn", {
+                          name: collection.name,
+                        })}
                         onClick={(event) => {
                           event.stopPropagation();
                           setCreatingChild({
@@ -1062,10 +1115,12 @@ export function WorkspacePage() {
                         type="button"
                       >
                         <FilePlus2 aria-hidden="true" size={14} />
-                        Request erstellen
+                        {t("tree.createRequest")}
                       </button>
                       <button
-                        aria-label={`Ordner in ${collection.name} erstellen`}
+                        aria-label={t("tree.createFolderIn", {
+                          name: collection.name,
+                        })}
                         onClick={(event) => {
                           event.stopPropagation();
                           setCreatingChild({
@@ -1078,10 +1133,12 @@ export function WorkspacePage() {
                         type="button"
                       >
                         <FolderPlus aria-hidden="true" size={14} />
-                        Ordner erstellen
+                        {t("tree.createFolder")}
                       </button>
                       <button
-                        aria-label={`${collection.name} löschen`}
+                        aria-label={t("tree.collectionDelete", {
+                          name: collection.name,
+                        })}
                         className="danger"
                         disabled={deleteCollection.isPending}
                         onClick={(event) => {
@@ -1092,7 +1149,7 @@ export function WorkspacePage() {
                         type="button"
                       >
                         <Delete20Regular aria-hidden="true" />
-                        Löschen
+                        {t("actions.delete", { ns: "common" })}
                       </button>
                     </TreeActionMenu>
                   ) : null}
@@ -1159,6 +1216,7 @@ export function WorkspacePage() {
                           setDropTarget(target);
                           return true;
                         }}
+                        onDuplicateFolder={duplicateNavigationFolder}
                         onDuplicateRequest={duplicateNavigationRequest}
                         onMoveRequest={startMovingRequest}
                         onRenameRequest={renameNavigationRequest}
@@ -1215,7 +1273,7 @@ export function WorkspacePage() {
               />
             ))}
             {tree.data?.requests.length === 0 ? (
-              <p className="sidebar-state">Noch keine Requests vorhanden.</p>
+              <p className="sidebar-state">{t("sidebar.noRequests")}</p>
             ) : null}
           </nav>
         )}
@@ -1234,7 +1292,7 @@ export function WorkspacePage() {
               variant="ghost"
             >
               <ArrowUpload20Regular aria-hidden="true" />
-              OpenAPI importieren
+              {t("sidebar.importOpenApi")}
             </Button>
           ) : null}
           <Button
@@ -1244,9 +1302,7 @@ export function WorkspacePage() {
               if (!tree.data) return;
               if (
                 hasDirtyRequests &&
-                !window.confirm(
-                  "Der Export enthält nur gespeicherte Versionen. Trotzdem fortfahren?",
-                )
+                !window.confirm(t("sidebar.exportConfirm"))
               ) {
                 return;
               }
@@ -1257,17 +1313,15 @@ export function WorkspacePage() {
                   tree: tree.data,
                 });
               } catch {
-                setManagementError(
-                  "Der Workspace konnte nicht exportiert werden.",
-                );
+                setManagementError(t("sidebar.exportError"));
               }
             }}
             variant="ghost"
           >
             <ArrowDownload20Regular aria-hidden="true" />
             {exportWorkspace.isPending
-              ? "Export wird erstellt …"
-              : "Workspace exportieren"}
+              ? t("sidebar.exporting")
+              : t("sidebar.export")}
           </Button>
           <Button
             className="history-link"
@@ -1275,7 +1329,7 @@ export function WorkspacePage() {
             variant="ghost"
           >
             <History20Regular aria-hidden="true" />
-            Verlauf
+            {t("sidebar.history")}
           </Button>
         </div>
       </aside>
@@ -1285,7 +1339,7 @@ export function WorkspacePage() {
           <>
             <div className="request-tabs-bar">
               <div
-                aria-label="Geöffnete Requests"
+                aria-label={t("workbench.openTabsLabel")}
                 className="request-tabs"
                 role="navigation"
               >
@@ -1334,7 +1388,7 @@ export function WorkspacePage() {
                           reorderRequestIds(current, request.id, targetId),
                         );
                       }}
-                      title="Zum Sortieren ziehen oder Alt + Pfeiltaste verwenden"
+                      title={t("workbench.tabSortHint")}
                       type="button"
                     >
                       <span
@@ -1345,13 +1399,15 @@ export function WorkspacePage() {
                       <span>{request.name}</span>
                       {dirtyRequestIds.has(request.id) ? (
                         <span
-                          aria-label="Ungespeicherte Änderungen"
+                          aria-label={t("workbench.unsavedIndicator")}
                           className="dirty-indicator"
                         />
                       ) : null}
                     </button>
                     <button
-                      aria-label={`${request.name} schließen`}
+                      aria-label={t("workbench.closeTab", {
+                        name: request.name,
+                      })}
                       className="request-tab-close"
                       onClick={() => closeRequest(request.id)}
                       type="button"
@@ -1363,7 +1419,7 @@ export function WorkspacePage() {
               </div>
               <TreeActionMenu
                 className="request-tab-menu"
-                label="Tab-Aktionen"
+                label={t("workbench.tabActions")}
                 triggerClassName="tree-menu-trigger"
               >
                 <button
@@ -1373,23 +1429,23 @@ export function WorkspacePage() {
                       openRequestIds.filter(
                         (requestId) => requestId !== activeRequestId,
                       ),
-                      "Andere Tabs enthalten ungespeicherte Änderungen. Möchtest du sie wirklich schließen?",
+                      t("confirmations.closeOtherTabs"),
                     )
                   }
                   type="button"
                 >
-                  Andere Tabs schließen
+                  {t("workbench.closeOtherTabs")}
                 </button>
                 <button
                   onClick={() =>
                     closeRequests(
                       openRequestIds,
-                      "Offene Tabs enthalten ungespeicherte Änderungen. Möchtest du wirklich alle schließen?",
+                      t("confirmations.closeAllTabs"),
                     )
                   }
                   type="button"
                 >
-                  Alle Tabs schließen
+                  {t("workbench.closeAllTabs")}
                 </button>
               </TreeActionMenu>
             </div>
@@ -1400,7 +1456,9 @@ export function WorkspacePage() {
                   <h1>{activeRequest.name}</h1>
                   {canEdit ? (
                     <IconButton
-                      aria-label={`${activeRequest.name} umbenennen`}
+                      aria-label={t("workbench.renameRequest", {
+                        name: activeRequest.name,
+                      })}
                       className="request-title-rename"
                       onClick={() => renameNavigationRequest(activeRequest)}
                       size="compact"
@@ -1424,7 +1482,7 @@ export function WorkspacePage() {
                     variant="danger"
                   >
                     <Delete20Regular aria-hidden="true" />
-                    Löschen
+                    {t("actions.delete", { ns: "common" })}
                   </Button>
                 ) : null}
                 {canEdit ? (
@@ -1435,7 +1493,7 @@ export function WorkspacePage() {
                     value="save"
                   >
                     <Save20Regular aria-hidden="true" />
-                    Speichern
+                    {t("actions.save", { ns: "common" })}
                   </Button>
                 ) : null}
                 <Button
@@ -1446,7 +1504,7 @@ export function WorkspacePage() {
                   variant="primary"
                 >
                   <Send20Regular aria-hidden="true" />
-                  Senden
+                  {t("actions.send", { ns: "common" })}
                 </Button>
               </div>
             </div>
@@ -1471,8 +1529,8 @@ export function WorkspacePage() {
           </>
         ) : (
           <div className="centered-state workbench-empty">
-            <h1>Kein Request ausgewählt</h1>
-            <p>Wähle einen Request oder erstelle einen neuen.</p>
+            <h1>{t("workbench.noRequestSelected")}</h1>
+            <p>{t("workbench.noRequestSelectedHint")}</p>
           </div>
         )}
       </section>
@@ -1512,13 +1570,11 @@ export function WorkspacePage() {
           onClose={() => setMovingRequest(false)}
           titleId="move-request-title"
         >
-            <h2 id="move-request-title">Request verschieben</h2>
-            <p>
-              Wähle die neue Collection und optional einen zugehörigen Ordner.
-            </p>
+            <h2 id="move-request-title">{t("moveDialog.title")}</h2>
+            <p>{t("moveDialog.description")}</p>
             <div className="move-request-fields">
               <label>
-                Collection
+                {t("moveDialog.collectionLabel")}
                 <Select
                   onChange={(event) => {
                     setDestinationCollectionId(event.target.value);
@@ -1534,14 +1590,14 @@ export function WorkspacePage() {
                 </Select>
               </label>
               <label>
-                Ordner
+                {t("moveDialog.folderLabel")}
                 <Select
                   onChange={(event) =>
                     setDestinationFolderId(event.target.value)
                   }
                   value={destinationFolderId}
                 >
-                  <option value="">Kein Ordner</option>
+                  <option value="">{t("moveDialog.noFolder")}</option>
                   {tree.data?.folders
                     .filter(
                       (folder) =>
@@ -1564,7 +1620,7 @@ export function WorkspacePage() {
               <Button
                 onClick={() => setMovingRequest(false)}
               >
-                Abbrechen
+                {t("actions.cancel", { ns: "common" })}
               </Button>
               <Button
                 disabled={!destinationCollectionId || moveRequest.isPending}
@@ -1579,14 +1635,12 @@ export function WorkspacePage() {
                     })
                     .then(() => setMovingRequest(false))
                     .catch(() =>
-                      setManagementError(
-                        "Der Request konnte nicht verschoben werden. Lade bei einem Konflikt die aktuelle Version.",
-                      ),
+                      setManagementError(t("errors.requestMoveFailed")),
                     );
                 }}
                 variant="primary"
               >
-                Verschieben
+                {t("actions.move", { ns: "common" })}
               </Button>
             </DialogFooter>
         </Dialog>
@@ -1597,18 +1651,18 @@ export function WorkspacePage() {
           onClose={() => setCreatingWorkspace(false)}
           titleId="create-workspace-title"
         >
-            <h2 id="create-workspace-title">Workspace erstellen</h2>
+            <h2 id="create-workspace-title">{t("createDialog.title")}</h2>
             <p>
-              Lege einen weiteren gemeinsamen Workspace im Team von{" "}
-              <strong>{activeWorkspace.name}</strong> an. Bestehende
-              Teammitglieder erhalten automatisch Zugriff.
+              {t("createDialog.description", {
+                teamName: activeWorkspace.name,
+              })}
             </p>
             <WorkspaceCreateForm teamId={activeWorkspace.teamId} />
             <DialogFooter>
               <Button
                 onClick={() => setCreatingWorkspace(false)}
               >
-                Abbrechen
+                {t("actions.cancel", { ns: "common" })}
               </Button>
             </DialogFooter>
         </Dialog>
@@ -1645,6 +1699,7 @@ interface FolderTreeNodeProps {
     folderId: string,
   ) => boolean;
   onDropFolder: (collectionId: string, folderId: string) => void;
+  onDuplicateFolder: (folder: FolderSummary) => void;
   onDuplicateRequest: (request: RequestSummary) => void;
   onMoveRequest: (request: RequestSummary) => void;
   onRenameRequest: (request: RequestSummary) => void;
@@ -1687,6 +1742,7 @@ function FolderTreeNode({
   onDragStart,
   onDragOverFolder,
   onDropFolder,
+  onDuplicateFolder,
   onDuplicateRequest,
   onMoveRequest,
   onRenameRequest,
@@ -1696,6 +1752,7 @@ function FolderTreeNode({
   onToggleFolder,
   workspaceId,
 }: FolderTreeNodeProps) {
+  const { t } = useTranslation(["workspaces", "common"]);
   const collapsed = collapsedFolderIds.has(folder.id);
   const siblingKey =
     folder.parentFolderId ?? `collection:${folder.collectionId}`;
@@ -1750,9 +1807,11 @@ function FolderTreeNode({
           <span>{folder.name}</span>
         </button>
         {canEdit ? (
-          <TreeActionMenu label={`${folder.name} Optionen`}>
+          <TreeActionMenu
+            label={t("tree.folderOptions", { name: folder.name })}
+          >
             <button
-              aria-label={`${folder.name} nach oben`}
+              aria-label={t("tree.folderMoveUp", { name: folder.name })}
               disabled={siblingIndex <= 0}
               onClick={() =>
                 onUpdateFolder(folder, { targetPosition: siblingIndex - 1 })
@@ -1761,10 +1820,10 @@ function FolderTreeNode({
               type="button"
             >
               <ArrowUp aria-hidden="true" size={14} />
-              Nach oben
+              {t("actions.moveUp", { ns: "common" })}
             </button>
             <button
-              aria-label={`${folder.name} nach unten`}
+              aria-label={t("tree.folderMoveDown", { name: folder.name })}
               disabled={siblingIndex < 0 || siblingIndex === siblings.length - 1}
               onClick={() =>
                 onUpdateFolder(folder, { targetPosition: siblingIndex + 1 })
@@ -1773,12 +1832,15 @@ function FolderTreeNode({
               type="button"
             >
               <ArrowDown aria-hidden="true" size={14} />
-              Nach unten
+              {t("actions.moveDown", { ns: "common" })}
             </button>
             <button
-              aria-label={`${folder.name} umbenennen`}
+              aria-label={t("tree.folderRename", { name: folder.name })}
               onClick={() => {
-                const name = window.prompt("Neuer Ordnername", folder.name);
+                const name = window.prompt(
+                  t("tree.newFolderNamePrompt"),
+                  folder.name,
+                );
                 if (name?.trim() && name.trim() !== folder.name) {
                   onUpdateFolder(folder, { name: name.trim() });
                 }
@@ -1787,10 +1849,19 @@ function FolderTreeNode({
               type="button"
             >
               <Pencil aria-hidden="true" size={14} />
-              Umbenennen
+              {t("actions.rename", { ns: "common" })}
             </button>
             <button
-              aria-label={`Request in ${folder.name} erstellen`}
+              aria-label={t("tree.folderDuplicate", { name: folder.name })}
+              onClick={() => onDuplicateFolder(folder)}
+              role="menuitem"
+              type="button"
+            >
+              <Copy20Regular aria-hidden="true" />
+              {t("actions.duplicate", { ns: "common" })}
+            </button>
+            <button
+              aria-label={t("tree.createRequestIn", { name: folder.name })}
               onClick={() =>
                 onStartCreating({
                   collectionId: folder.collectionId,
@@ -1802,10 +1873,10 @@ function FolderTreeNode({
               type="button"
             >
               <FilePlus2 aria-hidden="true" size={14} />
-              Request erstellen
+              {t("tree.createRequest")}
             </button>
             <button
-              aria-label={`Unterordner in ${folder.name} erstellen`}
+              aria-label={t("tree.createSubfolderIn", { name: folder.name })}
               onClick={() =>
                 onStartCreating({
                   collectionId: folder.collectionId,
@@ -1817,17 +1888,17 @@ function FolderTreeNode({
               type="button"
             >
               <FolderPlus aria-hidden="true" size={14} />
-              Unterordner erstellen
+              {t("tree.createSubfolder")}
             </button>
             <button
-              aria-label={`${folder.name} löschen`}
+              aria-label={t("tree.folderDelete", { name: folder.name })}
               className="danger"
               onClick={() => onDeleteFolder(folder)}
               role="menuitem"
               type="button"
             >
               <Delete20Regular aria-hidden="true" />
-              Löschen
+              {t("actions.delete", { ns: "common" })}
             </button>
           </TreeActionMenu>
         ) : null}
@@ -1871,6 +1942,7 @@ function FolderTreeNode({
             onDragStart={onDragStart}
             onDragOverFolder={onDragOverFolder}
             onDropFolder={onDropFolder}
+            onDuplicateFolder={onDuplicateFolder}
             onDuplicateRequest={onDuplicateRequest}
             onMoveRequest={onMoveRequest}
             onRenameRequest={onRenameRequest}
@@ -1932,6 +2004,7 @@ function RequestTreeRow({
   onClick,
   request,
 }: RequestTreeRowProps) {
+  const { t } = useTranslation(["workspaces", "common"]);
   return (
     <div
       className={`tree-row request-row ${active ? "active" : ""}`}
@@ -1956,13 +2029,15 @@ function RequestTreeRow({
         <span>{request.name}</span>
       </button>
       {canEdit ? (
-        <TreeActionMenu label={`${request.name} Optionen`}>
+        <TreeActionMenu
+          label={t("tree.requestOptions", { name: request.name })}
+        >
           <button onClick={onClick} role="menuitem" type="button">
-            Öffnen
+            {t("actions.open", { ns: "common" })}
           </button>
           <button onClick={onRename} role="menuitem" type="button">
             <Pencil aria-hidden="true" size={14} />
-            Umbenennen
+            {t("actions.rename", { ns: "common" })}
           </button>
           <button
             disabled={!request.collectionId}
@@ -1971,17 +2046,17 @@ function RequestTreeRow({
             type="button"
           >
             <Copy20Regular aria-hidden="true" />
-            Duplizieren
+            {t("actions.duplicate", { ns: "common" })}
           </button>
           <button
             disabled={!request.collectionId || dirty}
             onClick={onMove}
             role="menuitem"
-            title={dirty ? "Speichere den Request vor dem Verschieben" : undefined}
+            title={dirty ? t("tree.moveDisabledHint") : undefined}
             type="button"
           >
             <FolderInput aria-hidden="true" size={14} />
-            Verschieben
+            {t("actions.move", { ns: "common" })}
           </button>
           <button
             className="danger"
@@ -1990,7 +2065,7 @@ function RequestTreeRow({
             type="button"
           >
             <Delete20Regular aria-hidden="true" />
-            Löschen
+            {t("actions.delete", { ns: "common" })}
           </button>
         </TreeActionMenu>
       ) : null}

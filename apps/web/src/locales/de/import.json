@@ -1,0 +1,25 @@
+{
+  "title": "API-Definition importieren",
+  "description": "OpenAPI 3.x als JSON/YAML oder Postman Collection 2.x als JSON. Externe Referenzen und Dateianhänge werden nicht geladen.",
+  "documentLabel": "OpenAPI-Dokument",
+  "documentPlaceholder": "Datei hier einfügen oder auswählen …",
+  "fileSelectLabel": "OpenAPI-Datei auswählen",
+  "fileTooLarge": "Die OpenAPI-Datei darf maximal 2 MB groß sein.",
+  "requestsDetected": "{{count}} unterstützte Requests erkannt",
+  "targetCollectionLabel": "Ziel-Collection",
+  "createPreview": "Vorschau erstellen",
+  "importCount": "{{count}} Requests importieren",
+  "importProgress": "{{current}} von {{total}} Requests …",
+  "importPartialFailure": "{{count}} Requests wurden importiert. Der Import wurde danach wegen eines Fehlers angehalten.",
+  "documentUnreadable": "Das Dokument konnte nicht gelesen werden.",
+  "errors": {
+    "invalidJsonOrYaml": "Die Datei enthält ungültiges JSON oder YAML.",
+    "notOpenApiDocument": "Es wurde kein OpenAPI-Dokument erkannt.",
+    "unsupportedVersion": "Aktuell werden OpenAPI-Dokumente ab Version 3 unterstützt.",
+    "noValidPaths": "Das OpenAPI-Dokument enthält keine gültigen Pfade.",
+    "noSupportedOperations": "Es wurden keine unterstützten REST-Operationen gefunden.",
+    "invalidPostmanJson": "Die Postman Collection enthält ungültiges JSON.",
+    "notPostmanCollection": "Es wurde keine Postman Collection erkannt.",
+    "noSupportedRequests": "Es wurden keine unterstützten REST-Requests gefunden."
+  }
+}
