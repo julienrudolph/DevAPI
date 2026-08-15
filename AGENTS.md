@@ -86,8 +86,16 @@ Neue Funktionen aus dieser Liste benötigen eine bewusste Scope-Entscheidung und
 
 Die Electron-Desktop-App wurde als bewusste Scope-Erweiterung freigegeben. Ihre
 erste Stufe ist ausschließlich ein installierbarer Client für den zentralen
-DevAPI-Server. Eine lokale Request-Ausführung gegen `localhost` oder private
-Netze bleibt eine getrennte, sicherheitskritische Folgeentscheidung.
+DevAPI-Server.
+
+Die lokale Request-Ausführung gegen `localhost` und private Netze wurde als
+weitere, bewusste Scope-Erweiterung freigegeben (siehe 11.1a) und ist
+ausschließlich dem Desktop-Client vorbehalten. Die Web-Variante bleibt
+weiterhin ausschließlich auf den serverseitigen Proxy beschränkt, da ein
+Browser lokale Ziele wegen CORS strukturell nicht zuverlässig erreichen kann.
+Ein zusätzlicher, separat zu installierender lokaler Agent, der auch der
+Web-Variante lokale Ausführung ermöglichen würde, bleibt bewusst zurückgestellt
+(siehe Nicht-Ziele) und benötigt eine eigene Scope-Entscheidung.
 
 Die mehrsprachige Oberfläche (Deutsch, Englisch, erweiterbar) wurde ebenfalls
 als bewusste Scope-Erweiterung freigegeben. Übersetzte Playwright-Tests oder
@@ -406,6 +414,39 @@ Mindestens erforderlich:
 
 Für lokale Entwicklungsserver oder private Team-Netze ist später ein lokaler Agent oder eine explizit abgesicherte Netzwerkfunktion erforderlich. Der öffentliche MVP-Proxy darf diese Ziele nicht freischalten.
 
+### 11.1a Lokale Ausführung im Desktop-Client
+
+Der Electron-Desktop-Client darf Requests wahlweise direkt aus seinem
+Main-Prozess ausführen, statt sie über `apps/proxy` zu leiten. Das ist die
+einzige vorgesehene Möglichkeit, private und Loopback-Ziele zu erreichen; die
+Web-Variante bleibt dafür ausschließlich auf den Server-Proxy beschränkt.
+
+Auswahl des Ausführungswegs:
+
+- Standardmäßig automatische Erkennung: löst das Ziel zu einer privaten,
+  Loopback- oder Link-Local-Adresse auf, wird lokal ausgeführt; alle anderen
+  Ziele laufen weiterhin über den Server-Proxy.
+- Zusätzlich immer ein expliziter, sichtbarer Umschalter pro Request, mit dem
+  Nutzer den erkannten Ausführungsweg bewusst überschreiben können.
+
+Auch bei lokaler Ausführung bleiben folgende Schutzmaßnahmen verpflichtend,
+nur die Freigabe privater/Loopback-Bereiche entfällt gegenüber 11.1:
+
+- Cloud-Metadatenendpunkte bleiben blockiert.
+- nur `http` und `https` als Protokoll.
+- Verbindungs-, Gesamt- und Leerlauf-Timeouts.
+- Limits für Request- und Response-Größe.
+- Verbot von Nutzerinformationen in URLs.
+- sichere, redigierte Protokollierung; keine Zugangsdaten oder Response-Bodies
+  in der geteilten Ausführungshistorie.
+
+Lokal ausgeführte Requests erzeugen denselben Eintrag in der geteilten
+Ausführungshistorie wie über den Proxy ausgeführte Requests. Das bestehende
+Schema speichert dort ohnehin nur Metadaten (Request-Name, Methode,
+Statuscode, Dauer, ausführende Person, Zeitpunkt), keine Bodies, Header oder
+vollständigen URLs — dadurch ergibt sich durch die lokale Ausführung kein
+zusätzliches Datenschutzrisiko für geteilte Workspaces.
+
 ### 11.2 CORS
 
 - CORS ist keine Autorisierung.
@@ -567,6 +608,11 @@ Mindestens für:
 - Timeouts, Redirect-Limits und Abbruch
 - Header-Redaction
 - nicht erlaubte Protokolle
+
+Für die lokale Ausführung im Desktop-Client (11.1a) gelten dieselben
+Anforderungen mit umgekehrter Erwartung bei privaten/Loopback-Bereichen
+(erlaubt statt blockiert), Cloud-Metadatenadressen bleiben aber weiterhin ein
+Negativtestfall.
 
 ### 15.5 End-to-End-Tests
 
