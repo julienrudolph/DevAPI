@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   executeSavedRequestSchema,
+  recordLocalExecutionSchema,
   requestExecutionSchema,
 } from "./execution-history";
 
@@ -35,5 +36,30 @@ describe("execution history contracts", () => {
     });
     expect(parsed).not.toHaveProperty("url");
     expect(parsed).not.toHaveProperty("responseBody");
+  });
+
+  it("accepts only metadata for a locally executed request, never the target or body", () => {
+    const parsed = recordLocalExecutionSchema.parse({
+      requestId: crypto.randomUUID(),
+      method: "GET",
+      statusCode: 200,
+      durationMs: 12,
+      successful: true,
+      url: "http://localhost:4000/internal",
+      body: "secret",
+    });
+    expect(parsed).not.toHaveProperty("url");
+    expect(parsed).not.toHaveProperty("body");
+  });
+
+  it("rejects a local execution record without a requestId", () => {
+    expect(() =>
+      recordLocalExecutionSchema.parse({
+        method: "GET",
+        statusCode: 200,
+        durationMs: 12,
+        successful: true,
+      }),
+    ).toThrow();
   });
 });
