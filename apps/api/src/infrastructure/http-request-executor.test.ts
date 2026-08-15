@@ -24,17 +24,21 @@ describe("HttpRequestExecutor", () => {
       "internal-token",
     );
 
-    await executor.execute({
-      method: "GET",
-      url: "https://api.example.com/health",
-      headers: [],
-    });
+    await executor.execute(
+      {
+        method: "GET",
+        url: "https://api.example.com/health",
+        headers: [],
+      },
+      { correlationId: "3ac6a7df-5e80-427d-a6e4-d48427ac924d" },
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       new URL("http://proxy:3002/v1/execute"),
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer internal-token",
+          "X-Correlation-Id": "3ac6a7df-5e80-427d-a6e4-d48427ac924d",
         }),
       }),
     );

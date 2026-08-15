@@ -107,7 +107,17 @@ export function buildProxyApp(options: ProxyAppOptions = {}) {
   let activeExecutions = 0;
   const app = Fastify({
     logger: options.logger ?? false,
-    genReqId: () => randomUUID(),
+    // Honors an inbound X-Correlation-Id from the API so a single logical
+    // request shares one ID across both hops for log correlation
+    // (AGENTS.md 14); falls back to a fresh ID for direct/unknown callers.
+    genReqId: (request) => {
+      const correlationId = request.headers["x-correlation-id"];
+      return typeof correlationId === "string" &&
+        correlationId.length > 0 &&
+        correlationId.length <= 100
+        ? correlationId
+        : randomUUID();
+    },
     bodyLimit: 1_100_000,
     requestTimeout: 15_000,
   });

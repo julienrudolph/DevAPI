@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import {
   RequestExecutionError,
+  type RequestExecutionContext,
   type RequestExecutor,
 } from "../domain/request-executor.js";
 
@@ -21,12 +22,16 @@ export class HttpRequestExecutor implements RequestExecutor {
     private readonly internalToken: string,
   ) {}
 
-  async execute(input: ExecuteRequest): Promise<ProxyResponse> {
+  async execute(
+    input: ExecuteRequest,
+    context: RequestExecutionContext,
+  ): Promise<ProxyResponse> {
     const response = await fetch(new URL("/v1/execute", this.proxyUrl), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.internalToken}`,
         "Content-Type": "application/json",
+        "X-Correlation-Id": context.correlationId,
       },
       body: JSON.stringify(input),
       signal: AbortSignal.timeout(20_000),

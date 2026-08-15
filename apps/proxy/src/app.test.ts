@@ -79,6 +79,44 @@ describe("proxy API", () => {
     await app.close();
   });
 
+  it("echoes an inbound correlation ID as its own request ID", async () => {
+    const app = buildProxyApp({
+      transport,
+      authenticate: () => true,
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/execute",
+      headers: {
+        authorization: "Bearer test",
+        "x-correlation-id": "3ac6a7df-5e80-427d-a6e4-d48427ac924d",
+      },
+      payload: { method: "GET", url: "https://1.1.1.1", headers: [] },
+    });
+    expect(response.headers["x-request-id"]).toBe(
+      "3ac6a7df-5e80-427d-a6e4-d48427ac924d",
+    );
+    await app.close();
+  });
+
+  it("falls back to a generated request ID without an inbound correlation ID", async () => {
+    const app = buildProxyApp({
+      transport,
+      authenticate: () => true,
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/execute",
+      headers: { authorization: "Bearer test" },
+      payload: { method: "GET", url: "https://1.1.1.1", headers: [] },
+    });
+    expect(response.headers["x-request-id"]).toBeTruthy();
+    expect(response.headers["x-request-id"]).not.toBe(
+      "3ac6a7df-5e80-427d-a6e4-d48427ac924d",
+    );
+    await app.close();
+  });
+
   it("maps an aborted target request to 504 TARGET_TIMEOUT", async () => {
     const abortingTransport: Transport = async () => {
       throw new DOMException("The operation was aborted.", "AbortError");

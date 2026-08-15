@@ -790,6 +790,7 @@ export function buildApp(dependencies: ApiDependencies) {
     try {
       const result = await dependencies.executor.execute(
         executeRequestSchema.parse(executionInput),
+        { correlationId: request.id },
       );
       await recordExecutionSafely(dependencies.executionHistory, {
         requestId,

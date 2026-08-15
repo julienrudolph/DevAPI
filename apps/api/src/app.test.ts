@@ -139,6 +139,45 @@ describe("request API authentication", () => {
     await app.close();
   });
 
+  it("forwards the request's own ID as the proxy correlation ID", async () => {
+    let receivedCorrelationId: string | undefined;
+    const app = buildApp({
+      authenticate: async () => ({
+        id: userId,
+        accessToken: "verified-token",
+      }),
+      requests: repository,
+      workspaces: workspaceRepository,
+      executor: {
+        execute: async (_input, context) => {
+          receivedCorrelationId = context.correlationId;
+          return {
+            status: 200,
+            statusText: "OK",
+            headers: {},
+            body: "",
+            durationMs: 5,
+          };
+        },
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/execute",
+      headers: { authorization: "Bearer verified-token" },
+      payload: {
+        requestId,
+        method: "GET",
+        url: "https://api.example.com/health",
+        headers: [],
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(receivedCorrelationId).toBeTruthy();
+    expect(receivedCorrelationId).toBe(response.headers["x-request-id"]);
+    await app.close();
+  });
+
   it("rejects rate-limited executions before reaching the proxy", async () => {
     const execute = vi.fn();
     const app = buildApp({
