@@ -14,7 +14,11 @@
     "versions": "Versions",
     "codeGenerationFailed": "Could not generate code: URL is invalid",
     "codeCopied": "{{label}} code copied",
-    "codeCopyFailed": "Could not copy code"
+    "codeCopyFailed": "Could not copy code",
+    "executionModeLabel": "Execution path",
+    "executionModeAuto": "Automatic",
+    "executionModeProxy": "Server proxy",
+    "executionModeLocal": "Run locally"
   },
   "methodAriaLabel": "HTTP method",
   "urlAriaLabel": "Request URL",

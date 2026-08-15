@@ -50,7 +50,10 @@ import {
 } from "../../components/ui";
 import i18n from "../../lib/i18n";
 import { RequestConflictError } from "./request-api";
-import { RequestExecutionError } from "./request-execution-api";
+import {
+  RequestExecutionError,
+  type ExecutionMode,
+} from "./request-execution-api";
 import { evaluateAssertions } from "./assertions";
 import { formatCodeSnippet, snippetLanguages } from "./code-snippets";
 import { parseCurl } from "./curl";
@@ -177,6 +180,10 @@ function LoadedRequestEditor({
   >("body");
   const [responseSearch, setResponseSearch] = useState("");
   const [showingExtractVariable, setShowingExtractVariable] = useState(false);
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>();
+  const supportsLocalExecution = Boolean(
+    window.devapiDesktop?.executeLocalRequest,
+  );
   const mutation = useUpdateRequest(workspaceId, request.id);
   const execution = useExecuteRequest(workspaceId);
   const environments = useEnvironments(workspaceId);
@@ -275,6 +282,7 @@ function LoadedRequestEditor({
                 request: draft,
                 auth,
                 variables,
+                executionModeOverride: executionMode,
               })
               .catch(() => undefined);
             return;
@@ -364,6 +372,34 @@ function LoadedRequestEditor({
               <History20Regular aria-hidden="true" />
               {t("toolbar.versions")}
             </Button>
+            {supportsLocalExecution ? (
+              <label className="execution-mode-field">
+                <span className="sr-only">
+                  {t("toolbar.executionModeLabel")}
+                </span>
+                <Select
+                  aria-label={t("toolbar.executionModeLabel")}
+                  onChange={(event) =>
+                    setExecutionMode(
+                      event.target.value === "auto"
+                        ? undefined
+                        : (event.target.value as ExecutionMode),
+                    )
+                  }
+                  value={executionMode ?? "auto"}
+                >
+                  <option value="auto">
+                    {t("toolbar.executionModeAuto")}
+                  </option>
+                  <option value="proxy">
+                    {t("toolbar.executionModeProxy")}
+                  </option>
+                  <option value="local">
+                    {t("toolbar.executionModeLocal")}
+                  </option>
+                </Select>
+              </label>
+            ) : null}
           </div>
         </div>
         <div className="url-bar">

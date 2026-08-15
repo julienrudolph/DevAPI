@@ -14,7 +14,11 @@
     "versions": "Versionen",
     "codeGenerationFailed": "Code konnte nicht erzeugt werden: URL ist ungültig",
     "codeCopied": "{{label}}-Code wurde kopiert",
-    "codeCopyFailed": "Code konnte nicht kopiert werden"
+    "codeCopyFailed": "Code konnte nicht kopiert werden",
+    "executionModeLabel": "Ausführungsweg",
+    "executionModeAuto": "Automatisch",
+    "executionModeProxy": "Server-Proxy",
+    "executionModeLocal": "Lokal ausführen"
   },
   "methodAriaLabel": "HTTP-Methode",
   "urlAriaLabel": "Request-URL",

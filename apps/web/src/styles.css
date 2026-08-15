@@ -648,6 +648,13 @@ button:disabled {
   gap: 12px;
 }
 
+.execution-mode-field select {
+  border-radius: 6px;
+  font-size: 12px;
+  height: 30px;
+  padding: 0 6px;
+}
+
 .curl-import-dialog textarea {
   border: 1px solid var(--border-strong);
   border-radius: 8px;

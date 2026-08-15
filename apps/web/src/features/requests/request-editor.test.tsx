@@ -395,4 +395,47 @@ describe("RequestEditor", () => {
       screen.getByText("cURL wurde als Entwurf übernommen"),
     ).toBeInTheDocument();
   });
+
+  it("lets a desktop user force local execution via the toggle", async () => {
+    const user = userEvent.setup();
+    executeAsync.mockResolvedValue({
+      status: 200,
+      statusText: "OK",
+      headers: {},
+      body: "",
+      durationMs: 10,
+    });
+    window.devapiDesktop = {
+      executeLocalRequest: vi.fn(),
+      platform: "win32",
+    } as unknown as Window["devapiDesktop"];
+    try {
+      render(
+        <RequestEditor
+          requestId={request.id}
+          workspaceId={request.workspaceId}
+        />,
+      );
+
+      await user.selectOptions(
+        screen.getByLabelText("Ausführungsweg"),
+        "Lokal ausführen",
+      );
+
+      const form = screen.getByLabelText("Request-URL").closest("form")!;
+      const executeButton = document.createElement("button");
+      executeButton.type = "submit";
+      executeButton.value = "execute";
+      form.append(executeButton);
+      await user.click(executeButton);
+
+      await waitFor(() =>
+        expect(executeAsync).toHaveBeenCalledWith(
+          expect.objectContaining({ executionModeOverride: "local" }),
+        ),
+      );
+    } finally {
+      delete window.devapiDesktop;
+    }
+  });
 });
