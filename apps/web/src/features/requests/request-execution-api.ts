@@ -11,6 +11,9 @@ import { z } from "zod";
 
 import i18n from "../../lib/i18n";
 import { resolveVariables } from "../environments/resolve-variables";
+import { isLikelyLocalTarget } from "./local-target-detection";
+
+export type ExecutionMode = "proxy" | "local";
 
 const executionErrorSchema = z.object({
   code: z.string(),
@@ -41,6 +44,7 @@ export async function executeRequest(
     request: RequestDraft;
     auth: RequestAuth;
     variables: EnvironmentVariable[];
+    executionModeOverride?: ExecutionMode;
   },
   accessToken: string,
 ): Promise<ProxyResponse> {
@@ -80,6 +84,34 @@ export async function executeRequest(
     throw error;
   }
 
+  const executeLocally = window.devapiDesktop?.executeLocalRequest;
+  if (
+    executeLocally &&
+    input.executionModeOverride !== "proxy" &&
+    (input.executionModeOverride === "local" ||
+      isLikelyLocalTarget(executionPayload.url))
+  ) {
+    const { requestId: _requestId, ...localPayload } = executionPayload;
+    const result = await executeLocally(localPayload);
+    if (!result.ok) {
+      throw new RequestExecutionError(
+        result.code,
+        executionErrorMessage(result.code, result.message),
+      );
+    }
+    await recordLocalExecutionSafely(
+      {
+        requestId: input.requestId,
+        method: executionPayload.method,
+        statusCode: result.response.status,
+        durationMs: result.response.durationMs,
+        successful: result.response.status < 400,
+      },
+      accessToken,
+    );
+    return result.response;
+  }
+
   let response: Response;
   try {
     response = await fetch("/api/v1/execute", {
@@ -117,6 +149,31 @@ export async function executeRequest(
     throw new RequestExecutionError(code, executionErrorMessage(code));
   }
   return parsed.data;
+}
+
+async function recordLocalExecutionSafely(
+  record: {
+    requestId: string;
+    method: RequestDraft["method"];
+    statusCode: number;
+    durationMs: number;
+    successful: boolean;
+  },
+  accessToken: string,
+): Promise<void> {
+  try {
+    await fetch("/api/v1/executions/local", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(record),
+    });
+  } catch {
+    // The shared history is diagnostic-only metadata; a failure to record
+    // it must never surface as a failed request execution to the user.
+  }
 }
 
 function executionHeaders(

@@ -13,6 +13,7 @@ import {
   deleteRequestSchema,
   executeRequestSchema,
   executeSavedRequestSchema,
+  recordLocalExecutionSchema,
   environmentIdParamsSchema,
   environmentVariableIdParamsSchema,
   folderIdParamsSchema,
@@ -833,6 +834,45 @@ export function buildApp(dependencies: ApiDependencies) {
     } finally {
       limit.release();
     }
+  });
+
+  // Requests executed locally by the desktop client (AGENTS.md 11.1a) never
+  // reach the proxy, so this route only records the same shared-history
+  // metadata a proxied execution would produce - never the URL, headers, or
+  // body of the locally executed request.
+  app.post("/v1/executions/local", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+      request.log,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const input = recordLocalExecutionSchema.safeParse(request.body);
+    if (!input.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    const visibleRequest = await dependencies.requests.find({
+      requestId: input.data.requestId,
+      accessToken: user.user.accessToken,
+    });
+    if (!visibleRequest) {
+      return reply.code(404).send({ code: "REQUEST_NOT_FOUND" });
+    }
+    await recordExecutionSafely(dependencies.executionHistory, {
+      ...input.data,
+      userId: user.user.id,
+      accessToken: user.user.accessToken,
+    }, request.log);
+    return reply.code(204).send();
   });
 
   app.get(

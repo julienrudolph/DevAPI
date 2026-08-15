@@ -2,6 +2,7 @@ import type { ApiRequest, RequestDraft } from "@api-client/contracts";
 import { describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "./app.js";
+import type { RecordExecutionCommand } from "./domain/execution-history-repository.js";
 import type { RequestRepository } from "./domain/request-repository.js";
 import type { WorkspaceRepository } from "./domain/workspace-repository.js";
 
@@ -208,6 +209,100 @@ describe("request API authentication", () => {
     });
     expect(response.statusCode).toBe(502);
     expect(release).toHaveBeenCalledOnce();
+    await app.close();
+  });
+
+  it("records a locally executed request without accepting its URL or body", async () => {
+    const record = vi.fn(async (_command: RecordExecutionCommand) => undefined);
+    const app = buildApp({
+      authenticate: async () => ({
+        id: userId,
+        accessToken: "verified-token",
+      }),
+      requests: repository,
+      workspaces: workspaceRepository,
+      executionHistory: {
+        record,
+        list: async () => [],
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/executions/local",
+      headers: { authorization: "Bearer verified-token" },
+      payload: {
+        requestId,
+        method: "GET",
+        statusCode: 200,
+        durationMs: 9,
+        successful: true,
+        url: "http://localhost:4000/internal",
+        body: "secret",
+      },
+    });
+    expect(response.statusCode).toBe(204);
+    expect(record).toHaveBeenCalledOnce();
+    const recorded = record.mock.calls[0]![0];
+    expect(recorded).toMatchObject({
+      requestId,
+      method: "GET",
+      statusCode: 200,
+      durationMs: 9,
+      successful: true,
+      userId,
+      accessToken: "verified-token",
+    });
+    expect(recorded).not.toHaveProperty("url");
+    expect(recorded).not.toHaveProperty("body");
+    await app.close();
+  });
+
+  it("does not record local executions for requests the user cannot see", async () => {
+    const record = vi.fn(async () => undefined);
+    const app = buildApp({
+      authenticate: async () => ({
+        id: userId,
+        accessToken: "verified-token",
+      }),
+      requests: { ...repository, find: async () => null },
+      workspaces: workspaceRepository,
+      executionHistory: { record, list: async () => [] },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/executions/local",
+      headers: { authorization: "Bearer verified-token" },
+      payload: {
+        requestId,
+        method: "GET",
+        statusCode: 200,
+        durationMs: 9,
+        successful: true,
+      },
+    });
+    expect(response.statusCode).toBe(404);
+    expect(record).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("rejects local execution records without a verified session", async () => {
+    const app = buildApp({
+      authenticate: async () => null,
+      requests: repository,
+      workspaces: workspaceRepository,
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/executions/local",
+      payload: {
+        requestId,
+        method: "GET",
+        statusCode: 200,
+        durationMs: 9,
+        successful: true,
+      },
+    });
+    expect(response.statusCode).toBe(401);
     await app.close();
   });
 
