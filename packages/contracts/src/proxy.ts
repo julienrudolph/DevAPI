@@ -19,3 +19,10 @@ export const proxyResponseSchema = z.object({
 
 export type ExecuteRequest = z.infer<typeof executeRequestSchema>;
 export type ProxyResponse = z.infer<typeof proxyResponseSchema>;
+
+// Returned by the desktop app's main process over IPC (AGENTS.md 11.1a) -
+// not a network-crossing contract, so no zod schema, but shared so the
+// renderer and main process agree on the exact shape.
+export type LocalExecutionResult =
+  | { ok: true; response: ProxyResponse }
+  | { ok: false; code: string; message: string };

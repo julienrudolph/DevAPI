@@ -12,12 +12,25 @@ import { readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import {
+  executeRequestSchema,
+  type LocalExecutionResult,
+} from "@api-client/contracts";
+
 import { parseAuthCallback, validateAuthStartUrl } from "./auth.js";
+import {
+  RedirectLimitError,
+  ResponseTooLargeError,
+  executeLocalHttpRequest,
+} from "./execution/local-executor.js";
+import { localUndiciTransport } from "./execution/local-transport.js";
 import {
   desktopSettingsSchema,
   type DesktopSettings,
   validateServerUrl,
 } from "./settings.js";
+import { UnsafeHeaderError } from "./security/headers.js";
+import { UnsafeLocalTargetError } from "./security/local-target-policy.js";
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -134,6 +147,18 @@ async function saveServerUrl(value: unknown): Promise<string> {
     mode: 0o600,
   });
   return serverUrl;
+}
+
+function localExecutionErrorCode(error: unknown): string {
+  if (error instanceof UnsafeLocalTargetError) return "LOCAL_UNSAFE_TARGET";
+  if (error instanceof UnsafeHeaderError) return "LOCAL_UNSAFE_HEADER";
+  if (error instanceof RedirectLimitError) {
+    return "LOCAL_REDIRECT_LIMIT_EXCEEDED";
+  }
+  if (error instanceof ResponseTooLargeError) {
+    return "LOCAL_RESPONSE_TOO_LARGE";
+  }
+  return "LOCAL_EXECUTION_FAILED";
 }
 
 function webRoot(): string {
@@ -274,6 +299,32 @@ if (!hasSingleInstanceLock) {
     }
     await shell.openExternal(validateAuthStartUrl(value, settings.serverUrl));
   });
+  ipcMain.handle(
+    "desktop:execute-local-request",
+    async (_event, value: unknown): Promise<LocalExecutionResult> => {
+      const parsed = executeRequestSchema.safeParse(value);
+      if (!parsed.success) {
+        return {
+          ok: false,
+          code: "LOCAL_INVALID_REQUEST",
+          message: "Die Anfrage ist ungültig.",
+        };
+      }
+      try {
+        const response = await executeLocalHttpRequest(parsed.data, {
+          transport: localUndiciTransport,
+        });
+        return { ok: true, response };
+      } catch (error) {
+        return {
+          ok: false,
+          code: localExecutionErrorCode(error),
+          message:
+            error instanceof Error ? error.message : "Unbekannter Fehler.",
+        };
+      }
+    },
+  );
   createWindow();
   const initialCallback = process.argv.find((value) =>
     parseAuthCallback(value),

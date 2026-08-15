@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld("devapiDesktop", {
     removeItem: (key) => ipcRenderer.invoke("desktop:session-remove", key),
   },
   openAuthUrl: (url) => ipcRenderer.invoke("desktop:open-auth-url", url),
+  executeLocalRequest: (request) =>
+    ipcRenderer.invoke("desktop:execute-local-request", request),
   onAuthCallback: (callback) => {
     authCallbackListeners.add(callback);
     for (const url of pendingAuthCallbacks.splice(0)) callback(url);
