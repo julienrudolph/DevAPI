@@ -63,6 +63,54 @@ describe("invitation routes", () => {
     await app.close();
   });
 
+  it("replays the same invitation for a repeated Idempotency-Key", async () => {
+    const invitation = {
+      id: "95da6097-0742-4164-9c9a-75dc64d2cd8f",
+      teamId,
+      role: "editor" as const,
+      token: "a".repeat(64),
+      expiresAt: "2026-08-05T12:00:00.000Z",
+    };
+    let createCalls = 0;
+    const app = buildApp({
+      authenticate: async () => user,
+      requests,
+      workspaces,
+      invitations: {
+        create: async () => {
+          createCalls += 1;
+          return invitation;
+        },
+        accept: async () => null,
+      },
+    });
+
+    const first = await app.inject({
+      method: "POST",
+      url: `/v1/teams/${teamId}/invitations`,
+      headers: {
+        authorization: "Bearer verified-token",
+        "idempotency-key": "retry-1",
+      },
+      payload: { role: "editor" },
+    });
+    const second = await app.inject({
+      method: "POST",
+      url: `/v1/teams/${teamId}/invitations`,
+      headers: {
+        authorization: "Bearer verified-token",
+        "idempotency-key": "retry-1",
+      },
+      payload: { role: "editor" },
+    });
+
+    expect(first.statusCode).toBe(201);
+    expect(second.statusCode).toBe(201);
+    expect(second.json()).toEqual(first.json());
+    expect(createCalls).toBe(1);
+    await app.close();
+  });
+
   it("does not allow an owner role to be assigned by invitation", async () => {
     const app = buildApp({
       authenticate: async () => user,

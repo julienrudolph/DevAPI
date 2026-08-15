@@ -245,6 +245,9 @@ export function WorkspacePage() {
   const [dirtyRequestIds, setDirtyRequestIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [executingRequestIds, setExecutingRequestIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [collapsedCollectionIds, setCollapsedCollectionIds] =
     useState<Set<string>>(() => new Set());
   const [collapsedFolderIds, setCollapsedFolderIds] = useState<Set<string>>(
@@ -311,6 +314,7 @@ export function WorkspacePage() {
     setActiveRequestId(undefined);
     setOpenRequestIds([]);
     setDirtyRequestIds(new Set());
+    setExecutingRequestIds(new Set());
     setCollapsedCollectionIds(new Set());
     setCollapsedFolderIds(new Set());
     setRestoredWorkspaceId(undefined);
@@ -403,6 +407,16 @@ export function WorkspacePage() {
       if (current.has(requestId) === dirty) return current;
       const next = new Set(current);
       if (dirty) next.add(requestId);
+      else next.delete(requestId);
+      return next;
+    });
+  }
+
+  function setRequestExecuting(requestId: string, executing: boolean) {
+    setExecutingRequestIds((current) => {
+      if (current.has(requestId) === executing) return current;
+      const next = new Set(current);
+      if (executing) next.add(requestId);
       else next.delete(requestId);
       return next;
     });
@@ -1538,6 +1552,7 @@ export function WorkspacePage() {
                   </Button>
                 ) : null}
                 <Button
+                  disabled={executingRequestIds.has(activeRequest.id)}
                   form={`request-form-${activeRequest.id}`}
                   name="intent"
                   type="submit"
@@ -1557,6 +1572,9 @@ export function WorkspacePage() {
                   workspaceId={activeWorkspace.id}
                   onDirtyChange={(dirty) =>
                     setRequestDirty(request.id, dirty)
+                  }
+                  onExecutingChange={(executing) =>
+                    setRequestExecuting(request.id, executing)
                   }
                   readOnly={!canEdit}
                   variables={

@@ -10,12 +10,14 @@ export async function createInvitation(
   teamId: string,
   input: CreateTeamInvitation,
   accessToken: string,
+  idempotencyKey?: string,
 ): Promise<TeamInvitation> {
   const response = await fetch(`/api/v1/teams/${teamId}/invitations`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
     body: JSON.stringify(createTeamInvitationSchema.parse(input)),
   });

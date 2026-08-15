@@ -178,6 +178,112 @@ describe("request API authentication", () => {
     await app.close();
   });
 
+  it("replays a cached response instead of re-executing for a repeated Idempotency-Key", async () => {
+    let executeCalls = 0;
+    const app = buildApp({
+      authenticate: async () => ({
+        id: userId,
+        accessToken: "verified-token",
+      }),
+      requests: repository,
+      workspaces: workspaceRepository,
+      executor: {
+        execute: async () => {
+          executeCalls += 1;
+          return {
+            status: 200,
+            statusText: "OK",
+            headers: {},
+            body: `attempt-${executeCalls}`,
+            durationMs: 5,
+          };
+        },
+      },
+    });
+    const payload = {
+      requestId,
+      method: "GET" as const,
+      url: "https://api.example.com/health",
+      headers: [],
+    };
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/v1/execute",
+      headers: {
+        authorization: "Bearer verified-token",
+        "idempotency-key": "retry-1",
+      },
+      payload,
+    });
+    const second = await app.inject({
+      method: "POST",
+      url: "/v1/execute",
+      headers: {
+        authorization: "Bearer verified-token",
+        "idempotency-key": "retry-1",
+      },
+      payload,
+    });
+
+    expect(executeCalls).toBe(1);
+    expect(first.json()).toMatchObject({ body: "attempt-1" });
+    expect(second.json()).toMatchObject({ body: "attempt-1" });
+    await app.close();
+  });
+
+  it("executes again when the Idempotency-Key differs", async () => {
+    let executeCalls = 0;
+    const app = buildApp({
+      authenticate: async () => ({
+        id: userId,
+        accessToken: "verified-token",
+      }),
+      requests: repository,
+      workspaces: workspaceRepository,
+      executor: {
+        execute: async () => {
+          executeCalls += 1;
+          return {
+            status: 200,
+            statusText: "OK",
+            headers: {},
+            body: `attempt-${executeCalls}`,
+            durationMs: 5,
+          };
+        },
+      },
+    });
+    const payload = {
+      requestId,
+      method: "GET" as const,
+      url: "https://api.example.com/health",
+      headers: [],
+    };
+
+    await app.inject({
+      method: "POST",
+      url: "/v1/execute",
+      headers: {
+        authorization: "Bearer verified-token",
+        "idempotency-key": "attempt-a",
+      },
+      payload,
+    });
+    await app.inject({
+      method: "POST",
+      url: "/v1/execute",
+      headers: {
+        authorization: "Bearer verified-token",
+        "idempotency-key": "attempt-b",
+      },
+      payload,
+    });
+
+    expect(executeCalls).toBe(2);
+    await app.close();
+  });
+
   it("rejects rate-limited executions before reaching the proxy", async () => {
     const execute = vi.fn();
     const app = buildApp({

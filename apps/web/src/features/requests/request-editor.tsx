@@ -104,6 +104,7 @@ interface RequestEditorProps {
   requestId: string;
   workspaceId: string;
   onDirtyChange?: (dirty: boolean) => void;
+  onExecutingChange?: (executing: boolean) => void;
   readOnly?: boolean;
   variables?: EnvironmentVariable[];
 }
@@ -120,6 +121,7 @@ export function RequestEditor({
   requestId,
   workspaceId,
   onDirtyChange,
+  onExecutingChange,
   readOnly = false,
   variables = [],
 }: RequestEditorProps) {
@@ -144,6 +146,7 @@ export function RequestEditor({
       request={request.data}
       workspaceId={workspaceId}
       onDirtyChange={onDirtyChange}
+      onExecutingChange={onExecutingChange}
       readOnly={readOnly}
       variables={variables}
     />
@@ -155,6 +158,7 @@ function LoadedRequestEditor({
   request,
   workspaceId,
   onDirtyChange,
+  onExecutingChange,
   readOnly,
   variables,
 }: {
@@ -162,6 +166,7 @@ function LoadedRequestEditor({
   request: ApiRequest;
   workspaceId: string;
   onDirtyChange?: (dirty: boolean) => void;
+  onExecutingChange?: (executing: boolean) => void;
   readOnly: boolean;
   variables: EnvironmentVariable[];
 }) {
@@ -238,6 +243,10 @@ function LoadedRequestEditor({
       setBaseVersion(request.version);
     }
   }, [baseVersion, isDirty, request, reset]);
+
+  useEffect(() => {
+    onExecutingChange?.(execution.isPending);
+  }, [execution.isPending, onExecutingChange]);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);

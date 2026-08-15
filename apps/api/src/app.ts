@@ -48,6 +48,11 @@ import {
   InMemoryExecutionLimiter,
   type ExecutionLimiter,
 } from "./domain/execution-limiter.js";
+import {
+  idempotencyKeyFromHeader,
+  InMemoryIdempotencyStore,
+  type IdempotencyStore,
+} from "./domain/idempotency-store.js";
 import type { InvitationRepository } from "./domain/invitation-repository.js";
 import type { TeamMemberRepository } from "./domain/team-member-repository.js";
 import {
@@ -73,6 +78,7 @@ export interface ApiDependencies {
   teamMembers?: TeamMemberRepository;
   executionHistory?: ExecutionHistoryRepository;
   executionLimiter?: ExecutionLimiter;
+  idempotency?: IdempotencyStore;
   publicConfig?: PublicClientConfig;
   metricsToken?: string;
   readiness?: () => Promise<Record<string, boolean>>;
@@ -98,6 +104,9 @@ export function buildApp(dependencies: ApiDependencies) {
       maxConcurrentPerUser: 3,
       maxConcurrentPerWorkspace: 10,
     });
+  const idempotency =
+    dependencies.idempotency ??
+    new InMemoryIdempotencyStore({ ttlMs: 2 * 60_000 });
 
   app.get(
     "/health",
@@ -168,6 +177,16 @@ export function buildApp(dependencies: ApiDependencies) {
     if (!dependencies.invitations) {
       return reply.code(503).send({ code: "INVITATIONS_UNAVAILABLE" });
     }
+    const idempotencyKey = idempotencyKeyFromHeader(
+      request.headers["idempotency-key"],
+    );
+    const idempotencyCacheKey = idempotencyKey
+      ? `${user.user.id}:invitations:${idempotencyKey}`
+      : undefined;
+    if (idempotencyCacheKey) {
+      const cached = idempotency.get(idempotencyCacheKey);
+      if (cached) return reply.code(cached.status).send(cached.body);
+    }
     try {
       const invitation = await dependencies.invitations.create({
         teamId: params.data.teamId,
@@ -175,9 +194,14 @@ export function buildApp(dependencies: ApiDependencies) {
         accessToken: user.user.accessToken,
         ...body.data,
       });
-      return invitation
-        ? reply.code(201).send(invitation)
-        : reply.code(403).send({ code: "FORBIDDEN" });
+      if (!invitation) return reply.code(403).send({ code: "FORBIDDEN" });
+      if (idempotencyCacheKey) {
+        idempotency.set(idempotencyCacheKey, {
+          status: 201,
+          body: invitation,
+        });
+      }
+      return reply.code(201).send(invitation);
     } catch (error) {
       request.log.error({ err: error }, "INVITATION_CREATE_FAILED");
       return reply.code(500).send({ code: "INVITATION_CREATE_FAILED" });
@@ -761,6 +785,16 @@ export function buildApp(dependencies: ApiDependencies) {
     if (!visibleRequest) {
       return reply.code(404).send({ code: "REQUEST_NOT_FOUND" });
     }
+    const idempotencyKey = idempotencyKeyFromHeader(
+      request.headers["idempotency-key"],
+    );
+    const idempotencyCacheKey = idempotencyKey
+      ? `${user.user.id}:execute:${idempotencyKey}`
+      : undefined;
+    if (idempotencyCacheKey) {
+      const cached = idempotency.get(idempotencyCacheKey);
+      if (cached) return reply.code(cached.status).send(cached.body);
+    }
     const limit = executionLimiter.acquire({
       userId: user.user.id,
       workspaceId: visibleRequest.workspaceId,
@@ -801,6 +835,9 @@ export function buildApp(dependencies: ApiDependencies) {
         userId: user.user.id,
         accessToken: user.user.accessToken,
       }, request.log);
+      if (idempotencyCacheKey) {
+        idempotency.set(idempotencyCacheKey, { status: 200, body: result });
+      }
       return reply.code(200).send(result);
     } catch (error) {
       if (error instanceof RequestExecutionError) {

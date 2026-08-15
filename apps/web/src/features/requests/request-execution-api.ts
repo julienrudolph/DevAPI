@@ -119,6 +119,10 @@ export async function executeRequest(
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
+        // A fresh key per call (AGENTS.md 14): protects only this single
+        // attempt's own transport from being silently duplicated, not
+        // separate user-initiated sends, which must each execute for real.
+        "Idempotency-Key": crypto.randomUUID(),
       },
       body: JSON.stringify(executionPayload),
     });
