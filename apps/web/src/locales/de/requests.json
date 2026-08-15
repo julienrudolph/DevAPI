@@ -10,6 +10,7 @@
   },
   "toolbar": {
     "importCurl": "cURL importieren",
+    "importPowerShell": "PowerShell importieren",
     "copyCode": "Code kopieren",
     "versions": "Versionen",
     "codeGenerationFailed": "Code konnte nicht erzeugt werden: URL ist ungültig",
@@ -111,6 +112,14 @@
     "invalid": "Das cURL-Kommando ist ungültig.",
     "apply": "Als Entwurf übernehmen"
   },
+  "powershellImport": {
+    "title": "PowerShell importieren",
+    "description": "Das Kommando wird nur lokal ausgewertet und nicht ausgeführt. Vorhandene Request-Felder werden erst nach deiner Bestätigung ersetzt.",
+    "commandAriaLabel": "PowerShell-Kommando",
+    "applied": "PowerShell-Kommando wurde als Entwurf übernommen",
+    "invalid": "Das PowerShell-Kommando ist ungültig.",
+    "apply": "Als Entwurf übernehmen"
+  },
   "assertions": {
     "hint": "Prüfungen werden nach jeder Ausführung automatisch gegen die Response ausgewertet und mit der Request gespeichert.",
     "empty": "Keine Tests definiert.",
@@ -180,6 +189,18 @@
     "unsupportedMethod": "Die HTTP-Methode {{method}} wird nicht unterstützt.",
     "invalidHeader": "Der Header \"{{header}}\" ist ungültig.",
     "unclosedQuote": "Das cURL-Kommando enthält ein offenes Anführungszeichen."
+  },
+  "powershell": {
+    "mustStartWithInvoke": "Der Import muss mit Invoke-RestMethod oder Invoke-WebRequest beginnen.",
+    "missingValueFor": "Für {{token}} fehlt ein Wert.",
+    "unsupportedOption": "Die Option {{token}} wird noch nicht unterstützt.",
+    "unexpectedValue": "Unerwarteter Wert im PowerShell-Kommando: {{token}}",
+    "missingUrl": "Das PowerShell-Kommando enthält keine URL.",
+    "invalidUrl": "Die URL ist ungültig.",
+    "unsupportedMethod": "Die HTTP-Methode {{method}} wird nicht unterstützt.",
+    "invalidHeadersHashtable": "Der Wert von -Headers muss eine Hashtable wie @{ \"Key\" = \"Value\" } sein.",
+    "invalidHeader": "Der Header-Eintrag \"{{header}}\" ist ungültig.",
+    "unclosedQuote": "Das PowerShell-Kommando enthält ein offenes Anführungszeichen."
   },
   "executionErrors": {
     "INVALID_URL": "Die URL ist ungültig. Prüfe insbesondere Protokoll, Domain und Sonderzeichen.",

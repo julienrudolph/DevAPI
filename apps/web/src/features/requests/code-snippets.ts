@@ -1,11 +1,13 @@
 import type { RequestDraft } from "@api-client/contracts";
 
 import { formatCurl } from "./curl";
+import { formatPowerShell } from "./powershell";
 
-export type SnippetLanguage = "curl" | "fetch" | "python";
+export type SnippetLanguage = "curl" | "powershell" | "fetch" | "python";
 
 export const snippetLanguages: { id: SnippetLanguage; label: string }[] = [
   { id: "curl", label: "cURL" },
+  { id: "powershell", label: "PowerShell" },
   { id: "fetch", label: "JavaScript (fetch)" },
   { id: "python", label: "Python (requests)" },
 ];
@@ -17,6 +19,8 @@ export function formatCodeSnippet(
   switch (language) {
     case "curl":
       return formatCurl(draft);
+    case "powershell":
+      return formatPowerShell(draft);
     case "fetch":
       return formatFetch(draft);
     case "python":

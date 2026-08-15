@@ -57,6 +57,7 @@ import {
 import { evaluateAssertions } from "./assertions";
 import { formatCodeSnippet, snippetLanguages } from "./code-snippets";
 import { parseCurl } from "./curl";
+import { parsePowerShell } from "./powershell";
 import { ExtractVariableDialog } from "./extract-variable-dialog";
 import {
   useExecuteRequest,
@@ -175,6 +176,10 @@ function LoadedRequestEditor({
   const [curlInput, setCurlInput] = useState("");
   const [curlError, setCurlError] = useState<string>();
   const [curlNotice, setCurlNotice] = useState<string>();
+  const [showingPowerShellImport, setShowingPowerShellImport] =
+    useState(false);
+  const [powershellInput, setPowershellInput] = useState("");
+  const [powershellError, setPowershellError] = useState<string>();
   const [responseTab, setResponseTab] = useState<
     "body" | "headers" | "tests"
   >("body");
@@ -314,6 +319,20 @@ function LoadedRequestEditor({
               >
                 <ArrowImport20Regular aria-hidden="true" />
                 {t("toolbar.importCurl")}
+              </Button>
+            ) : null}
+            {!readOnly ? (
+              <Button
+                className="revision-link"
+                onClick={() => {
+                  setPowershellError(undefined);
+                  setShowingPowerShellImport(true);
+                }}
+                size="small"
+                variant="ghost"
+              >
+                <ArrowImport20Regular aria-hidden="true" />
+                {t("toolbar.importPowerShell")}
               </Button>
             ) : null}
             <Menu positioning="below-start">
@@ -995,6 +1014,81 @@ function LoadedRequestEditor({
                 variant="primary"
               >
                 {t("curlImport.apply")}
+              </Button>
+            </DialogFooter>
+        </Dialog>
+      ) : null}
+      {showingPowerShellImport ? (
+        <Dialog
+          className="curl-import-dialog"
+          onClose={() => setShowingPowerShellImport(false)}
+          titleId="powershell-import-title"
+        >
+            <h2 id="powershell-import-title">
+              {t("powershellImport.title")}
+            </h2>
+            <p>{t("powershellImport.description")}</p>
+            <Textarea
+              aria-label={t("powershellImport.commandAriaLabel")}
+              autoFocus
+              onChange={(event) => {
+                setPowershellInput(event.target.value);
+                setPowershellError(undefined);
+              }}
+              placeholder="Invoke-RestMethod -Uri 'https://api.example.com/…' -Method POST"
+              rows={9}
+              value={powershellInput}
+            />
+            {powershellError ? (
+              <p className="field-error" role="alert">
+                {powershellError}
+              </p>
+            ) : null}
+            <DialogFooter>
+              <Button
+                onClick={() => setShowingPowerShellImport(false)}
+              >
+                {t("actions.cancel", { ns: "common" })}
+              </Button>
+              <Button
+                onClick={() => {
+                  try {
+                    const imported = parsePowerShell(powershellInput);
+                    setValue("method", imported.method, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                    setValue("url", imported.url, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                    setValue("queryParams", imported.queryParams, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                    setValue("headers", imported.headers, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                    setValue("body", imported.body, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                    setShowingPowerShellImport(false);
+                    setPowershellInput("");
+                    setPowershellError(undefined);
+                    setCurlNotice(t("powershellImport.applied"));
+                  } catch (error) {
+                    setPowershellError(
+                      error instanceof Error
+                        ? error.message
+                        : t("powershellImport.invalid"),
+                    );
+                  }
+                }}
+                variant="primary"
+              >
+                {t("powershellImport.apply")}
               </Button>
             </DialogFooter>
         </Dialog>

@@ -10,6 +10,7 @@
   },
   "toolbar": {
     "importCurl": "Import cURL",
+    "importPowerShell": "Import PowerShell",
     "copyCode": "Copy code",
     "versions": "Versions",
     "codeGenerationFailed": "Could not generate code: URL is invalid",
@@ -111,6 +112,14 @@
     "invalid": "The cURL command is invalid.",
     "apply": "Apply as draft"
   },
+  "powershellImport": {
+    "title": "Import PowerShell",
+    "description": "The command is only evaluated locally and not executed. Existing request fields are only replaced after you confirm.",
+    "commandAriaLabel": "PowerShell command",
+    "applied": "PowerShell command was applied as draft",
+    "invalid": "The PowerShell command is invalid.",
+    "apply": "Apply as draft"
+  },
   "assertions": {
     "hint": "Assertions are automatically evaluated against the response after every execution and saved with the request.",
     "empty": "No tests defined.",
@@ -180,6 +189,18 @@
     "unsupportedMethod": "The HTTP method {{method}} is not supported.",
     "invalidHeader": "The header \"{{header}}\" is invalid.",
     "unclosedQuote": "The cURL command contains an unclosed quote."
+  },
+  "powershell": {
+    "mustStartWithInvoke": "The import must start with Invoke-RestMethod or Invoke-WebRequest.",
+    "missingValueFor": "{{token}} is missing a value.",
+    "unsupportedOption": "The option {{token}} is not supported yet.",
+    "unexpectedValue": "Unexpected value in the PowerShell command: {{token}}",
+    "missingUrl": "The PowerShell command does not contain a URL.",
+    "invalidUrl": "The URL is invalid.",
+    "unsupportedMethod": "The HTTP method {{method}} is not supported.",
+    "invalidHeadersHashtable": "The -Headers value must be a hashtable like @{ \"Key\" = \"Value\" }.",
+    "invalidHeader": "The header entry \"{{header}}\" is invalid.",
+    "unclosedQuote": "The PowerShell command contains an unclosed quote."
   },
   "executionErrors": {
     "INVALID_URL": "The URL is invalid. Check the protocol, domain, and special characters in particular.",
