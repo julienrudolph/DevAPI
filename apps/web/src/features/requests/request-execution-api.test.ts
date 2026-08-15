@@ -7,7 +7,10 @@ import {
   RequestExecutionError,
 } from "./request-execution-api";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  delete window.devapiDesktop;
+});
 
 describe("request execution API", () => {
   const requestId = "fa7596b3-0041-4fe8-9ddf-956e7a107014";
@@ -484,6 +487,219 @@ describe("request execution API", () => {
           value: "yes",
         }),
       ],
+    });
+  });
+
+  describe("local execution routing", () => {
+    function stubDesktopBridge(
+      executeLocalRequest: ReturnType<typeof vi.fn>,
+    ) {
+      window.devapiDesktop = {
+        executeLocalRequest,
+        platform: "win32",
+      } as unknown as Window["devapiDesktop"];
+    }
+
+    it("auto-detects a local target and skips the server proxy", async () => {
+      const executeLocalRequest = vi.fn().mockResolvedValue({
+        ok: true,
+        response: {
+          status: 200,
+          statusText: "OK",
+          headers: {},
+          body: "",
+          durationMs: 5,
+        },
+      });
+      stubDesktopBridge(executeLocalRequest);
+      const fetchMock = vi.fn().mockResolvedValue(new Response(null));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = await executeRequest(
+        {
+          requestId,
+          request: {
+            name: "Local health",
+            method: "GET",
+            url: "http://localhost:4000/health",
+            queryParams: [],
+            headers: [],
+            body: { type: "none" },
+            assertions: [],
+          },
+          auth: { type: "none" },
+          variables: [],
+        },
+        "session-token",
+      );
+
+      expect(result.status).toBe(200);
+      expect(executeLocalRequest).toHaveBeenCalledOnce();
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        "/api/v1/execute",
+        expect.anything(),
+      );
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/v1/executions/local",
+        expect.objectContaining({
+          body: expect.stringContaining('"successful":true'),
+        }),
+      );
+    });
+
+    it("keeps using the server proxy for a public target without an override", async () => {
+      const executeLocalRequest = vi.fn();
+      stubDesktopBridge(executeLocalRequest);
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            status: 200,
+            statusText: "OK",
+            headers: {},
+            body: "",
+            durationMs: 5,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      await executeRequest(
+        {
+          requestId,
+          request: {
+            name: "Remote",
+            method: "GET",
+            url: "https://api.example.com",
+            queryParams: [],
+            headers: [],
+            body: { type: "none" },
+            assertions: [],
+          },
+          auth: { type: "none" },
+          variables: [],
+        },
+        "session-token",
+      );
+
+      expect(executeLocalRequest).not.toHaveBeenCalled();
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/v1/execute",
+        expect.anything(),
+      );
+    });
+
+    it("respects an explicit proxy override even for a local-looking target", async () => {
+      const executeLocalRequest = vi.fn();
+      stubDesktopBridge(executeLocalRequest);
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            status: 200,
+            statusText: "OK",
+            headers: {},
+            body: "",
+            durationMs: 5,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      await executeRequest(
+        {
+          requestId,
+          request: {
+            name: "Local, forced to proxy",
+            method: "GET",
+            url: "http://localhost:4000/health",
+            queryParams: [],
+            headers: [],
+            body: { type: "none" },
+            assertions: [],
+          },
+          auth: { type: "none" },
+          variables: [],
+          executionModeOverride: "proxy",
+        },
+        "session-token",
+      );
+
+      expect(executeLocalRequest).not.toHaveBeenCalled();
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/v1/execute",
+        expect.anything(),
+      );
+    });
+
+    it("respects an explicit local override even for a public target", async () => {
+      const executeLocalRequest = vi.fn().mockResolvedValue({
+        ok: true,
+        response: {
+          status: 200,
+          statusText: "OK",
+          headers: {},
+          body: "",
+          durationMs: 5,
+        },
+      });
+      stubDesktopBridge(executeLocalRequest);
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null)));
+
+      await executeRequest(
+        {
+          requestId,
+          request: {
+            name: "Public, forced local",
+            method: "GET",
+            url: "https://api.example.com",
+            queryParams: [],
+            headers: [],
+            body: { type: "none" },
+            assertions: [],
+          },
+          auth: { type: "none" },
+          variables: [],
+          executionModeOverride: "local",
+        },
+        "session-token",
+      );
+
+      expect(executeLocalRequest).toHaveBeenCalledOnce();
+    });
+
+    it("surfaces a blocked local target as a request execution error", async () => {
+      const executeLocalRequest = vi.fn().mockResolvedValue({
+        ok: false,
+        code: "LOCAL_UNSAFE_TARGET",
+        message: "Das Ziel ist aus Sicherheitsgründen nicht erlaubt.",
+      });
+      stubDesktopBridge(executeLocalRequest);
+      vi.stubGlobal("fetch", vi.fn());
+
+      await expect(
+        executeRequest(
+          {
+            requestId,
+            request: {
+              name: "Metadata",
+              method: "GET",
+              url: "http://169.254.169.254/",
+              queryParams: [],
+              headers: [],
+              body: { type: "none" },
+              assertions: [],
+            },
+            auth: { type: "none" },
+            variables: [],
+            executionModeOverride: "local",
+          },
+          "session-token",
+        ),
+      ).rejects.toMatchObject({
+        code: "LOCAL_UNSAFE_TARGET",
+        message: "Das Ziel ist aus Sicherheitsgründen nicht erlaubt.",
+      });
     });
   });
 });
