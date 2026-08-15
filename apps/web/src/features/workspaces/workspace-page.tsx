@@ -58,6 +58,7 @@ import {
   Dialog,
   DialogFooter,
   IconButton,
+  Input,
   Select,
 } from "../../components/ui";
 import { RequestEditor } from "../requests/request-editor";
@@ -249,6 +250,8 @@ export function WorkspacePage() {
   const [collapsedFolderIds, setCollapsedFolderIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [renamingRequestId, setRenamingRequestId] = useState<string>();
+  const [renameDraft, setRenameDraft] = useState("");
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
@@ -320,6 +323,7 @@ export function WorkspacePage() {
     setDraggedNavigationItem(undefined);
     setDropTarget(undefined);
     setCreatingWorkspace(false);
+    setRenamingRequestId(undefined);
   }, [activeWorkspace?.id]);
 
   useEffect(() => {
@@ -568,12 +572,24 @@ export function WorkspacePage() {
       .catch(() => setManagementError(t("errors.requestDuplicateFailed")));
   }
 
-  function renameNavigationRequest(request: RequestSummary) {
-    const name = window.prompt(t("tree.newRequestNamePrompt"), request.name);
-    if (!name?.trim() || name.trim() === request.name) return;
+  function startRenamingRequest(request: RequestSummary) {
+    selectRequest(request.id);
+    setManagementError(undefined);
+    setRenamingRequestId(request.id);
+    setRenameDraft(request.name);
+  }
+
+  function cancelRenamingRequest() {
+    setRenamingRequestId(undefined);
+  }
+
+  function commitRenamingRequest(request: RequestSummary) {
+    const name = renameDraft.trim();
+    setRenamingRequestId(undefined);
+    if (!name || name === request.name) return;
     setManagementError(undefined);
     void renameRequest
-      .mutateAsync({ requestId: request.id, name: name.trim() })
+      .mutateAsync({ requestId: request.id, name })
       .catch((error: unknown) =>
         setManagementError(
           error instanceof RequestConflictError
@@ -1219,7 +1235,7 @@ export function WorkspacePage() {
                         onDuplicateFolder={duplicateNavigationFolder}
                         onDuplicateRequest={duplicateNavigationRequest}
                         onMoveRequest={startMovingRequest}
-                        onRenameRequest={renameNavigationRequest}
+                        onRenameRequest={startRenamingRequest}
                         onUpdateFolder={updateFolderItem}
                         onStartCreating={setCreatingChild}
                         onStopCreating={() => setCreatingChild(undefined)}
@@ -1245,7 +1261,7 @@ export function WorkspacePage() {
                         }
                         onDuplicate={() => duplicateNavigationRequest(request)}
                         onMove={() => startMovingRequest(request)}
-                        onRename={() => renameNavigationRequest(request)}
+                        onRename={() => startRenamingRequest(request)}
                         onClick={() => selectRequest(request.id)}
                         request={request}
                       />
@@ -1267,7 +1283,7 @@ export function WorkspacePage() {
                 }
                 onDuplicate={() => duplicateNavigationRequest(request)}
                 onMove={() => startMovingRequest(request)}
-                onRename={() => renameNavigationRequest(request)}
+                onRename={() => startRenamingRequest(request)}
                 onClick={() => selectRequest(request.id)}
                 request={request}
               />
@@ -1370,7 +1386,7 @@ export function WorkspacePage() {
                       className="request-tab-select"
                       onClick={() => setActiveRequestId(request.id)}
                       onDoubleClick={() => {
-                        if (canEdit) renameNavigationRequest(request);
+                        if (canEdit) startRenamingRequest(request);
                       }}
                       onKeyDown={(event) => {
                         if (!event.altKey) return;
@@ -1453,19 +1469,44 @@ export function WorkspacePage() {
               <div>
                 <span className="breadcrumb">{activeWorkspace.name} /</span>
                 <div className="request-title">
-                  <h1>{activeRequest.name}</h1>
-                  {canEdit ? (
-                    <IconButton
+                  {canEdit && renamingRequestId === activeRequest.id ? (
+                    <Input
                       aria-label={t("workbench.renameRequest", {
                         name: activeRequest.name,
                       })}
-                      className="request-title-rename"
-                      onClick={() => renameNavigationRequest(activeRequest)}
-                      size="compact"
-                    >
-                      <Pencil aria-hidden="true" size={14} />
-                    </IconButton>
-                  ) : null}
+                      autoFocus
+                      className="request-title-input"
+                      onBlur={() => commitRenamingRequest(activeRequest)}
+                      onChange={(event) => setRenameDraft(event.target.value)}
+                      onFocus={(event) => event.target.select()}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          commitRenamingRequest(activeRequest);
+                        } else if (event.key === "Escape") {
+                          event.preventDefault();
+                          cancelRenamingRequest();
+                        }
+                      }}
+                      value={renameDraft}
+                    />
+                  ) : (
+                    <>
+                      <h1>{activeRequest.name}</h1>
+                      {canEdit ? (
+                        <IconButton
+                          aria-label={t("workbench.renameRequest", {
+                            name: activeRequest.name,
+                          })}
+                          className="request-title-rename"
+                          onClick={() => startRenamingRequest(activeRequest)}
+                          size="compact"
+                        >
+                          <Pencil aria-hidden="true" size={14} />
+                        </IconButton>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               </div>
               <div className="toolbar-actions">

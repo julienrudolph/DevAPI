@@ -581,76 +581,81 @@ describe("WorkspacePage", () => {
     );
   });
 
-  it("renames a request from the tree menu, the tab and the workbench title", async () => {
+  it("renames a request from the tree menu by editing the title label inline", async () => {
     const user = userEvent.setup();
     renderWorkspace();
 
-    const promptSpy = vi
-      .spyOn(window, "prompt")
-      .mockReturnValue("Create customer v2");
     await user.click(
       screen.getByRole("button", { name: "Create customer Optionen" }),
     );
     await user.click(screen.getByRole("menuitem", { name: "Umbenennen" }));
-    expect(promptSpy).toHaveBeenCalledWith(
-      "Neuer Request-Name",
-      "Create customer",
-    );
+
+    const input = screen.getByRole("textbox", {
+      name: "Create customer umbenennen",
+    });
+    expect(input).toHaveValue("Create customer");
+    await user.clear(input);
+    await user.type(input, "Create customer v2{Enter}");
     await waitFor(() =>
       expect(renameRequestMutation).toHaveBeenCalledWith(
         expect.objectContaining({ name: "Create customer v2" }),
       ),
     );
-    promptSpy.mockRestore();
   });
 
-  it("does not rename when the prompt is cancelled or unchanged", async () => {
+  it("does not rename when the inline edit is cancelled or unchanged", async () => {
     const user = userEvent.setup();
     renderWorkspace();
 
-    const promptSpy = vi.spyOn(window, "prompt").mockReturnValue(null);
     await user.click(
       screen.getByRole("button", { name: "Create customer Optionen" }),
     );
     await user.click(screen.getByRole("menuitem", { name: "Umbenennen" }));
+    screen.getByRole("textbox", { name: "Create customer umbenennen" });
+    await user.keyboard("{Escape}");
+    expect(
+      screen.queryByRole("textbox", { name: "Create customer umbenennen" }),
+    ).not.toBeInTheDocument();
     expect(renameRequestMutation).not.toHaveBeenCalled();
-    promptSpy.mockRestore();
   });
 
   it("renames the active request via double-click on its tab", async () => {
     const user = userEvent.setup();
     renderWorkspace();
 
-    const promptSpy = vi
-      .spyOn(window, "prompt")
-      .mockReturnValue("List customers v2");
     await user.dblClick(
       screen.getByRole("button", { name: "GET List customers Tab" }),
     );
+    const input = screen.getByRole("textbox", {
+      name: "List customers umbenennen",
+    });
+    await user.clear(input);
+    await user.type(input, "List customers v2{Enter}");
     await waitFor(() =>
       expect(renameRequestMutation).toHaveBeenCalledWith(
         expect.objectContaining({ name: "List customers v2" }),
       ),
     );
-    promptSpy.mockRestore();
   });
 
   it("renames the active request via the pencil next to its title", async () => {
     const user = userEvent.setup();
     renderWorkspace();
 
-    const promptSpy = vi
-      .spyOn(window, "prompt")
-      .mockReturnValue("List customers v2");
     await user.click(
       screen.getByRole("button", { name: "List customers umbenennen" }),
     );
+    const input = screen.getByRole("textbox", {
+      name: "List customers umbenennen",
+    });
+    await user.clear(input);
+    await user.type(input, "List customers v2");
+    await user.tab();
     await waitFor(() =>
       expect(renameRequestMutation).toHaveBeenCalledWith(
         expect.objectContaining({ name: "List customers v2" }),
       ),
     );
-    promptSpy.mockRestore();
   });
 
   it("moves requests and folders with drag and drop", () => {

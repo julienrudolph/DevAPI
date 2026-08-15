@@ -26,6 +26,10 @@
   --shadow-popover: 0 10px 28px rgb(22 34 27 / 16%);
   --shadow-dialog: 0 24px 60px rgb(18 25 20 / 25%);
   --control-height: 2.375rem;
+  /* Matches the visual density the team settled on at 85% browser zoom;
+     applied here instead of scaling font-size because most spacing in this
+     stylesheet is fixed px, not rem. */
+  zoom: 0.85;
   color: var(--foreground);
   background: var(--background);
   font-family:
@@ -1015,6 +1019,20 @@ h1 {
 
 .request-title h1 {
   margin: 0;
+}
+
+.request-title-input.fui-Input {
+  font-size: 20px;
+  font-weight: 600;
+  height: auto;
+  max-width: 28rem;
+  padding: 2px 8px;
+}
+
+.request-title-input .fui-Input__input {
+  font-size: inherit;
+  font-weight: inherit;
+  padding: 4px 0;
 }
 
 .toolbar-actions {

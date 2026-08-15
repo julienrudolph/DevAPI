@@ -48,7 +48,6 @@
     "createSubfolder": "Unterordner erstellen",
     "newCollectionNamePrompt": "Neuer Collection-Name",
     "newFolderNamePrompt": "Neuer Ordnername",
-    "newRequestNamePrompt": "Neuer Request-Name",
     "folderOptions": "{{name}} Optionen",
     "folderMoveUp": "{{name}} nach oben",
     "folderMoveDown": "{{name}} nach unten",
