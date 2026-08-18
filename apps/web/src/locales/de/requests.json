@@ -6,7 +6,8 @@
     "saving": "Wird gespeichert …",
     "conflict": "Konflikt erkannt",
     "unsaved": "Ungespeicherte Änderungen",
-    "saved": "Version {{version}} gespeichert"
+    "saved": "Version {{version}} gespeichert",
+    "backgroundUpdate": "Ein anderes Teammitglied hat diesen Request inzwischen aktualisiert (Version {{version}}). Deine ungespeicherten Änderungen bleiben erhalten; beim Speichern wird ein Konflikt angezeigt."
   },
   "toolbar": {
     "importCurl": "cURL importieren",

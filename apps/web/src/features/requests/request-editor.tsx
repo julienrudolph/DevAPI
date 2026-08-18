@@ -244,6 +244,13 @@ function LoadedRequestEditor({
     }
   }, [baseVersion, isDirty, request, reset]);
 
+  // A background poll may reveal a newer version while the user still has
+  // unsaved local changes. Per AGENTS.md 9.4 this must never silently
+  // replace a dirty editor - only surface a passive heads-up; the existing
+  // 409 flow in save() still owns the actual conflict resolution.
+  const backgroundUpdateAvailable =
+    isDirty && !conflict && request.version !== baseVersion;
+
   useEffect(() => {
     onExecutingChange?.(execution.isPending);
   }, [execution.isPending, onExecutingChange]);
@@ -430,6 +437,11 @@ function LoadedRequestEditor({
             ) : null}
           </div>
         </div>
+        {backgroundUpdateAvailable ? (
+          <p className="background-update-notice" role="status">
+            {t("status.backgroundUpdate", { version: request.version })}
+          </p>
+        ) : null}
         <div className="url-bar">
           <Controller
             control={control}

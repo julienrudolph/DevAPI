@@ -1309,6 +1309,17 @@ textarea.ui-control {
   padding: 0 10px;
 }
 
+.background-update-notice {
+  background: var(--surface-muted);
+  border-left: 3px solid var(--focus);
+  border-radius: 8px;
+  color: var(--foreground-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+}
+
 .security-hint {
   background: var(--surface-muted);
   border-radius: 8px;

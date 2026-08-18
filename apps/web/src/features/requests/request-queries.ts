@@ -22,6 +22,11 @@ export function useRequest(requestId: string) {
     queryKey: requestKeys.detail(requestId),
     queryFn: () => fetchRequest(requestId, accessToken!),
     enabled: accessToken !== null,
+    // Lightweight background polling so an open tab can notice a teammate's
+    // update (AGENTS.md 3.2/9.4). This only ever refreshes the query cache;
+    // the editor itself decides whether it's safe to apply (see
+    // request-editor.tsx's dirty-aware reset/notice).
+    refetchInterval: 20_000,
   });
 }
 

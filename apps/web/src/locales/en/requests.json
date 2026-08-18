@@ -6,7 +6,8 @@
     "saving": "Saving …",
     "conflict": "Conflict detected",
     "unsaved": "Unsaved changes",
-    "saved": "Version {{version}} saved"
+    "saved": "Version {{version}} saved",
+    "backgroundUpdate": "Another team member has since updated this request (version {{version}}). Your unsaved changes are kept; saving will show a conflict."
   },
   "toolbar": {
     "importCurl": "Import cURL",

@@ -396,6 +396,37 @@ describe("RequestEditor", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows a passive heads-up when a background poll finds a newer version while dirty, without discarding local edits", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <RequestEditor requestId={request.id} workspaceId={request.workspaceId} />,
+    );
+
+    const urlField = screen.getByLabelText("Request-URL");
+    await user.clear(urlField);
+    await user.type(urlField, "https://api.example.com/customers?dirty=1");
+    expect(urlField).toHaveValue(
+      "https://api.example.com/customers?dirty=1",
+    );
+
+    vi.mocked(useRequest).mockReturnValue({
+      data: { ...request, version: request.version + 1 },
+      isPending: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useRequest>);
+    rerender(
+      <RequestEditor requestId={request.id} workspaceId={request.workspaceId} />,
+    );
+
+    expect(
+      await screen.findByText(/anderes Teammitglied hat diesen Request/),
+    ).toBeInTheDocument();
+    // The local, unsaved edit must survive the background update notice.
+    expect(urlField).toHaveValue(
+      "https://api.example.com/customers?dirty=1",
+    );
+  });
+
   it("lets a desktop user force local execution via the toggle", async () => {
     const user = userEvent.setup();
     executeAsync.mockResolvedValue({
