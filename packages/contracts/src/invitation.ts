@@ -35,7 +35,8 @@ export const pendingTeamInvitationSchema = z.object({
   createdAt: isoDateTimeSchema,
   expiresAt: isoDateTimeSchema,
   createdBy: z.object({
-    id: z.string().uuid(),
+    // Null once the creating account has been deleted (AGENTS.md 7.3).
+    id: z.string().uuid().nullable(),
     displayName: z.string().min(1),
   }),
 });

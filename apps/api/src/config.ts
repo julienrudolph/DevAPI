@@ -11,6 +11,13 @@ const booleanStringSchema = z.preprocess((value) => {
 const apiConfigSchema = z.object({
   SUPABASE_URL: z.string().url(),
   SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+  // Optional: only self-service account deletion needs this. Never sent to
+  // the browser and never used for anything but auth.admin.deleteUser on
+  // the caller's own, already-authenticated userId (AGENTS.md 7.3, 11.3).
+  SUPABASE_SERVICE_ROLE_KEY: z.preprocess(
+    emptyStringToUndefined,
+    z.string().min(1).optional(),
+  ),
   PROXY_INTERNAL_URL: z.string().url(),
   PROXY_INTERNAL_TOKEN: z.string().min(32),
   METRICS_TOKEN: z.preprocess(

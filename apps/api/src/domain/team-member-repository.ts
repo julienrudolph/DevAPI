@@ -27,4 +27,5 @@ export interface TeamMemberRepository {
   transferOwnership(
     command: TransferTeamOwnershipCommand,
   ): Promise<boolean | null>;
+  deleteTeam(command: TeamCommand): Promise<boolean | null>;
 }

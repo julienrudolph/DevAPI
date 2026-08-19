@@ -28,7 +28,9 @@ export const requestExecutionSchema = z.object({
   durationMs: z.number().int().nonnegative(),
   successful: z.boolean(),
   executedBy: z.object({
-    id: z.string().uuid(),
+    // Null once the executing account has been deleted (AGENTS.md 7.3):
+    // the history entry is kept, only the attribution is anonymized.
+    id: z.string().uuid().nullable(),
     displayName: z.string().min(1),
   }),
   executedAt: isoDateTimeSchema,

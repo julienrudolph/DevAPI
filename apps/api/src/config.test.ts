@@ -17,6 +17,7 @@ describe("API configuration", () => {
       SUPABASE_URL: "https://project.supabase.co",
       PUBLIC_SUPABASE_URL: "https://devapi.example.test",
       SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+      SUPABASE_SERVICE_ROLE_KEY: undefined,
       PROXY_INTERNAL_URL: "http://proxy:3002",
       PROXY_INTERNAL_TOKEN: "a".repeat(32),
       METRICS_TOKEN: "m".repeat(32),
@@ -37,5 +38,18 @@ describe("API configuration", () => {
 
   it("fails closed without Supabase configuration", () => {
     expect(() => readApiConfig({})).toThrow("API-Konfiguration");
+  });
+
+  it("accepts an optional service role key for account deletion", () => {
+    expect(
+      readApiConfig({
+        SUPABASE_URL: "https://project.supabase.co",
+        PUBLIC_SUPABASE_URL: "https://devapi.example.test",
+        SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+        SUPABASE_SERVICE_ROLE_KEY: "sb_service_role_test",
+        PROXY_INTERNAL_URL: "http://proxy:3002",
+        PROXY_INTERNAL_TOKEN: "a".repeat(32),
+      }).SUPABASE_SERVICE_ROLE_KEY,
+    ).toBe("sb_service_role_test");
   });
 });

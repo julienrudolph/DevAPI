@@ -37,6 +37,7 @@ const teamMembers: TeamMemberRepository = {
   update: async () => true,
   remove: async () => true,
   transferOwnership: async () => true,
+  deleteTeam: async () => true,
 };
 
 describe("team member routes", () => {
@@ -189,6 +190,62 @@ describe("team member routes", () => {
       url: `/v1/teams/${teamId}/ownership-transfer`,
       headers: { authorization: "Bearer verified-token" },
       payload: { newOwnerUserId: targetUserId },
+    });
+    expect(response.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("lets an owner delete their team", async () => {
+    let receivedTeamId: string | undefined;
+    const app = buildApp({
+      authenticate: async () => actor,
+      requests,
+      workspaces,
+      teamMembers: {
+        ...teamMembers,
+        deleteTeam: async (command) => {
+          receivedTeamId = command.teamId;
+          return true;
+        },
+      },
+    });
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/v1/teams/${teamId}`,
+      headers: { authorization: "Bearer verified-token" },
+    });
+    expect(response.statusCode).toBe(204);
+    expect(receivedTeamId).toBe(teamId);
+    await app.close();
+  });
+
+  it("hides team deletion by a non-owner behind a generic 403", async () => {
+    const app = buildApp({
+      authenticate: async () => actor,
+      requests,
+      workspaces,
+      teamMembers: { ...teamMembers, deleteTeam: async () => null },
+    });
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/v1/teams/${teamId}`,
+      headers: { authorization: "Bearer verified-token" },
+    });
+    expect(response.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it("reports a missing team as not found", async () => {
+    const app = buildApp({
+      authenticate: async () => actor,
+      requests,
+      workspaces,
+      teamMembers: { ...teamMembers, deleteTeam: async () => false },
+    });
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/v1/teams/${teamId}`,
+      headers: { authorization: "Bearer verified-token" },
     });
     expect(response.statusCode).toBe(404);
     await app.close();

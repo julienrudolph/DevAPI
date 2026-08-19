@@ -41,7 +41,7 @@ const pendingInvitationRowsSchema = z
       role: z.string(),
       created_at: z.string(),
       expires_at: z.string(),
-      created_by_id: z.string().uuid(),
+      created_by_id: z.string().uuid().nullable(),
       created_by_display_name: z.string(),
     }),
   )

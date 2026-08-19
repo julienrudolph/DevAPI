@@ -8,6 +8,7 @@ import { SupabaseEnvironmentRepository } from "./infrastructure/supabase-environ
 import { SupabaseExecutionHistoryRepository } from "./infrastructure/supabase-execution-history-repository.js";
 import { SupabaseInvitationRepository } from "./infrastructure/supabase-invitation-repository.js";
 import { SupabaseTeamMemberRepository } from "./infrastructure/supabase-team-member-repository.js";
+import { SupabaseAccountRepository } from "./infrastructure/supabase-account-repository.js";
 import { InMemoryExecutionLimiter } from "./domain/execution-limiter.js";
 
 const config = readApiConfig();
@@ -81,6 +82,13 @@ const app = buildApp({
     config.SUPABASE_URL,
     config.SUPABASE_PUBLISHABLE_KEY,
   ),
+  account: config.SUPABASE_SERVICE_ROLE_KEY
+    ? new SupabaseAccountRepository(
+        config.SUPABASE_URL,
+        config.SUPABASE_PUBLISHABLE_KEY,
+        config.SUPABASE_SERVICE_ROLE_KEY,
+      )
+    : undefined,
 });
 
 await app.listen({ host: config.API_HOST, port: config.API_PORT });

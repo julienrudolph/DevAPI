@@ -21,7 +21,7 @@ const executionRowsSchema = z
       status_code: z.number(),
       duration_ms: z.number(),
       successful: z.boolean(),
-      executed_by: z.string().uuid(),
+      executed_by: z.string().uuid().nullable(),
       executed_by_name: z.string(),
       executed_at: z.string(),
     }),

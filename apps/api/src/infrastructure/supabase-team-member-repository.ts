@@ -100,6 +100,18 @@ export class SupabaseTeamMemberRepository implements TeamMemberRepository {
     return z.boolean().parse(data);
   }
 
+  async deleteTeam(command: TeamCommand): Promise<boolean | null> {
+    const { data, error } = await this.client(command.accessToken).rpc(
+      "delete_team",
+      { p_team_id: command.teamId },
+    );
+    if (error) {
+      if (error.code === "42501") return null;
+      throw new Error("TEAM_DELETE_FAILED", { cause: error });
+    }
+    return z.boolean().parse(data);
+  }
+
   private client(accessToken: string) {
     return createUserSupabaseClient(
       this.supabaseUrl,

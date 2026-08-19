@@ -5,6 +5,7 @@ import {
   createFolderSchema,
   createRequestSummarySchema,
   createTeamInvitationSchema,
+  deleteAccountSchema,
   createWorkspaceSchema,
   collectionIdParamsSchema,
   deleteEnvironmentSchema,
@@ -55,6 +56,7 @@ import {
   type IdempotencyStore,
 } from "./domain/idempotency-store.js";
 import type { InvitationRepository } from "./domain/invitation-repository.js";
+import type { AccountRepository } from "./domain/account-repository.js";
 import type { TeamMemberRepository } from "./domain/team-member-repository.js";
 import {
   RequestExecutionError,
@@ -77,6 +79,7 @@ export interface ApiDependencies {
   environments?: EnvironmentRepository;
   invitations?: InvitationRepository;
   teamMembers?: TeamMemberRepository;
+  account?: AccountRepository;
   executionHistory?: ExecutionHistoryRepository;
   executionLimiter?: ExecutionLimiter;
   idempotency?: IdempotencyStore;
@@ -481,6 +484,124 @@ export function buildApp(dependencies: ApiDependencies) {
     } catch (error) {
       request.log.error({ err: error }, "TEAM_OWNERSHIP_TRANSFER_FAILED");
       return reply.code(500).send({ code: "TEAM_OWNERSHIP_TRANSFER_FAILED" });
+    }
+  });
+
+  app.delete("/v1/teams/:teamId", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+      request.log,
+    );
+    if (user.kind !== "authenticated") {
+      return reply.code(user.kind === "unavailable" ? 503 : 401).send({
+        code:
+          user.kind === "unavailable"
+            ? "AUTHENTICATION_UNAVAILABLE"
+            : "UNAUTHORIZED",
+      });
+    }
+    const params = teamIdParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.teamMembers) {
+      return reply.code(503).send({ code: "TEAM_MEMBERS_UNAVAILABLE" });
+    }
+    try {
+      const deleted = await dependencies.teamMembers.deleteTeam({
+        teamId: params.data.teamId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      if (deleted === null) {
+        return reply.code(403).send({ code: "FORBIDDEN" });
+      }
+      return deleted
+        ? reply.code(204).send()
+        : reply.code(404).send({ code: "TEAM_NOT_FOUND" });
+    } catch (error) {
+      request.log.error({ err: error }, "TEAM_DELETE_FAILED");
+      return reply.code(500).send({ code: "TEAM_DELETE_FAILED" });
+    }
+  });
+
+  app.get("/v1/account/deletion-check", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+      request.log,
+    );
+    if (user.kind !== "authenticated") {
+      return reply.code(user.kind === "unavailable" ? 503 : 401).send({
+        code:
+          user.kind === "unavailable"
+            ? "AUTHENTICATION_UNAVAILABLE"
+            : "UNAUTHORIZED",
+      });
+    }
+    if (!dependencies.account) {
+      return reply.code(503).send({ code: "ACCOUNT_DELETION_UNAVAILABLE" });
+    }
+    try {
+      const blockingTeams = await dependencies.account.listBlockingTeams({
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return reply.code(200).send(blockingTeams);
+    } catch (error) {
+      request.log.error({ err: error }, "ACCOUNT_DELETION_CHECK_FAILED");
+      return reply
+        .code(500)
+        .send({ code: "ACCOUNT_DELETION_CHECK_FAILED" });
+    }
+  });
+
+  app.post("/v1/account/delete", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+      request.log,
+    );
+    if (user.kind !== "authenticated") {
+      return reply.code(user.kind === "unavailable" ? 503 : 401).send({
+        code:
+          user.kind === "unavailable"
+            ? "AUTHENTICATION_UNAVAILABLE"
+            : "UNAUTHORIZED",
+      });
+    }
+    const body = deleteAccountSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.account) {
+      return reply.code(503).send({ code: "ACCOUNT_DELETION_UNAVAILABLE" });
+    }
+    // Self-service only: the target is always the caller's own userId, and
+    // the confirmation email must match the caller's own verified address -
+    // never a value the client could use to affect a different account.
+    if (
+      !user.user.email ||
+      user.user.email.toLowerCase() !== body.data.confirmEmail.toLowerCase()
+    ) {
+      return reply.code(409).send({ code: "EMAIL_CONFIRMATION_MISMATCH" });
+    }
+    try {
+      const blockingTeams = await dependencies.account.listBlockingTeams({
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      if (blockingTeams.length > 0) {
+        return reply
+          .code(409)
+          .send({ code: "SOLE_OWNER_OF_TEAMS", teams: blockingTeams });
+      }
+      await dependencies.account.deleteAccount(user.user.id);
+      return reply.code(204).send();
+    } catch (error) {
+      request.log.error({ err: error }, "ACCOUNT_DELETE_FAILED");
+      return reply.code(500).send({ code: "ACCOUNT_DELETE_FAILED" });
     }
   });
 
