@@ -9,14 +9,27 @@ verbindlichen Architektur- und Sicherheitsregeln stehen in
 ## Projektstatus
 
 Das Projekt befindet sich im Aufbau. Der interne MVP umfasst inzwischen
-gemeinsame Team-Workspaces, Rollen und Einladungen, den REST-Request-Editor,
-Umgebungsvariablen, die abgesicherte Proxy-Ausführung, Konflikterkennung,
-Revisionen und eine datensparsame Ausführungshistorie. OpenAPI- und
-Postman-Import, redigierter Workspace-Export sowie JSON-, Text-,
-URL-encoded- und textbasierte Form-Data-Bodies sind ebenfalls enthalten.
-Request-Revisionen werden pro Request auf die jüngsten 100 Einträge und
-höchstens 180 Tage begrenzt. Die Ausführungshistorie enthält maximal 100
-Einträge aus den letzten 30 Tagen.
+gemeinsame Team-Workspaces, Rollen und Einladungen (inklusive Widerruf
+offener Einladungen), den REST-Request-Editor, Umgebungsvariablen, die
+abgesicherte Proxy-Ausführung, Konflikterkennung, Revisionen und eine
+datensparsame Ausführungshistorie. OpenAPI-, Postman- und PowerShell-Import
+(`Invoke-RestMethod`/`Invoke-WebRequest`), redigierter Workspace-Export sowie
+JSON-, Text-, URL-encoded- und textbasierte Form-Data-Bodies sind ebenfalls
+enthalten. Request-Revisionen werden pro Request auf die jüngsten 100
+Einträge und höchstens 180 Tage begrenzt. Die Ausführungshistorie enthält
+maximal 100 Einträge aus den letzten 30 Tagen.
+
+Der Electron-Desktop-Client kann Requests gegen `localhost` und private
+Netze wahlweise direkt im Main-Prozess ausführen, statt über den
+Server-Proxy — mit automatischer Zielerkennung und einem expliziten Umschalter
+pro Request. Änderungen an gemeinsam bearbeiteten Ressourcen werden per
+Idempotenzschlüssel gegen doppelte Ausführung abgesichert, und Correlation-IDs
+verbinden API- und Proxy-Logs für dieselbe Anfrage. Ein passiver
+Aktualisierungshinweis zeigt an, wenn im Hintergrund eine neuere Version
+vorliegt, ohne einen ungespeicherten Entwurf zu überschreiben. Team- und
+Workspace-Löschung durch den Owner sowie die selbstständige, per
+E-Mail-Bestätigung abgesicherte Löschung des eigenen Kontos sind ebenfalls
+verfügbar (siehe AGENTS.md 7.4).
 
 Die Weboberfläche ist mehrsprachig (Deutsch als Standard, zusätzlich
 Englisch) und über einen Sprachumschalter im Kopfbereich umschaltbar. Weitere
