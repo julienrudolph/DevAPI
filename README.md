@@ -89,6 +89,10 @@ workspacebezogenen Zähler liegen im Speicher des API-Prozesses und sind damit
 für den vorgesehenen einzelnen Self-Hosted-API-Container geeignet. Mehrere
 API-Replikate benötigen später einen gemeinsamen verteilten Limiter.
 
+Welche Prometheus-Metriken für die Nachjustierung dieser Limits relevant
+sind und wie der empfohlene Review-Zyklus aussieht, steht in
+[`docs/operations.md`](docs/operations.md).
+
 Alle Prüfungen:
 
 ```bash
