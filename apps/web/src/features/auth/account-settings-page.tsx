@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
@@ -6,6 +6,63 @@ import { Button, Field, FieldError, FieldLabel, Input } from "../../components/u
 import { AccountDeletionError } from "./account-api";
 import { useAuth } from "./auth-context";
 import { useAccountDeletionCheck, useDeleteAccount } from "./account-queries";
+
+function DesktopServerSection() {
+  const { t } = useTranslation("auth");
+  const bridge = window.devapiDesktop;
+  const [serverUrl, setServerUrl] = useState("");
+  const [error, setError] = useState<string>();
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!bridge) return;
+    void bridge.getServerUrl().then((value) => {
+      if (value) setServerUrl(value);
+    });
+  }, [bridge]);
+
+  if (!bridge) return null;
+
+  return (
+    <div className="settings-section">
+      <h2>{t("account.serverTitle")}</h2>
+      <p>{t("account.serverDescription")}</p>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!window.confirm(t("account.serverChangeConfirm"))) return;
+          setSaving(true);
+          setError(undefined);
+          void bridge
+            .setServerUrl(serverUrl)
+            .catch(() => {
+              setSaving(false);
+              setError(t("account.serverChangeFailed"));
+            });
+        }}
+      >
+        <Field>
+          <FieldLabel htmlFor="desktop-server-url">
+            {t("account.serverAddressLabel")}
+          </FieldLabel>
+          <Input
+            id="desktop-server-url"
+            onChange={(event) => setServerUrl(event.target.value)}
+            required
+            type="url"
+            value={serverUrl}
+          />
+        </Field>
+        {error ? <FieldError>{error}</FieldError> : null}
+        <Button disabled={saving} type="submit" variant="secondary">
+          {saving
+            ? t("account.serverChangeSaving")
+            : t("account.serverChangeAction")}
+        </Button>
+      </form>
+    </div>
+  );
+}
 
 export function AccountSettingsPage() {
   const { t } = useTranslation("auth");
@@ -46,6 +103,8 @@ export function AccountSettingsPage() {
       <div className="settings-card">
         <h1>{t("account.title")}</h1>
         <p className="settings-email">{user?.email}</p>
+
+        <DesktopServerSection />
 
         <div className="settings-danger-zone">
           <h2>{t("account.deleteTitle")}</h2>

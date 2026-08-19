@@ -139,6 +139,11 @@ https://devapi.example.de
 Die Adresse enthält keinen zusätzlichen Pfad. Der Desktop-Client verwendet
 danach dieselben Konten, Teams und Workspaces wie die Web-Anwendung.
 
+Die Serveradresse lässt sich später jederzeit über die Kontoeinstellungen
+(Zahnrad-Symbol) ändern, ohne die App neu zu installieren. Ein Wechsel meldet
+den Nutzer ab und lädt die App neu, da eine Sitzung nur für den Server gültig
+ist, der sie ausgestellt hat.
+
 Passwort-Anmeldungen funktionieren vollständig innerhalb der App. OIDC wird
 im Systembrowser geöffnet und mittels PKCE über `devapi://auth/callback` an
 Relay zurückgegeben. Magic Links können denselben Callback verwenden, sofern

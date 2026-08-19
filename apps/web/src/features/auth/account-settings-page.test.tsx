@@ -40,7 +40,10 @@ beforeEach(() => {
   } as unknown as ReturnType<typeof useAccountDeletionCheck>);
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  delete window.devapiDesktop;
+});
 
 function renderPage() {
   return render(
@@ -51,6 +54,46 @@ function renderPage() {
 }
 
 describe("AccountSettingsPage", () => {
+  it("hides the server section outside the desktop client", () => {
+    vi.mocked(useDeleteAccount).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useDeleteAccount>);
+
+    renderPage();
+
+    expect(screen.queryByText("DevAPI-Server")).not.toBeInTheDocument();
+  });
+
+  it("lets a desktop user change the configured server address", async () => {
+    vi.mocked(useDeleteAccount).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useDeleteAccount>);
+    const setServerUrl = vi.fn().mockResolvedValue(
+      "https://devapi2.example.test",
+    );
+    window.devapiDesktop = {
+      platform: "win32",
+      getServerUrl: vi.fn().mockResolvedValue("https://devapi.example.test"),
+      setServerUrl,
+    };
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    const user = userEvent.setup();
+    renderPage();
+
+    const input = await screen.findByLabelText("Serveradresse");
+    expect(input).toHaveValue("https://devapi.example.test");
+    await user.clear(input);
+    await user.type(input, "https://devapi2.example.test");
+    await user.click(screen.getByRole("button", { name: "Server speichern" }));
+
+    expect(setServerUrl).toHaveBeenCalledWith("https://devapi2.example.test");
+  });
+
   it("requires the confirmation email to match before enabling deletion", async () => {
     vi.mocked(useDeleteAccount).mockReturnValue({
       mutateAsync: vi.fn(),

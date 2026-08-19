@@ -141,12 +141,27 @@ async function loadSettings(): Promise<DesktopSettings | undefined> {
 async function saveServerUrl(value: unknown): Promise<string> {
   if (typeof value !== "string") throw new Error("SERVER_URL_INVALID");
   const serverUrl = validateServerUrl(value, !app.isPackaged);
+  const previousServerUrl = settings?.serverUrl;
   settings = { serverUrl };
   await writeFile(settingsPath(), JSON.stringify(settings), {
     encoding: "utf8",
     mode: 0o600,
   });
+  // A session token is only valid for the server that issued it. Carrying
+  // it over to a different server would silently fail every request
+  // instead of prompting a clean re-login, so drop it on an actual change.
+  if (previousServerUrl && previousServerUrl !== serverUrl) {
+    await enqueueClearSessionStorage();
+  }
   return serverUrl;
+}
+
+function enqueueClearSessionStorage(): Promise<void> {
+  const update = sessionStorageUpdate.then(() =>
+    unlink(sessionPath()).catch(() => undefined),
+  );
+  sessionStorageUpdate = update;
+  return update;
 }
 
 function localExecutionErrorCode(error: unknown): string {
