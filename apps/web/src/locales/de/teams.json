@@ -13,7 +13,16 @@
     "transferOwnershipConfirm": "Owner-Rechte wirklich an {{name}} übertragen? Du wirst danach selbst zum Editor.",
     "removeMember": "{{name}} entfernen",
     "removeMemberConfirm": "{{name}} wirklich aus dem Team entfernen?",
-    "saveError": "Die Änderung konnte nicht gespeichert werden."
+    "saveError": "Die Änderung konnte nicht gespeichert werden.",
+    "pendingInvitationsTitle": "Offene Einladungen",
+    "pendingLoading": "Offene Einladungen werden geladen …",
+    "pendingLoadError": "Die offenen Einladungen konnten nicht geladen werden.",
+    "pendingEmpty": "Keine offenen Einladungen.",
+    "pendingCreatedBy": "erstellt von {{name}}",
+    "pendingExpires": "läuft am {{date}} ab",
+    "revokeInvitation": "Einladung widerrufen",
+    "revokeInvitationConfirm": "Diese Einladung widerrufen? Der Link funktioniert danach nicht mehr. Über \"Einladen\" kannst du anschließend einen neuen Link erstellen.",
+    "revokeInvitationError": "Die Einladung konnte nicht widerrufen werden."
   },
   "invitation": {
     "title": "Teammitglied einladen",

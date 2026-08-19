@@ -14,11 +14,20 @@ import {
 } from "../../components/ui";
 import { useAuth } from "../auth/auth-context";
 import {
+  usePendingInvitations,
+  useRevokeInvitation,
+} from "../invitations/invitation-queries";
+import {
   useRemoveTeamMember,
   useTeamMembers,
   useTransferTeamOwnership,
   useUpdateTeamMember,
 } from "./team-member-queries";
+
+const dateFormatLocales: Record<string, string> = {
+  de: "de-DE",
+  en: "en-US",
+};
 
 export function TeamMembersDialog({
   onClose,
@@ -27,15 +36,21 @@ export function TeamMembersDialog({
   onClose: () => void;
   teamId: string;
 }) {
-  const { t } = useTranslation(["teams", "common"]);
+  const { i18n, t } = useTranslation(["teams", "common"]);
   const { user } = useAuth();
   const members = useTeamMembers(teamId);
   const updateMember = useUpdateTeamMember(teamId);
   const removeMember = useRemoveTeamMember(teamId);
   const transferOwnership = useTransferTeamOwnership(teamId);
+  const pendingInvitations = usePendingInvitations(teamId);
+  const revokeInvitation = useRevokeInvitation(teamId);
   const busy =
     updateMember.isPending || removeMember.isPending ||
     transferOwnership.isPending;
+  const dateFormatter = new Intl.DateTimeFormat(
+    dateFormatLocales[i18n.language] ?? "en-US",
+    { dateStyle: "medium" },
+  );
 
   return (
     <Dialog
@@ -148,6 +163,57 @@ export function TeamMembersDialog({
         {updateMember.isError || removeMember.isError ||
         transferOwnership.isError ? (
           <FieldError>{t("members.saveError")}</FieldError>
+        ) : null}
+
+        <h3 className="team-members-subheading">
+          {t("members.pendingInvitationsTitle")}
+        </h3>
+        {pendingInvitations.isPending ? (
+          <p className="dialog-state">{t("members.pendingLoading")}</p>
+        ) : pendingInvitations.isError ? (
+          <p className="field-error">{t("members.pendingLoadError")}</p>
+        ) : pendingInvitations.data.length === 0 ? (
+          <p className="dialog-state">{t("members.pendingEmpty")}</p>
+        ) : (
+          <div className="team-member-list">
+            {pendingInvitations.data.map((invitation) => (
+              <div className="team-member-row" key={invitation.id}>
+                <span className="member-identity">
+                  <strong>
+                    {invitation.role === "editor"
+                      ? t("members.roleEditor")
+                      : t("members.roleViewer")}
+                  </strong>
+                  <small>
+                    {t("members.pendingCreatedBy", {
+                      name: invitation.createdBy.displayName,
+                    })}{" "}
+                    ·{" "}
+                    {t("members.pendingExpires", {
+                      date: dateFormatter.format(
+                        new Date(invitation.expiresAt),
+                      ),
+                    })}
+                  </small>
+                </span>
+                <IconButton
+                  aria-label={t("members.revokeInvitation")}
+                  disabled={revokeInvitation.isPending}
+                  onClick={() => {
+                    if (window.confirm(t("members.revokeInvitationConfirm"))) {
+                      revokeInvitation.mutate(invitation.id);
+                    }
+                  }}
+                  variant="danger"
+                >
+                  <Trash2 aria-hidden="true" size={16} />
+                </IconButton>
+              </div>
+            ))}
+          </div>
+        )}
+        {revokeInvitation.isError ? (
+          <FieldError>{t("members.revokeInvitationError")}</FieldError>
         ) : null}
       </DialogBody>
       <DialogFooter>

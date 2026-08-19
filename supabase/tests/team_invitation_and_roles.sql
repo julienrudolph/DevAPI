@@ -256,4 +256,123 @@ begin
 end;
 $$;
 
+create temporary table second_invitation_result (
+  id uuid,
+  team_id uuid,
+  role public.workspace_role,
+  token text,
+  expires_at timestamptz
+);
+grant select, insert on second_invitation_result to authenticated;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '13000000-0000-4000-8000-000000000001',
+  true
+);
+
+insert into second_invitation_result
+select * from public.create_team_invitation(
+  '23000000-0000-4000-8000-000000000001',
+  'viewer'
+);
+
+do $$
+begin
+  if not exists (
+    select 1 from public.list_team_invitations(
+      '23000000-0000-4000-8000-000000000001'
+    )
+    where id = (select id from second_invitation_result)
+  ) then
+    raise exception 'Owner could not see the pending invitation';
+  end if;
+end;
+$$;
+
+select set_config(
+  'request.jwt.claim.sub',
+  '13000000-0000-4000-8000-000000000002',
+  true
+);
+
+do $$
+begin
+  begin
+    perform public.list_team_invitations(
+      '23000000-0000-4000-8000-000000000001'
+    );
+    raise exception 'Editor unexpectedly listed pending invitations';
+  exception
+    when insufficient_privilege then
+      null;
+  end;
+
+  begin
+    perform public.revoke_team_invitation(
+      (select id from second_invitation_result)
+    );
+    raise exception 'Editor unexpectedly revoked a pending invitation';
+  exception
+    when insufficient_privilege then
+      null;
+  end;
+end;
+$$;
+
+select set_config(
+  'request.jwt.claim.sub',
+  '13000000-0000-4000-8000-000000000001',
+  true
+);
+
+do $$
+begin
+  if not public.revoke_team_invitation(
+    (select id from second_invitation_result)
+  ) then
+    raise exception 'Owner could not revoke the pending invitation';
+  end if;
+  if public.revoke_team_invitation(
+    (select id from second_invitation_result)
+  ) then
+    raise exception 'Already-revoked invitation was revoked again';
+  end if;
+  if exists (
+    select 1 from public.list_team_invitations(
+      '23000000-0000-4000-8000-000000000001'
+    )
+    where id = (select id from second_invitation_result)
+  ) then
+    raise exception 'Revoked invitation still appears as pending';
+  end if;
+end;
+$$;
+
+reset role;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '13000000-0000-4000-8000-000000000003',
+  true
+);
+
+do $$
+begin
+  begin
+    perform public.accept_team_invitation(
+      (select token from second_invitation_result)
+    );
+    raise exception 'Revoked invitation token was accepted';
+  exception
+    when no_data_found then
+      null;
+  end;
+end;
+$$;
+
+reset role;
+
 rollback;

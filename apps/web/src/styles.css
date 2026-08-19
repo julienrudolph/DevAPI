@@ -2034,6 +2034,13 @@ a:focus-visible {
   margin-block: 1.25rem;
 }
 
+.team-members-subheading {
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  margin: 1.25rem 0 0;
+  padding-top: 1rem;
+}
+
 .team-member-row {
   border: 1px solid var(--border);
   border-radius: 0.6rem;

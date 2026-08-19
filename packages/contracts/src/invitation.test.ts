@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   acceptTeamInvitationSchema,
   createTeamInvitationSchema,
+  pendingTeamInvitationSchema,
   teamInvitationSchema,
 } from "./invitation";
 
@@ -33,5 +34,18 @@ describe("invitation contracts", () => {
         expiresAt: "never",
       }),
     ).toThrow();
+  });
+
+  it("never exposes a token for a pending invitation", () => {
+    const parsed = pendingTeamInvitationSchema.parse({
+      id: crypto.randomUUID(),
+      teamId: crypto.randomUUID(),
+      role: "editor",
+      createdAt: "2026-08-01T12:00:00.000Z",
+      expiresAt: "2026-08-08T12:00:00.000Z",
+      createdBy: { id: crypto.randomUUID(), displayName: "Ada" },
+      token: "leaked-token",
+    });
+    expect(parsed).not.toHaveProperty("token");
   });
 });

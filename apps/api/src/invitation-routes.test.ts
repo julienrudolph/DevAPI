@@ -48,6 +48,8 @@ describe("invitation routes", () => {
           return invitation;
         },
         accept: async () => null,
+        list: async () => [],
+        revoke: async () => false,
       },
     });
 
@@ -82,6 +84,8 @@ describe("invitation routes", () => {
           return invitation;
         },
         accept: async () => null,
+        list: async () => [],
+        revoke: async () => false,
       },
     });
 
@@ -127,6 +131,97 @@ describe("invitation routes", () => {
     await app.close();
   });
 
+  it("lists pending invitations for an authorized owner and hides them from others", async () => {
+    const pending = [
+      {
+        id: "95da6097-0742-4164-9c9a-75dc64d2cd8f",
+        teamId,
+        role: "editor" as const,
+        createdAt: "2026-08-01T12:00:00.000Z",
+        expiresAt: "2026-08-08T12:00:00.000Z",
+        createdBy: { id: user.id, displayName: "Ada" },
+      },
+    ];
+    const app = buildApp({
+      authenticate: async () => user,
+      requests,
+      workspaces,
+      invitations: {
+        create: async () => null,
+        accept: async () => null,
+        list: async () => pending,
+        revoke: async () => false,
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/teams/${teamId}/invitations`,
+      headers: { authorization: "Bearer verified-token" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(pending);
+    await app.close();
+  });
+
+  it("hides forbidden invitation listings behind a generic 403", async () => {
+    const app = buildApp({
+      authenticate: async () => user,
+      requests,
+      workspaces,
+      invitations: {
+        create: async () => null,
+        accept: async () => null,
+        list: async () => null,
+        revoke: async () => null,
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/teams/${teamId}/invitations`,
+      headers: { authorization: "Bearer verified-token" },
+    });
+
+    expect(response.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it("revokes a pending invitation and reports a missing one as 404", async () => {
+    const revokedIds: string[] = [];
+    const app = buildApp({
+      authenticate: async () => user,
+      requests,
+      workspaces,
+      invitations: {
+        create: async () => null,
+        accept: async () => null,
+        list: async () => [],
+        revoke: async (command) => {
+          revokedIds.push(command.invitationId);
+          return command.invitationId === "95da6097-0742-4164-9c9a-75dc64d2cd8f";
+        },
+      },
+    });
+
+    const revoked = await app.inject({
+      method: "POST",
+      url: `/v1/teams/${teamId}/invitations/95da6097-0742-4164-9c9a-75dc64d2cd8f/revoke`,
+      headers: { authorization: "Bearer verified-token" },
+    });
+    const missing = await app.inject({
+      method: "POST",
+      url: `/v1/teams/${teamId}/invitations/${"0".repeat(8)}-0000-4000-8000-000000000000/revoke`,
+      headers: { authorization: "Bearer verified-token" },
+    });
+
+    expect(revoked.statusCode).toBe(204);
+    expect(missing.statusCode).toBe(404);
+    expect(revokedIds).toHaveLength(2);
+    await app.close();
+  });
+
   it("accepts a valid token and hides invalid or expired tokens", async () => {
     const acceptedTokens: string[] = [];
     const app = buildApp({
@@ -139,6 +234,8 @@ describe("invitation routes", () => {
           acceptedTokens.push(command.token);
           return command.token.startsWith("a") ? teamId : null;
         },
+        list: async () => [],
+        revoke: async () => false,
       },
     });
 

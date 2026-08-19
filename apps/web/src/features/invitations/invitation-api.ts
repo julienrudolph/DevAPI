@@ -1,8 +1,10 @@
 import {
   acceptedTeamInvitationSchema,
   createTeamInvitationSchema,
+  pendingTeamInvitationsSchema,
   teamInvitationSchema,
   type CreateTeamInvitation,
+  type PendingTeamInvitation,
   type TeamInvitation,
 } from "@api-client/contracts";
 
@@ -39,4 +41,30 @@ export async function acceptInvitation(
   });
   if (!response.ok) throw new Error(`INVITATION_ACCEPT_${response.status}`);
   return acceptedTeamInvitationSchema.parse(await response.json()).teamId;
+}
+
+export async function listPendingInvitations(
+  teamId: string,
+  accessToken: string,
+): Promise<PendingTeamInvitation[]> {
+  const response = await fetch(`/api/v1/teams/${teamId}/invitations`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`INVITATIONS_LIST_${response.status}`);
+  return pendingTeamInvitationsSchema.parse(await response.json());
+}
+
+export async function revokeInvitation(
+  teamId: string,
+  invitationId: string,
+  accessToken: string,
+): Promise<void> {
+  const response = await fetch(
+    `/api/v1/teams/${teamId}/invitations/${invitationId}/revoke`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+  if (!response.ok) throw new Error(`INVITATION_REVOKE_${response.status}`);
 }

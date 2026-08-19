@@ -21,6 +21,7 @@ import {
   requestIdParamsSchema,
   restoreRequestRevisionSchema,
   teamIdParamsSchema,
+  invitationIdParamsSchema,
   teamMemberParamsSchema,
   transferTeamOwnershipSchema,
   updateEnvironmentSchema,
@@ -207,6 +208,88 @@ export function buildApp(dependencies: ApiDependencies) {
       return reply.code(500).send({ code: "INVITATION_CREATE_FAILED" });
     }
   });
+
+  app.get("/v1/teams/:teamId/invitations", async (request, reply) => {
+    const user = await authenticateSafely(
+      dependencies.authenticate,
+      request.headers.authorization,
+      request.log,
+    );
+    if (user.kind !== "authenticated") {
+      return reply
+        .code(user.kind === "unavailable" ? 503 : 401)
+        .send({
+          code:
+            user.kind === "unavailable"
+              ? "AUTHENTICATION_UNAVAILABLE"
+              : "UNAUTHORIZED",
+        });
+    }
+    const params = teamIdParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ code: "INVALID_REQUEST" });
+    }
+    if (!dependencies.invitations) {
+      return reply.code(503).send({ code: "INVITATIONS_UNAVAILABLE" });
+    }
+    try {
+      const invitations = await dependencies.invitations.list({
+        teamId: params.data.teamId,
+        userId: user.user.id,
+        accessToken: user.user.accessToken,
+      });
+      return invitations
+        ? reply.code(200).send(invitations)
+        : reply.code(403).send({ code: "FORBIDDEN" });
+    } catch (error) {
+      request.log.error({ err: error }, "INVITATIONS_LIST_FAILED");
+      return reply.code(500).send({ code: "INVITATIONS_LIST_FAILED" });
+    }
+  });
+
+  app.post(
+    "/v1/teams/:teamId/invitations/:invitationId/revoke",
+    async (request, reply) => {
+      const user = await authenticateSafely(
+        dependencies.authenticate,
+        request.headers.authorization,
+        request.log,
+      );
+      if (user.kind !== "authenticated") {
+        return reply
+          .code(user.kind === "unavailable" ? 503 : 401)
+          .send({
+            code:
+              user.kind === "unavailable"
+                ? "AUTHENTICATION_UNAVAILABLE"
+                : "UNAUTHORIZED",
+          });
+      }
+      const params = invitationIdParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return reply.code(400).send({ code: "INVALID_REQUEST" });
+      }
+      if (!dependencies.invitations) {
+        return reply.code(503).send({ code: "INVITATIONS_UNAVAILABLE" });
+      }
+      try {
+        const revoked = await dependencies.invitations.revoke({
+          invitationId: params.data.invitationId,
+          userId: user.user.id,
+          accessToken: user.user.accessToken,
+        });
+        if (revoked === null) {
+          return reply.code(403).send({ code: "FORBIDDEN" });
+        }
+        return revoked
+          ? reply.code(204).send()
+          : reply.code(404).send({ code: "INVITATION_NOT_FOUND" });
+      } catch (error) {
+        request.log.error({ err: error }, "INVITATION_REVOKE_FAILED");
+        return reply.code(500).send({ code: "INVITATION_REVOKE_FAILED" });
+      }
+    },
+  );
 
   app.post("/v1/invitations/accept", async (request, reply) => {
     const user = await authenticateSafely(
