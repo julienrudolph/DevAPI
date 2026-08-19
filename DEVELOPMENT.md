@@ -212,6 +212,7 @@ Zugriffe werden auch in PostgreSQL erzwungen.
 | SSRF- oder Header-Schutz | `apps/proxy/src/security` |
 | HTTP-Ausführung | `apps/proxy/src/execution` |
 | Schema, RLS oder Datenbankfunktion | neue Datei in `supabase/migrations` |
+| SQL-Integrationstest (RLS, Rollen, Cross-Tenant) | `supabase/tests` |
 | Desktop-Bridge | `apps/desktop/src` |
 | Übersetzungen / neue Sprache | `apps/web/src/locales/<sprache>/<namespace>.json`, Registrierung in `apps/web/src/lib/i18n.ts` |
 | Deployment | Compose-Dateien, `infra/` und `docs/` |
