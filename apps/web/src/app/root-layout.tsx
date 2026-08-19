@@ -6,9 +6,9 @@ import {
   MenuTrigger,
 } from "@fluentui/react-components";
 import { PersonCircle20Regular } from "@fluentui/react-icons";
-import { Braces, Languages, Monitor, Moon, Sun } from "lucide-react";
+import { Braces, Languages, Monitor, Moon, Settings, Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Outlet } from "react-router";
+import { Outlet, useNavigate } from "react-router";
 
 import { Button, IconButton, Tooltip } from "../components/ui";
 import { useAuth } from "../features/auth/auth-context";
@@ -84,6 +84,7 @@ function LanguageSwitcher() {
 export function RootLayout() {
   const { t } = useTranslation();
   const { client, user } = useAuth();
+  const navigate = useNavigate();
 
   async function signOut() {
     await client?.auth.signOut();
@@ -104,6 +105,14 @@ export function RootLayout() {
         <div className="topbar-actions">
           <LanguageSwitcher />
           <ThemeModeToggle />
+          <Tooltip content={t("account.linkTooltip")} relationship="description">
+            <IconButton
+              aria-label={t("account.linkTooltip")}
+              onClick={() => navigate("/account")}
+            >
+              <Settings aria-hidden="true" size={18} />
+            </IconButton>
+          </Tooltip>
           <Tooltip
             content={t("auth.signOutTooltip", {
               email: user?.email ?? t("auth.signOutFallback"),

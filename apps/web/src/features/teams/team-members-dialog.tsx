@@ -18,6 +18,7 @@ import {
   useRevokeInvitation,
 } from "../invitations/invitation-queries";
 import {
+  useDeleteTeam,
   useRemoveTeamMember,
   useTeamMembers,
   useTransferTeamOwnership,
@@ -42,11 +43,15 @@ export function TeamMembersDialog({
   const updateMember = useUpdateTeamMember(teamId);
   const removeMember = useRemoveTeamMember(teamId);
   const transferOwnership = useTransferTeamOwnership(teamId);
+  const deleteTeam = useDeleteTeam(teamId);
   const pendingInvitations = usePendingInvitations(teamId);
   const revokeInvitation = useRevokeInvitation(teamId);
   const busy =
     updateMember.isPending || removeMember.isPending ||
     transferOwnership.isPending;
+  const isOwner = members.data?.some(
+    (member) => member.userId === user?.id && member.role === "owner",
+  );
   const dateFormatter = new Intl.DateTimeFormat(
     dateFormatLocales[i18n.language] ?? "en-US",
     { dateStyle: "medium" },
@@ -214,6 +219,29 @@ export function TeamMembersDialog({
         )}
         {revokeInvitation.isError ? (
           <FieldError>{t("members.revokeInvitationError")}</FieldError>
+        ) : null}
+
+        {isOwner ? (
+          <>
+            <h3 className="team-members-subheading">
+              {t("members.deleteTeamTitle")}
+            </h3>
+            <Button
+              disabled={deleteTeam.isPending}
+              onClick={() => {
+                if (window.confirm(t("members.deleteTeamConfirm"))) {
+                  deleteTeam.mutate(undefined, { onSuccess: onClose });
+                }
+              }}
+              variant="danger"
+            >
+              <Trash2 aria-hidden="true" size={16} />
+              {t("members.deleteTeam")}
+            </Button>
+            {deleteTeam.isError ? (
+              <FieldError>{t("members.deleteTeamError")}</FieldError>
+            ) : null}
+          </>
         ) : null}
       </DialogBody>
       <DialogFooter>

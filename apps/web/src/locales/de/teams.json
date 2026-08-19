@@ -22,7 +22,11 @@
     "pendingExpires": "läuft am {{date}} ab",
     "revokeInvitation": "Einladung widerrufen",
     "revokeInvitationConfirm": "Diese Einladung widerrufen? Der Link funktioniert danach nicht mehr. Über \"Einladen\" kannst du anschließend einen neuen Link erstellen.",
-    "revokeInvitationError": "Die Einladung konnte nicht widerrufen werden."
+    "revokeInvitationError": "Die Einladung konnte nicht widerrufen werden.",
+    "deleteTeamTitle": "Team löschen",
+    "deleteTeam": "Team löschen",
+    "deleteTeamConfirm": "Dieses Team wirklich unwiderruflich löschen? Alle Workspaces, Requests und Umgebungen des Teams werden entfernt.",
+    "deleteTeamError": "Das Team konnte nicht gelöscht werden."
   },
   "invitation": {
     "title": "Teammitglied einladen",

@@ -11,7 +11,7 @@ export const requestRevisionSchema = z.object({
   method: httpMethodSchema,
   changeType: z.enum(["update", "overwrite", "restore", "delete"]),
   createdBy: z.object({
-    // Null once the creating account has been deleted (AGENTS.md 7.3):
+    // Null once the creating account has been deleted (AGENTS.md 7.4):
     // the revision itself is kept, only the attribution is anonymized.
     id: z.string().uuid().nullable(),
     displayName: z.string().min(1),

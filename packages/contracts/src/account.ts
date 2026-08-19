@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Self-service account deletion (AGENTS.md 7.3): the caller confirms by
+// Self-service account deletion (AGENTS.md 7.4): the caller confirms by
 // retyping their own email, checked server-side against their
 // authenticated session - not just a client-side confirmation dialog.
 export const deleteAccountSchema = z.object({

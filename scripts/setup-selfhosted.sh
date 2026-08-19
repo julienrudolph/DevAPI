@@ -63,11 +63,12 @@ sign_jwt() {
   local secret="$1"
   local issued_at="$2"
   local expires_at="$3"
+  local role="${4:-anon}"
   local header payload signing_input signature
   header="$(printf '%s' '{"alg":"HS256","typ":"JWT"}' | base64url)"
   payload="$(
-    printf '{"role":"anon","iss":"supabase","iat":%s,"exp":%s}' \
-      "$issued_at" "$expires_at" | base64url
+    printf '{"role":"%s","iss":"supabase","iat":%s,"exp":%s}' \
+      "$role" "$issued_at" "$expires_at" | base64url
   )"
   signing_input="$header.$payload"
   signature="$(
@@ -167,6 +168,7 @@ metrics_token="$(random_secret 48)"
 now="$(date +%s)"
 expires="$((now + 315360000))"
 anon_key="$(sign_jwt "$jwt_secret" "$now" "$expires")"
+service_role_key="$(sign_jwt "$jwt_secret" "$now" "$expires" "service_role")"
 public_host="${public_url#https://}"
 public_host="${public_host%%/*}"
 
@@ -181,6 +183,9 @@ umask 077
   printf 'POSTGRES_PASSWORD=%s\n' "$postgres_password"
   printf 'JWT_SECRET=%s\n' "$jwt_secret"
   printf 'SUPABASE_PUBLISHABLE_KEY=%s\n' "$anon_key"
+  # Ermöglicht die selbstständige Kontolöschung (AGENTS.md 7.4). Niemals an
+  # den Browser ausliefern, nur serverseitig für die API verwenden.
+  printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$service_role_key"
   printf 'PROXY_INTERNAL_TOKEN=%s\n' "$proxy_token"
   printf 'METRICS_TOKEN=%s\n' "$metrics_token"
   printf 'EXECUTION_RATE_WINDOW_MS=60000\n'

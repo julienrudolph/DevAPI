@@ -94,7 +94,7 @@ export const apiRequestSchema = requestDraftSchema.extend({
   collectionId: z.string().uuid().nullable(),
   folderId: z.string().uuid().nullable(),
   version: z.number().int().positive(),
-  // Null once the creating/updating account has been deleted (AGENTS.md 7.3).
+  // Null once the creating/updating account has been deleted (AGENTS.md 7.4).
   createdBy: z.string().uuid().nullable(),
   updatedBy: z.string().uuid().nullable(),
   createdAt: isoDateTimeSchema,

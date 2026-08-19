@@ -10,7 +10,7 @@ export const requestConflictSchema = z.object({
   currentVersion: z.number().int().positive(),
   current: apiRequestSchema,
   updatedBy: z.object({
-    // Null once the updating account has been deleted (AGENTS.md 7.3).
+    // Null once the updating account has been deleted (AGENTS.md 7.4).
     id: z.string().uuid().nullable(),
     displayName: z.string().min(1),
   }),

@@ -67,3 +67,14 @@ export async function transferTeamOwnership(
     throw new Error(`TEAM_OWNERSHIP_TRANSFER_${response.status}`);
   }
 }
+
+export async function deleteTeam(
+  teamId: string,
+  accessToken: string,
+): Promise<void> {
+  const response = await fetch(`/api/v1/teams/${teamId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`TEAM_DELETE_${response.status}`);
+}

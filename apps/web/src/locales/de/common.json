@@ -20,6 +20,9 @@
     "signOutTooltip": "Als {{email}} abmelden",
     "signOutFallback": "Abmelden"
   },
+  "account": {
+    "linkTooltip": "Kontoeinstellungen"
+  },
   "actions": {
     "cancel": "Abbrechen",
     "save": "Speichern",

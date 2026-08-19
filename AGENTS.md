@@ -262,6 +262,21 @@ Variablen müssen fachlich unterscheiden zwischen:
 
 Ein persönlicher oder geheimer Wert darf niemals automatisch in eine geteilte Ressource kopiert werden. Sensible Werte dürfen nicht in Revisionen, Aktivitätsdaten, Fehlerberichte oder Server-Logs gelangen. Bis ein echtes Secret-Management existiert, muss die Oberfläche deutlich kennzeichnen, welche Werte geteilt werden. Unsichere Secret-Speicherung darf nicht als Vault bezeichnet werden.
 
+### 7.4 Datenaufbewahrung und Löschung
+
+Team- und Workspace-Löschung sowie die selbstständige Löschung des eigenen Kontos sind reguläre Produktfunktionen, keine reinen Admin-Operationen.
+
+**Team-/Workspace-Löschung** darf nur der Owner eines Teams auslösen (siehe Rollentabelle in Abschnitt 8). Sie ist sofort wirksam und entfernt per Datenbank-Kaskade alle untergeordneten Ressourcen (Workspaces, Collections, Ordner, Requests, Umgebungen, Ausführungshistorie, Einladungen).
+
+**Selbstständige Kontolöschung** folgt diesen Regeln:
+
+- Löschung ist sofort wirksam und unwiderruflich; es gibt kein verzögertes Soft-Delete-Fenster.
+- Der Nutzer muss zur Bestätigung seine eigene, bereits verifizierte E-Mail-Adresse in das Löschformular eingeben; eine rein clientseitige Bestätigung genügt nicht.
+- Ist der Nutzer alleiniger Owner (`role = 'owner'`) mindestens eines Teams, wird die Löschung blockiert. Der Nutzer muss zuvor die Owner-Rolle übertragen oder das betroffene Team löschen.
+- Geteilte Inhalte, die der gelöschte Nutzer erstellt oder zuletzt geändert hat (`created_by`, `updated_by`, `executed_by` in `teams`, `workspaces`, `collections`, `folders`, `requests`, `request_revisions`, `environments`, `environment_variables`, `request_executions`, `team_invitations`), bleiben für die verbleibenden Teammitglieder vollständig erhalten. Die Zuordnung wird anonymisiert: die jeweilige Spalte wird `NULL` (`on delete set null`), die API liefert dafür eine generische Anzeige wie „Gelöschter Nutzer“.
+- Rein persönliche oder mitgliedschaftsbezogene Daten des Nutzers (`team_members.user_id`, `workspace_members.user_id`, personal-scope `environment_variables.owner_user_id`) werden dagegen per Kaskade mitgelöscht, da sie ohne den Nutzer keinen Sinn ergeben.
+- Die eigentliche Löschung des Auth-Kontos erfolgt über die Supabase Admin API (`auth.admin.deleteUser`), nicht per rohem SQL-`DELETE` auf `auth.users`, damit GoTrue-interner Zustand (Sessions, Identities, MFA-Faktoren) konsistent bleibt. Dafür ist serverseitig ein `SUPABASE_SERVICE_ROLE_KEY` erforderlich (siehe Abschnitt 11.4); ohne diesen ist die Funktion deaktiviert und meldet dies dem Client explizit, statt fehlzuschlagen.
+
 ## 8. Rollen und Berechtigungen
 
 Die minimalen Workspace-Rollen sind:

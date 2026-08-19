@@ -20,6 +20,9 @@
     "signOutTooltip": "Sign out as {{email}}",
     "signOutFallback": "Sign out"
   },
+  "account": {
+    "linkTooltip": "Account settings"
+  },
   "actions": {
     "cancel": "Cancel",
     "save": "Save",

@@ -4,7 +4,7 @@ import type { AuthenticatedRepositoryCommand } from "./workspace-repository.js";
 
 export interface AccountRepository {
   // Teams where the caller is the only owner - self-deletion is blocked
-  // while any exist (AGENTS.md 7.3 decision), so the caller must transfer
+  // while any exist (AGENTS.md 7.4 decision), so the caller must transfer
   // ownership or delete the team first.
   listBlockingTeams(
     command: AuthenticatedRepositoryCommand,

@@ -8,6 +8,7 @@ import {
   useRevokeInvitation,
 } from "../invitations/invitation-queries";
 import {
+  useDeleteTeam,
   useRemoveTeamMember,
   useTeamMembers,
   useTransferTeamOwnership,
@@ -23,11 +24,21 @@ vi.mock("./team-member-queries", () => ({
   useUpdateTeamMember: vi.fn(),
   useRemoveTeamMember: vi.fn(),
   useTransferTeamOwnership: vi.fn(),
+  useDeleteTeam: vi.fn(),
 }));
 vi.mock("../invitations/invitation-queries", () => ({
   usePendingInvitations: vi.fn(),
   useRevokeInvitation: vi.fn(),
 }));
+
+function mockDeleteTeam(overrides: Partial<ReturnType<typeof useDeleteTeam>> = {}) {
+  vi.mocked(useDeleteTeam).mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+    ...overrides,
+  } as unknown as ReturnType<typeof useDeleteTeam>);
+}
 
 function mockNoPendingInvitations() {
   vi.mocked(usePendingInvitations).mockReturnValue({
@@ -85,6 +96,7 @@ describe("TeamMembersDialog", () => {
       isError: false,
     } as unknown as ReturnType<typeof useTransferTeamOwnership>);
     mockNoPendingInvitations();
+    mockDeleteTeam();
 
     render(
       <TeamMembersDialog
@@ -150,6 +162,7 @@ describe("TeamMembersDialog", () => {
       isError: false,
     } as unknown as ReturnType<typeof useTransferTeamOwnership>);
     mockNoPendingInvitations();
+    mockDeleteTeam();
 
     render(
       <TeamMembersDialog
@@ -162,6 +175,56 @@ describe("TeamMembersDialog", () => {
     expect(
       screen.queryByRole("button", { name: "Ada entfernen" }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Team löschen" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lets the owner delete the team after confirmation", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "4776ac0f-28ba-474a-ad0d-d566be4199e8" },
+    } as unknown as ReturnType<typeof useAuth>);
+    vi.mocked(useTeamMembers).mockReturnValue({
+      data: [
+        {
+          userId: "4776ac0f-28ba-474a-ad0d-d566be4199e8",
+          email: "owner@example.com",
+          displayName: "Owner",
+          role: "owner",
+          joinedAt: "2026-07-30T08:00:00.000Z",
+        },
+      ],
+      isPending: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useTeamMembers>);
+    vi.mocked(useUpdateTeamMember).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useUpdateTeamMember>);
+    vi.mocked(useRemoveTeamMember).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useRemoveTeamMember>);
+    vi.mocked(useTransferTeamOwnership).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useTransferTeamOwnership>);
+    mockNoPendingInvitations();
+    const deleteTeam = vi.fn();
+    mockDeleteTeam({ mutate: deleteTeam });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <TeamMembersDialog onClose={onClose} teamId="76a26d02-fc07-4cd7-9b6a-1e2c15fc127b" />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Team löschen" }));
+    expect(deleteTeam).toHaveBeenCalled();
   });
 
   it("lists a pending invitation with its expiry and revokes it", async () => {
@@ -212,6 +275,7 @@ describe("TeamMembersDialog", () => {
       isError: false,
     } as unknown as ReturnType<typeof useRevokeInvitation>);
     vi.spyOn(window, "confirm").mockReturnValue(true);
+    mockDeleteTeam();
 
     const user = userEvent.setup();
     render(

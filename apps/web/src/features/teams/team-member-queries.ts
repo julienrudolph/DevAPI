@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../auth/auth-context";
 import { workspaceKeys } from "../workspaces/workspace-queries";
 import {
+  deleteTeam,
   fetchTeamMembers,
   removeTeamMember,
   transferTeamOwnership,
@@ -67,6 +68,17 @@ export function useTransferTeamOwnership(teamId: string) {
         queryClient.invalidateQueries({ queryKey: teamMemberKeys.list(teamId) }),
         queryClient.invalidateQueries({ queryKey: workspaceKeys.all }),
       ]);
+    },
+  });
+}
+
+export function useDeleteTeam(teamId: string) {
+  const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => deleteTeam(teamId, accessToken!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
     },
   });
 }

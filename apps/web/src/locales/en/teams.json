@@ -22,7 +22,11 @@
     "pendingExpires": "expires on {{date}}",
     "revokeInvitation": "Revoke invitation",
     "revokeInvitationConfirm": "Revoke this invitation? The link will stop working. You can create a new one afterward via \"Invite\".",
-    "revokeInvitationError": "The invitation could not be revoked."
+    "revokeInvitationError": "The invitation could not be revoked.",
+    "deleteTeamTitle": "Delete team",
+    "deleteTeam": "Delete team",
+    "deleteTeamConfirm": "Really delete this team permanently? All workspaces, requests, and environments in the team will be removed.",
+    "deleteTeamError": "The team could not be deleted."
   },
   "invitation": {
     "title": "Invite team member",

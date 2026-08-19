@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider } from "react-router";
 
+import { AccountSettingsPage } from "../features/auth/account-settings-page";
 import { LoginPage } from "../features/auth/login-page";
 import { AuthConfirmPage } from "../features/auth/auth-confirm-page";
 import { ProtectedRoute } from "../features/auth/protected-route";
@@ -39,6 +40,10 @@ const router = createBrowserRouter([
           {
             path: "invitations/:token",
             element: <InvitationAcceptPage />,
+          },
+          {
+            path: "account",
+            element: <AccountSettingsPage />,
           },
         ],
       },
