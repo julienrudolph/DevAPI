@@ -200,8 +200,9 @@ Für eine nicht-interaktive Vorbereitung:
 ```
 
 Das Skript erzeugt `.env.selfhosted` mit zufälligem Datenbankpasswort,
-JWT-Secret, öffentlichem Anwendungs-Key und internem Proxy-Token. Die Datei ist
-nicht für Git vorgesehen:
+JWT-Secret, öffentlichem Anwendungs-Key, internem Service-Role-Key (für die
+selbstständige Kontolöschung, siehe AGENTS.md 7.4) und internem Proxy-Token.
+Die Datei ist nicht für Git vorgesehen:
 
 ```bash
 chmod 600 .env.selfhosted

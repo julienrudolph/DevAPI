@@ -14,13 +14,13 @@ if (existsSync(target) && !force) {
 
 const jwtSecret = randomBytes(48).toString("base64url");
 const now = Math.floor(Date.now() / 1000);
+const expiresIn = 10 * 365 * 24 * 60 * 60;
 const anonKey = signJwt(
-  {
-    role: "anon",
-    iss: "supabase",
-    iat: now,
-    exp: now + 10 * 365 * 24 * 60 * 60,
-  },
+  { role: "anon", iss: "supabase", iat: now, exp: now + expiresIn },
+  jwtSecret,
+);
+const serviceRoleKey = signJwt(
+  { role: "service_role", iss: "supabase", iat: now, exp: now + expiresIn },
   jwtSecret,
 );
 
@@ -39,6 +39,9 @@ SUPABASE_INTERNAL_URL=http://supabase-gateway:8000
 POSTGRES_PASSWORD=${randomBytes(32).toString("base64url")}
 JWT_SECRET=${jwtSecret}
 SUPABASE_PUBLISHABLE_KEY=${anonKey}
+# Ermöglicht die selbstständige Kontolöschung (AGENTS.md 7.4). Niemals an
+# den Browser ausliefern, nur serverseitig für die API verwenden.
+SUPABASE_SERVICE_ROLE_KEY=${serviceRoleKey}
 PROXY_INTERNAL_TOKEN=${randomBytes(48).toString("base64url")}
 METRICS_TOKEN=${randomBytes(48).toString("base64url")}
 
