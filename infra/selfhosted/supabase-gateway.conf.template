@@ -1,0 +1,60 @@
+# Explicit origin allowlist (AGENTS.md 11.2: known origins only, never a
+# wildcard combined with credentials). Covers the deployed web app at its
+# configured public URL and the Electron desktop client's custom-scheme
+# renderer origin; unrecognized origins get no CORS header at all and are
+# blocked by the browser. ${SUPABASE_PUBLIC_URL} is substituted at
+# container start from the operator's .env.selfhosted (see
+# compose.selfhosted.yaml); NGINX_ENVSUBST_FILTER restricts substitution to
+# that single variable so nginx's own $-prefixed variables below are left
+# alone.
+map $http_origin $cors_allow_origin {
+  default "";
+  "${SUPABASE_PUBLIC_URL}" $http_origin;
+  "app://devapi" $http_origin;
+}
+
+server {
+  listen 8000;
+  server_name _;
+  server_tokens off;
+
+  location = /health {
+    access_log off;
+    add_header Content-Type text/plain;
+    return 200 "ok\n";
+  }
+
+  location /auth/v1/ {
+    if ($request_method = OPTIONS) {
+      return 204;
+    }
+
+    proxy_pass http://auth:9999/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+
+    proxy_hide_header Access-Control-Allow-Credentials;
+    proxy_hide_header Access-Control-Allow-Origin;
+    proxy_hide_header Access-Control-Expose-Headers;
+    proxy_hide_header Vary;
+    add_header Access-Control-Allow-Origin $cors_allow_origin always;
+    add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "apikey, authorization, content-type, x-client-info, x-supabase-api-version" always;
+    add_header Access-Control-Expose-Headers "Content-Range, X-Total-Count, X-Supabase-Api-Version" always;
+    add_header Vary "Origin" always;
+  }
+
+  location /rest/v1/ {
+    proxy_pass http://rest:3000/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+  }
+
+  add_header X-Content-Type-Options "nosniff" always;
+}
