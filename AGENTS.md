@@ -143,47 +143,50 @@ Konfliktkritische Schreiboperationen, Revisionsanlage, Rollenprüfung und Force-
 - API-Grenzen verwenden validierte, typisierte Ein- und Ausgaben.
 - Privilegierte Supabase-Schlüssel dürfen niemals an den Browser ausgeliefert werden.
 
-## 6. Empfohlene Projektstruktur
+## 6. Projektstruktur
 
-Die genaue Aufteilung darf mit wachsendem Projekt angepasst werden. Bevorzugt wird eine Feature-orientierte Struktur:
+Die genaue Aufteilung darf mit wachsendem Projekt angepasst werden. Es gilt eine Feature-orientierte Struktur; die folgende Übersicht entspricht dem tatsächlichen Stand des Repositories:
 
 ```text
 /
 ├── apps/
 │   ├── web/
 │   │   └── src/
-│   │       ├── app/
-│   │       ├── routes/
+│   │       ├── app/            # Root-Layout, Router, Theme
 │   │       ├── features/
 │   │       │   ├── auth/
 │   │       │   ├── teams/
-│   │       │   ├── workspaces/
-│   │       │   ├── collections/
+│   │       │   ├── workspaces/       # inkl. Collections/Ordner-Navigation
 │   │       │   ├── requests/
+│   │       │   ├── revisions/
 │   │       │   ├── environments/
-│   │       │   ├── conflicts/
-│   │       │   └── history/
+│   │       │   ├── history/
+│   │       │   ├── invitations/
+│   │       │   ├── import/
+│   │       │   └── export/
 │   │       ├── components/
 │   │       │   ├── ui/
-│   │       │   ├── layout/
 │   │       │   └── editors/
 │   │       ├── lib/
-│   │       ├── hooks/
-│   │       └── types/
+│   │       ├── locales/         # i18n-Ressourcen (de/en)
+│   │       ├── types/
+│   │       └── test/            # Test-Setup für Vitest
 │   ├── api/
 │   ├── proxy/
 │   └── desktop/
 ├── packages/
-│   ├── contracts/
-│   ├── config/
-│   └── test-utils/
+│   └── contracts/               # geteilte Zod-Schemas/Typen
 ├── supabase/
 │   ├── migrations/
-│   ├── policies/
-│   └── seed/
+│   └── tests/                   # SQL-Integrationstests (pgTAP-artig, via psql)
+├── infra/                       # Datenbank-Bootstrap, Backup, Gateway-Konfiguration
+├── scripts/                     # Setup-, Deploy- und Wartungsskripte
+├── e2e/                         # Playwright End-to-End-Tests
 ├── docs/
 └── AGENTS.md
 ```
+
+Konfliktbehandlung (Abschnitt 9) ist bewusst kein eigenes Feature-Verzeichnis, sondern lebt als geteiltes Contract-Schema (`packages/contracts`) direkt im Request-Editor der `requests`-Feature. Rollenverwaltung, Einladungen und Löschung eines Teams liegen im `teams`-Feature; die Löschung des eigenen Kontos (Abschnitt 7.4) im `auth`-Feature.
 
 Falls zunächst kein Monorepo benötigt wird, darf das Frontend direkt unter `src/` liegen. Trotzdem sind Features, API-Verträge und Sicherheitsgrenzen sauber zu trennen. Eine spätere Migration in die obige Struktur darf nicht durch unnötig enge Kopplung erschwert werden.
 
