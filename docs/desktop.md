@@ -54,6 +54,28 @@ den Renderer weitergegeben.
 
 HTTP zu `localhost` ist nur im nicht paketierten Entwicklungsbetrieb erlaubt.
 
+## Lokale Ausführung gegen `localhost` und private Netze
+
+Anders als die Web-Variante kann der Desktop-Client Requests wahlweise direkt
+im Electron-Main-Prozess ausführen, statt sie über `apps/proxy` zu leiten
+(AGENTS.md 11.1a). Das ist der einzige vorgesehene Weg, private und
+Loopback-Ziele zu erreichen, die der öffentliche Server-Proxy weiterhin
+grundsätzlich blockiert.
+
+- Standardmäßig automatische Erkennung: löst das Ziel zu einer privaten,
+  Loopback- oder Link-Local-Adresse auf, wird lokal ausgeführt; alle anderen
+  Ziele laufen weiterhin über den Server-Proxy.
+- Zusätzlich ein expliziter, sichtbarer Umschalter pro Request in der
+  Toolbar des Request-Editors, mit dem der erkannte Ausführungsweg bewusst
+  überschrieben werden kann.
+- Cloud-Metadatenendpunkte (`169.254.169.254`, AWS-IMDSv2-IPv6) bleiben auch
+  bei lokaler Ausführung blockiert; nur `http`/`https`, Größen- und
+  Zeitlimits sowie redigierte Protokollierung gelten unverändert.
+- Lokal ausgeführte Requests erzeugen denselben Metadaten-Eintrag (Name,
+  Methode, Statuscode, Dauer, ausführende Person, Zeitpunkt) in der
+  geteilten Ausführungshistorie wie über den Proxy ausgeführte Requests —
+  ohne Bodies, Header oder vollständige URLs.
+
 ## Entwicklung
 
 Zuerst muss der lokale Serverstack laufen:
@@ -191,7 +213,3 @@ werden.
 
 - reales Code-Signing-Zertifikat in der geschützten CI-Umgebung hinterlegen
 - Updatekanal erst nach funktionierender Signierung
-
-Die lokale Ausführung von Requests gegen `localhost` oder private Netzwerke ist
-noch nicht enthalten. In dieser ersten Desktop-Stufe werden Requests wie im
-Browser über den zentralen, abgesicherten Server-Proxy ausgeführt.
