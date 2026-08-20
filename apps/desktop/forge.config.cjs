@@ -55,6 +55,25 @@ module.exports = {
       name: "@electron-forge/maker-zip",
       platforms: ["win32"],
     },
+    {
+      name: "@electron-forge/maker-wix",
+      config: {
+        name: "Relay",
+        manufacturer: "DevAPI",
+        description: "Kollaborativer REST-API-Client für gemeinsame Team-Workspaces",
+        // Fixed, never-changing GUID so Windows recognizes future versions
+        // as upgrades of the same product instead of a separate install.
+        upgradeCode: "79550e14-6e7d-463c-aae7-161ec36d744e",
+        language: 1031, // de-DE
+        icon: "./assets/relay-icon.ico",
+        ui: { chooseDirectory: true },
+        // Enterprise deployment (GPO/SCCM/Intune) expects a per-machine,
+        // admin-elevated install rather than the per-user default.
+        defaultInstallMode: "perMachine",
+        certificateFile: windowsCertificateFile,
+        certificatePassword: windowsCertificatePassword,
+      },
+    },
   ],
   plugins: [
     new FusesPlugin({

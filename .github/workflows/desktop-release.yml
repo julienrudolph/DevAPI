@@ -25,6 +25,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install WiX Toolset
+        shell: pwsh
+        run: |
+          choco install wixtoolset --version=3.14.1 --no-progress -y
+          # electron-wix-msi shells out to candle.exe/light.exe by name, so
+          # they need to be on PATH. Chocolatey updates the machine PATH,
+          # but that doesn't propagate to the already-running runner process
+          # within the same job - append explicitly via GITHUB_PATH instead
+          # of relying on a fresh shell picking up the registry change.
+          "C:\Program Files (x86)\WiX Toolset v3.14\bin" >> $env:GITHUB_PATH
+
       - name: Verify source
         run: npm run check
 
@@ -53,7 +64,8 @@ jobs:
         run: |
           $installer = "apps/desktop/out/make/squirrel.windows/x64/Relay-Setup.exe"
           $application = "apps/desktop/out/Relay-win32-x64/Relay.exe"
-          foreach ($file in @($installer, $application)) {
+          $msi = Resolve-Path "apps/desktop/out/make/wix/x64/*.msi"
+          foreach ($file in @($installer, $application, $msi)) {
             $signature = Get-AuthenticodeSignature $file
             if ($signature.Status -ne "Valid") {
               throw "Invalid Authenticode signature for $file: $($signature.Status)"
@@ -69,6 +81,22 @@ jobs:
           if (-not (Test-Path $installed)) {
             throw "Relay.exe was not installed at $installed"
           }
+
+      - name: Test MSI installer
+        shell: pwsh
+        run: |
+          $msi = Resolve-Path "apps/desktop/out/make/wix/x64/*.msi"
+          $log = Join-Path $env:RUNNER_TEMP "relay-msi-install.log"
+          $process = Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /quiet /qn /norestart /l*v `"$log`"" -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            Get-Content $log | Write-Host
+            throw "msiexec failed with exit code $($process.ExitCode)"
+          }
+          $installed = "C:\Program Files\Relay\Relay.exe"
+          if (-not (Test-Path $installed)) {
+            throw "Relay.exe was not installed at $installed"
+          }
+          Start-Process msiexec.exe -ArgumentList "/x `"$msi`" /quiet /qn /norestart" -Wait
 
       - name: Create SHA-256 checksums
         shell: pwsh

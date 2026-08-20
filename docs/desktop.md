@@ -143,6 +143,11 @@ Auf einem Windows-10- oder Windows-11-Rechner werden benötigt:
 - Git
 - die in `.nvmrc` festgelegte Node.js-Version, derzeit Node.js 22
 - npm aus dieser Node.js-Installation
+- das [WiX Toolset v3](https://wixtoolset.org/docs/wix3/) (`candle.exe`,
+  `light.exe` müssen im `PATH` liegen), ausschließlich für den MSI-Maker.
+  Am einfachsten per Chocolatey: `choco install wixtoolset`. Fehlt es, bricht
+  nur der MSI-Teil des Builds ab; Squirrel-Installer und Zip werden trotzdem
+  erzeugt.
 
 In PowerShell:
 
@@ -160,8 +165,23 @@ und Electron-Client. Die erzeugten Dateien liegen anschließend unter:
 
 ```text
 apps/desktop/out/make/squirrel.windows/x64/Relay-Setup.exe
+apps/desktop/out/make/wix/x64/Relay.msi
 apps/desktop/out/make/zip/win32/x64/
 ```
+
+Beide Installer-Varianten installieren denselben Client und verwenden danach
+dieselben Konten, Teams und Workspaces. Der Unterschied liegt im
+Verteilungsweg:
+
+- **`Relay-Setup.exe`** (Squirrel): Für Einzelinstallation durch den Nutzer
+  selbst, per-User ohne Admin-Rechte. Legt die spätere Grundlage für einen
+  Auto-Update-Kanal (noch nicht aktiviert, siehe unten).
+- **`Relay.msi`** (WiX): Für IT-gesteuerte Verteilung — stille Installation
+  (`msiexec /i Relay.msi /quiet`), Rollout über Gruppenrichtlinien,
+  SCCM oder Intune, per-Machine mit Admin-Rechten unter
+  `C:\Program Files\Relay`, sauberes Deinstallieren über die
+  Windows-Systemsteuerung. Kein eingebauter Auto-Update-Mechanismus —
+  Updates laufen wie gewohnt über die IT-eigene Softwareverteilung.
 
 Nach der Installation fragt Relay beim ersten Start nach der öffentlichen
 HTTPS-Adresse des DevAPI-Servers, beispielsweise:
@@ -200,9 +220,11 @@ WINDOWS_CERTIFICATE_PASSWORD
 ```
 
 `WINDOWS_CERTIFICATE_BASE64` enthält die Base64-kodierte PFX-Datei. Der
-Workflow baut und signiert Anwendung sowie Installer, prüft beide
-Authenticode-Signaturen, installiert Relay unbeaufsichtigt auf einem frischen
-Windows-Runner und erzeugt `SHA256SUMS.txt`. Zertifikat und Passwort werden
+Workflow installiert zusätzlich das WiX Toolset, baut und signiert Anwendung,
+Squirrel-Installer und MSI, prüft alle drei Authenticode-Signaturen,
+installiert Relay unbeaufsichtigt über beide Installer-Wege auf einem
+frischen Windows-Runner und erzeugt `SHA256SUMS.txt`. Zertifikat und Passwort
+werden
 nicht als Artefakt gespeichert. Die Umgebung sollte verpflichtende Freigaben
 besitzen und nur für vertrauenswürdige Tags beziehungsweise manuelle Starts
 verwendet werden.
