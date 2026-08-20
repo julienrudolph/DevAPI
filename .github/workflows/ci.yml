@@ -65,6 +65,31 @@ jobs:
       - name: Unsigniertes Windows-Paket bauen
         run: npm run package --workspace @api-client/desktop -- --platform=win32 --arch=x64
 
+      - name: Gepacktes Paket tatsächlich starten
+        shell: pwsh
+        run: |
+          # Reine Datei-Existenzchecks hätten den ERR_MODULE_NOT_FOUND-Bug
+          # aus einem hoisted npm-Workspace-Paket (@api-client/contracts war
+          # im gepackten node_modules schlicht nicht vorhanden) nie
+          # gefunden - nur ein echter Start der App tut das. Ein
+          # abgestürzter Main-Prozess zeigt Electrons native Fehler-Dialog
+          # mit dem Fenstertitel "Error" statt unseres echten Seitentitels.
+          $exe = "apps/desktop/out/Relay-win32-x64/Relay.exe"
+          $process = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 8
+          $process.Refresh()
+          if ($process.HasExited) {
+            throw "Relay.exe wurde beendet, bevor ein Fenster erschien (Exit-Code $($process.ExitCode))."
+          }
+          $title = $process.MainWindowTitle
+          Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+          if ($title -eq "Error" -or [string]::IsNullOrWhiteSpace($title)) {
+            throw "Relay.exe ist offenbar abgestürzt (Fenstertitel: '$title'). Vermutlich ein Uncaught Exception im Main-Prozess - siehe main.js-Bundling."
+          }
+          if ($title -ne "Relay API Client") {
+            throw "Unerwarteter Fenstertitel: '$title'"
+          }
+
       - name: Paketinhalt prüfen
         shell: pwsh
         run: |

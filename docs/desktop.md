@@ -132,9 +132,17 @@ npm run make:windows
 
 Jeder Pull Request und jeder Push auf `main` baut außerdem ein unsigniertes
 Windows-x64-Paket. Dieser CI-Test prüft, dass Electron-Anwendung, `app.asar`
-und Windows-Metadaten auch ohne Signing-Secrets reproduzierbar erzeugt werden.
-Die geschützte Release-Pipeline bleibt zusätzlich für Installer,
-Authenticode-Signatur und Installationstest verantwortlich.
+und Windows-Metadaten auch ohne Signing-Secrets reproduzierbar erzeugt werden
+— und startet das gepackte `Relay.exe` tatsächlich: ein abgestürzter
+Main-Prozess zeigt Electrons nativen Fehler-Dialog statt eines echten
+Anwendungsfensters, was am Fenstertitel erkannt wird. Reine
+Datei-Existenzprüfungen hätten einen ERR_MODULE_NOT_FOUND-Absturz durch ein
+im gepackten `node_modules` fehlendes, per npm-Workspace gehoistetes Paket
+nicht gefunden; deshalb bündelt `apps/desktop/scripts/build-main.mjs` den
+Main-Prozess per esbuild in eine einzige, abhängigkeitsfreie Datei (nur
+`electron` bleibt zur Laufzeit extern). Die geschützte Release-Pipeline
+bleibt zusätzlich für Installer, Authenticode-Signatur und
+Installationstest verantwortlich.
 
 ### Windows-Installer Schritt für Schritt
 
