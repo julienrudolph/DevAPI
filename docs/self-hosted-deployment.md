@@ -53,6 +53,12 @@ https://devapi.example.de/rest/v1/     PostgREST
 
 PostgreSQL sowie die internen Dienste veröffentlichen keine Ports am Host.
 
+Ist im Zielnetz ausgehender Internetverkehr nur über einen zentralen
+Unternehmens-Proxy erlaubt, unterstützt der Request-Ausführungs-Proxy das
+über `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY` in `.env.selfhosted` — siehe
+[README, Abschnitt „Unternehmens-Proxy“](../README.md#unternehmens-proxy)
+für Details und die damit verbundene, dokumentierte Sicherheitsabwägung.
+
 ## Installation
 
 Im Wurzelordner des geklonten Repositories:

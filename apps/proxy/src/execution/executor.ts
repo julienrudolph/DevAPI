@@ -4,9 +4,14 @@ import type {
 } from "@api-client/contracts";
 
 import {
+  parseAllowedProxiedUrl,
   resolvePublicTarget,
   type TargetResolver,
 } from "../security/target-policy.js";
+import {
+  selectUpstreamProxy,
+  type UpstreamProxyConfig,
+} from "../security/proxy-config.js";
 import {
   sanitizeRequestHeaders,
   sanitizeResponseHeaders,
@@ -16,7 +21,8 @@ const redirectStatuses = new Set([301, 302, 303, 307, 308]);
 
 export interface TransportRequest {
   url: URL;
-  address: string;
+  address?: string;
+  proxyUrl?: string;
   method: ExecuteRequest["method"];
   headers: Record<string, string>;
   body?: string;
@@ -40,6 +46,7 @@ export interface ExecutionOptions {
   maxRedirects?: number;
   maxResponseBytes?: number;
   timeoutMs?: number;
+  upstreamProxy?: UpstreamProxyConfig;
 }
 
 export class ResponseTooLargeError extends Error {
@@ -73,10 +80,16 @@ export async function executeHttpRequest(
 
   try {
     for (let redirectCount = 0; ; redirectCount += 1) {
-      const target = await resolvePublicTarget(currentUrl, options.resolver);
+      const proxyUrl = options.upstreamProxy
+        ? selectUpstreamProxy(options.upstreamProxy, new URL(currentUrl))
+        : undefined;
+      const target = proxyUrl
+        ? { url: parseAllowedProxiedUrl(currentUrl) }
+        : await resolvePublicTarget(currentUrl, options.resolver);
       const response = await options.transport({
         url: target.url,
-        address: target.addresses[0]!,
+        address: "addresses" in target ? target.addresses[0] : undefined,
+        proxyUrl,
         method,
         headers,
         body: method === "GET" ? undefined : body,

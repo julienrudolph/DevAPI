@@ -83,3 +83,16 @@ export async function resolveLocalTarget(
   addresses.forEach(assertAllowedLocalIp);
   return { url, addresses };
 }
+
+// Used for a target routed through a configured upstream proxy (AGENTS.md
+// 11.1b): the proxy resolves DNS itself for the CONNECT tunnel, so our own
+// resolved-address check neither reflects the real connection nor protects
+// against rebinding for this hop. The cheap, resolution-free checks (host
+// blocklist, protocol, and a literal IP written directly in the URL) still
+// apply regardless.
+export function parseAllowedProxiedLocalUrl(rawUrl: string): URL {
+  const url = parseAllowedLocalUrl(rawUrl);
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
+  if (ipaddr.isValid(hostname)) assertAllowedLocalIp(hostname);
+  return url;
+}

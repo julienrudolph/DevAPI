@@ -32,7 +32,7 @@ describe("executeHttpRequest", () => {
   it("pins the transport to the validated address", async () => {
     const seenAddresses: string[] = [];
     const transport: Transport = async (request) => {
-      seenAddresses.push(request.address);
+      seenAddresses.push(request.address!);
       return {
         status: 200,
         statusText: "OK",
@@ -149,6 +149,92 @@ describe("executeHttpRequest", () => {
     await expect(
       executeHttpRequest(input, { resolver, transport, timeoutMs: 5 }),
     ).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("routes a matching target through the configured upstream proxy without resolving DNS", async () => {
+    let resolverCalled = false;
+    const proxyResolver = async () => {
+      resolverCalled = true;
+      return [{ address: "93.184.216.34", family: 4 }];
+    };
+    const requests: Parameters<Transport>[0][] = [];
+    const transport: Transport = async (request) => {
+      requests.push(request);
+      return {
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        body: stream(),
+      };
+    };
+
+    await executeHttpRequest(input, {
+      resolver: proxyResolver,
+      transport,
+      upstreamProxy: {
+        httpProxyUrl: undefined,
+        httpsProxyUrl: "http://proxy.corp.example:8443",
+        noProxy: [],
+      },
+    });
+
+    expect(resolverCalled).toBe(false);
+    expect(requests[0]).toMatchObject({
+      proxyUrl: "http://proxy.corp.example:8443",
+      address: undefined,
+    });
+  });
+
+  it("bypasses the upstream proxy and resolves DNS for a NO_PROXY match", async () => {
+    const requests: Parameters<Transport>[0][] = [];
+    const transport: Transport = async (request) => {
+      requests.push(request);
+      return {
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        body: stream(),
+      };
+    };
+
+    await executeHttpRequest(input, {
+      resolver,
+      transport,
+      upstreamProxy: {
+        httpProxyUrl: undefined,
+        httpsProxyUrl: "http://proxy.corp.example:8443",
+        noProxy: ["public.example"],
+      },
+    });
+
+    expect(requests[0]).toMatchObject({
+      proxyUrl: undefined,
+      address: "93.184.216.34",
+    });
+  });
+
+  it("still blocks a literal cloud-metadata IP written directly in the URL when proxied", async () => {
+    const transport: Transport = async () => ({
+      status: 200,
+      statusText: "OK",
+      headers: {},
+      body: stream(),
+    });
+
+    await expect(
+      executeHttpRequest(
+        { method: "GET", url: "http://169.254.169.254/latest/meta-data/", headers: [] },
+        {
+          resolver,
+          transport,
+          upstreamProxy: {
+            httpProxyUrl: "http://proxy.corp.example:8080",
+            httpsProxyUrl: undefined,
+            noProxy: [],
+          },
+        },
+      ),
+    ).rejects.toBeInstanceOf(UnsafeTargetError);
   });
 
   it("stops responses that exceed the byte limit", async () => {

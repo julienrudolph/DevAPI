@@ -106,6 +106,31 @@ Welche Prometheus-Metriken für die Nachjustierung dieser Limits relevant
 sind und wie der empfohlene Review-Zyklus aussieht, steht in
 [`docs/operations.md`](docs/operations.md).
 
+## Unternehmens-Proxy
+
+In Umgebungen, in denen ausgehender Internetverkehr nur über einen zentralen
+Proxy erlaubt ist, unterstützt der isolierte Request-Ausführungs-Proxy einen
+vorgeschalteten HTTP(S)-Proxy über die Standardvariablen:
+
+```text
+HTTP_PROXY=http://proxy.firma.example:8080
+HTTPS_PROXY=http://proxy.firma.example:8443
+NO_PROXY=localhost,.internes.firma.example
+```
+
+`NO_PROXY` nimmt kommagetrennte Hostnamen oder Domains entgegen (führender
+Punkt oder eine nackte Domain deckt auch Subdomains ab) sowie `*`, um den
+Proxy vollständig zu deaktivieren. Ist ein Proxy für ein Ziel aktiv, entfällt
+für diesen Zielhost das IP-Pinning gegen DNS-Rebinding aus der
+SSRF-Absicherung (AGENTS.md 11.1b) — die Sicherheitsgrenze verschiebt sich
+dann auf den vertrauenswürdigen Unternehmens-Proxy selbst.
+
+Der Electron-Desktop-Client unterstützt denselben Proxy zusätzlich für seine
+lokale Ausführung gegen `localhost` und private Netze (11.1a): Ist explizit
+`HTTP_PROXY`/`HTTPS_PROXY` gesetzt, gilt das; andernfalls erkennt der Client
+den Systemproxy automatisch (PAC/WPAD/Windows-Gruppenrichtlinie), genau wie
+ein normaler Browser. Details stehen in [`docs/desktop.md`](docs/desktop.md).
+
 Alle Prüfungen:
 
 ```bash

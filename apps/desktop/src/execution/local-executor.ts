@@ -1,6 +1,7 @@
 import type { ExecuteRequest, ProxyResponse } from "@api-client/contracts";
 
 import {
+  parseAllowedProxiedLocalUrl,
   resolveLocalTarget,
   type TargetResolver,
 } from "../security/local-target-policy.js";
@@ -16,7 +17,8 @@ const redirectStatuses = new Set([301, 302, 303, 307, 308]);
 
 export interface TransportRequest {
   url: URL;
-  address: string;
+  address?: string;
+  proxyUrl?: string;
   method: ExecuteRequest["method"];
   headers: Record<string, string>;
   body?: string;
@@ -40,6 +42,12 @@ export interface LocalExecutionOptions {
   maxRedirects?: number;
   maxResponseBytes?: number;
   timeoutMs?: number;
+  // Per AGENTS.md 11.1b. Resolving "which proxy applies here" can involve
+  // Electron's session.resolveProxy() (async, needs a live session), so
+  // this is a caller-supplied hook rather than a plain config object -
+  // main.ts owns the Electron-specific glue, this module stays testable
+  // without it.
+  resolveProxy?: (url: URL) => Promise<string | undefined>;
 }
 
 export class ResponseTooLargeError extends Error {
@@ -73,10 +81,14 @@ export async function executeLocalHttpRequest(
 
   try {
     for (let redirectCount = 0; ; redirectCount += 1) {
-      const target = await resolveLocalTarget(currentUrl, options.resolver);
+      const proxyUrl = await options.resolveProxy?.(new URL(currentUrl));
+      const target = proxyUrl
+        ? { url: parseAllowedProxiedLocalUrl(currentUrl) }
+        : await resolveLocalTarget(currentUrl, options.resolver);
       const response = await options.transport({
         url: target.url,
-        address: target.addresses[0]!,
+        address: "addresses" in target ? target.addresses[0] : undefined,
+        proxyUrl,
         method,
         headers,
         body: method === "GET" ? undefined : body,

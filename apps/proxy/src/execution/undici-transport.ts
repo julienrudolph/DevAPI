@@ -1,5 +1,6 @@
-import { Agent, request } from "undici";
+import { Agent, ProxyAgent, request } from "undici";
 import { STATUS_CODES } from "node:http";
+import type { Dispatcher } from "undici";
 import type { LookupFunction } from "node:net";
 
 import type {
@@ -10,21 +11,33 @@ import type {
 export const undiciTransport: Transport = async ({
   url,
   address,
+  proxyUrl,
   method,
   headers,
   body,
   signal,
 }): Promise<TransportResponse> => {
-  const family = address.includes(":") ? 6 : 4;
-  const agent = new Agent({
-    connect: {
-      lookup: createPinnedLookup(address, family),
-    },
-  });
+  // A proxied hop can't be pinned to a pre-resolved address: the upstream
+  // proxy resolves DNS itself when it opens the CONNECT tunnel (see
+  // executor.ts / security/proxy-config.ts for why that's an accepted,
+  // documented trade-off rather than an oversight).
+  // proxyTunnel: false uses plain absolute-URI forwarding for an http://
+  // target instead of undici's default of always tunneling via CONNECT -
+  // the traditional forward-proxy method that's universally supported,
+  // vs. CONNECT which some proxies only allow for https:// (443). An
+  // https:// target still tunnels via CONNECT regardless, since that's
+  // the only way to reach it through a proxy at all.
+  const dispatcher: Dispatcher = proxyUrl
+    ? new ProxyAgent({ uri: proxyUrl, proxyTunnel: false })
+    : new Agent({
+        connect: {
+          lookup: createPinnedLookup(address!, address!.includes(":") ? 6 : 4),
+        },
+      });
 
   try {
     const response = await request(url, {
-      dispatcher: agent,
+      dispatcher,
       method,
       headers,
       body,
@@ -37,10 +50,10 @@ export const undiciTransport: Transport = async ({
       status: response.statusCode,
       statusText: STATUS_CODES[response.statusCode] ?? "",
       headers: response.headers,
-      body: closeAfter(response.body, agent),
+      body: closeAfter(response.body, dispatcher),
     };
   } catch (error) {
-    await agent.close();
+    await dispatcher.close();
     throw error;
   }
 };
@@ -60,11 +73,11 @@ export function createPinnedLookup(
 
 async function* closeAfter(
   body: AsyncIterable<Uint8Array>,
-  agent: Agent,
+  dispatcher: Dispatcher,
 ): AsyncIterable<Uint8Array> {
   try {
     yield* body;
   } finally {
-    await agent.close();
+    await dispatcher.close();
   }
 }

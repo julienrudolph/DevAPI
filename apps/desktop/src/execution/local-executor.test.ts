@@ -32,7 +32,7 @@ describe("executeLocalHttpRequest", () => {
   it("pins the transport to the validated local address", async () => {
     const seenAddresses: string[] = [];
     const transport: Transport = async (request) => {
-      seenAddresses.push(request.address);
+      seenAddresses.push(request.address!);
       return {
         status: 200,
         statusText: "OK",
@@ -149,6 +149,70 @@ describe("executeLocalHttpRequest", () => {
     await expect(
       executeLocalHttpRequest(input, { resolver, transport, timeoutMs: 5 }),
     ).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("routes through the resolved proxy without resolving DNS itself", async () => {
+    let resolverCalled = false;
+    const proxyResolver = async () => {
+      resolverCalled = true;
+      return [{ address: "127.0.0.1", family: 4 }];
+    };
+    const requests: Parameters<Transport>[0][] = [];
+    const transport: Transport = async (request) => {
+      requests.push(request);
+      return { status: 200, statusText: "OK", headers: {}, body: stream() };
+    };
+
+    await executeLocalHttpRequest(input, {
+      resolver: proxyResolver,
+      transport,
+      resolveProxy: async () => "http://proxy.corp.example:8080",
+    });
+
+    expect(resolverCalled).toBe(false);
+    expect(requests[0]).toMatchObject({
+      proxyUrl: "http://proxy.corp.example:8080",
+      address: undefined,
+    });
+  });
+
+  it("connects directly and resolves DNS when resolveProxy reports no proxy", async () => {
+    const requests: Parameters<Transport>[0][] = [];
+    const transport: Transport = async (request) => {
+      requests.push(request);
+      return { status: 200, statusText: "OK", headers: {}, body: stream() };
+    };
+
+    await executeLocalHttpRequest(input, {
+      resolver,
+      transport,
+      resolveProxy: async () => undefined,
+    });
+
+    expect(requests[0]).toMatchObject({
+      proxyUrl: undefined,
+      address: "127.0.0.1",
+    });
+  });
+
+  it("still blocks a literal cloud-metadata IP written directly in the URL when proxied", async () => {
+    const transport: Transport = async () => ({
+      status: 200,
+      statusText: "OK",
+      headers: {},
+      body: stream(),
+    });
+
+    await expect(
+      executeLocalHttpRequest(
+        { method: "GET", url: "http://169.254.169.254/latest/meta-data/", headers: [] },
+        {
+          resolver,
+          transport,
+          resolveProxy: async () => "http://proxy.corp.example:8080",
+        },
+      ),
+    ).rejects.toBeInstanceOf(UnsafeLocalTargetError);
   });
 
   it("stops responses that exceed the byte limit", async () => {

@@ -465,6 +465,37 @@ Statuscode, Dauer, ausführende Person, Zeitpunkt), keine Bodies, Header oder
 vollständigen URLs — dadurch ergibt sich durch die lokale Ausführung kein
 zusätzliches Datenschutzrisiko für geteilte Workspaces.
 
+### 11.1b Vorgeschalteter Unternehmens-Proxy
+
+Sowohl `apps/proxy` als auch die lokale Ausführung im Desktop-Client (11.1a)
+dürfen ausgehende Ziel-API-Requests wahlweise über einen vorgeschalteten,
+vom Betreiber konfigurierten HTTP(S)-Proxy leiten (Umgebungsvariablen
+`HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`, Standard-Konvention wie bei curl).
+Das ist für Unternehmensumgebungen erforderlich, in denen ausgehender
+Internetverkehr grundsätzlich nur über einen zentralen Proxy erlaubt ist.
+
+Das ist eine bewusste, dokumentierte Abweichung vom IP-Pinning aus 11.1: Ein
+vorgeschalteter Proxy löst den Zielhostnamen für den eigenen CONNECT-Tunnel
+selbst auf, wodurch das Anpinnen der eigenen, vorab geprüften Adresse weder
+möglich ist noch die tatsächlich aufgebaute Verbindung widerspiegelt. Für
+einen per Proxy geleiteten Zielhost gilt deshalb:
+
+- Protokoll-, Hostname-Blockliste (`localhost`, `.local`, bekannte
+  Metadata-Hostnamen) und eine literal in der URL angegebene IP-Adresse
+  werden weiterhin geprüft (kostenlos, keine Namensauflösung nötig).
+- Die IP-basierte Prüfung des aufgelösten Ziels sowie das Pinning der
+  Verbindung an diese Adresse entfallen für diesen Hop; die eigentliche
+  Sicherheitsgrenze verschiebt sich auf den vertrauenswürdigen,
+  betreiberseitig kontrollierten Unternehmens-Proxy und dessen eigene
+  Netzwerksegmentierung.
+- Alle übrigen Schutzmaßnahmen aus 11.1 (Größen-, Zeit-, Redirect-Limits,
+  Header-Redaction, erlaubte Methoden) bleiben unverändert aktiv.
+- `NO_PROXY` erlaubt, einzelne Ziele weiterhin direkt mit vollem IP-Pinning
+  zu erreichen; jeder Redirect-Hop wird erneut gegen `NO_PROXY` geprüft, da
+  ein Redirect auf einen anderen Host zeigen kann.
+- Ist kein Proxy konfiguriert, ändert sich das Verhalten gegenüber 11.1 und
+  11.1a nicht.
+
 ### 11.2 CORS
 
 - CORS ist keine Autorisierung.
@@ -631,6 +662,14 @@ Für die lokale Ausführung im Desktop-Client (11.1a) gelten dieselben
 Anforderungen mit umgekehrter Erwartung bei privaten/Loopback-Bereichen
 (erlaubt statt blockiert), Cloud-Metadatenadressen bleiben aber weiterhin ein
 Negativtestfall.
+
+Für den vorgeschalteten Unternehmens-Proxy (11.1b) zusätzlich:
+
+- korrekte Proxy-Auswahl nach Protokoll (`HTTP_PROXY`/`HTTPS_PROXY`)
+- `NO_PROXY`-Bypass, inklusive erneuter Prüfung pro Redirect-Hop
+- DNS wird für einen proxied Hop nicht selbst aufgelöst
+- eine literal in der URL angegebene Cloud-Metadata-Adresse bleibt auch bei
+  aktivem Proxy blockiert
 
 ### 15.5 End-to-End-Tests
 

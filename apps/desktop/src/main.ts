@@ -31,6 +31,11 @@ import {
 } from "./settings.js";
 import { UnsafeHeaderError } from "./security/headers.js";
 import { UnsafeLocalTargetError } from "./security/local-target-policy.js";
+import {
+  parseResolvedProxyString,
+  readUpstreamProxyConfig,
+  selectUpstreamProxy,
+} from "./security/proxy-config.js";
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -162,6 +167,31 @@ function enqueueClearSessionStorage(): Promise<void> {
   );
   sessionStorageUpdate = update;
   return update;
+}
+
+// AGENTS.md 11.1b: an explicit HTTP(S)_PROXY/NO_PROXY env var always wins
+// (matches apps/proxy's behavior and is testable without Electron); absent
+// that, ask Chromium's own network stack what it would use for this URL -
+// the same PAC/WPAD/system detection that already makes the server
+// connection proxy-aware for free, so local execution matches it without
+// requiring separate IT configuration.
+async function resolveProxyForLocalTarget(
+  url: URL,
+): Promise<string | undefined> {
+  const envConfig = readUpstreamProxyConfig();
+  if (envConfig.httpProxyUrl || envConfig.httpsProxyUrl) {
+    // Explicit env config is authoritative once present (matches
+    // curl/npm convention): its NO_PROXY can exclude a host from proxying
+    // even if system/PAC detection would otherwise route it through one.
+    return selectUpstreamProxy(envConfig, url);
+  }
+
+  try {
+    const resolved = await session.defaultSession.resolveProxy(url.toString());
+    return parseResolvedProxyString(resolved);
+  } catch {
+    return undefined;
+  }
 }
 
 function localExecutionErrorCode(error: unknown): string {
@@ -328,6 +358,7 @@ if (!hasSingleInstanceLock) {
       try {
         const response = await executeLocalHttpRequest(parsed.data, {
           transport: localUndiciTransport,
+          resolveProxy: resolveProxyForLocalTarget,
         });
         return { ok: true, response };
       } catch (error) {

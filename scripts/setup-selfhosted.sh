@@ -194,6 +194,11 @@ umask 077
   printf 'EXECUTION_CONCURRENCY_PER_USER=3\n'
   printf 'EXECUTION_CONCURRENCY_PER_WORKSPACE=10\n'
   printf 'PROXY_MAX_CONCURRENT_REQUESTS=50\n\n'
+  # Optional: vorgeschalteter Unternehmens-Proxy fuer ausgehende Ziel-API-
+  # Requests des Request-Proxys. Leer lassen, wenn kein Proxy benoetigt wird.
+  printf 'HTTP_PROXY=\n'
+  printf 'HTTPS_PROXY=\n'
+  printf 'NO_PROXY=\n\n'
   printf 'PASSWORD_AUTH_ENABLED=true\n'
   printf 'PASSWORD_SIGNUP_ENABLED=true\n'
   printf 'MAGIC_LINK_AUTH_ENABLED=false\n'

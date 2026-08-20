@@ -15,6 +15,10 @@ import {
 } from "./security/authentication.js";
 import { UnsafeHeaderError } from "./security/headers.js";
 import { UnsafeTargetError } from "./security/target-policy.js";
+import {
+  readUpstreamProxyConfig,
+  type UpstreamProxyConfig,
+} from "./security/proxy-config.js";
 import { HttpOperations, validBearerToken } from "./operations.js";
 
 export interface ProxyAppOptions {
@@ -23,6 +27,7 @@ export interface ProxyAppOptions {
   maxConcurrentRequests?: number;
   metricsToken?: string;
   logger?: boolean;
+  upstreamProxy?: UpstreamProxyConfig;
 }
 
 type TargetFailure = {
@@ -103,6 +108,7 @@ export function buildProxyApp(options: ProxyAppOptions = {}) {
   const transport = options.transport ?? undiciTransport;
   const authenticate =
     options.authenticate ?? createServiceTokenAuthenticator();
+  const upstreamProxy = options.upstreamProxy ?? readUpstreamProxyConfig();
   const maxConcurrentRequests = options.maxConcurrentRequests ?? 50;
   let activeExecutions = 0;
   const app = Fastify({
@@ -170,7 +176,10 @@ export function buildProxyApp(options: ProxyAppOptions = {}) {
 
     activeExecutions += 1;
     try {
-      const result = await executeHttpRequest(input.data, { transport });
+      const result = await executeHttpRequest(input.data, {
+        transport,
+        upstreamProxy,
+      });
       return reply.code(200).send(result);
     } catch (error) {
       if (error instanceof UnsafeTargetError) {

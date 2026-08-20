@@ -76,6 +76,18 @@ grundsätzlich blockiert.
   geteilten Ausführungshistorie wie über den Proxy ausgeführte Requests —
   ohne Bodies, Header oder vollständige URLs.
 
+### Unternehmens-Proxy für lokale Ausführung
+
+Ist `HTTP_PROXY`/`HTTPS_PROXY` in der Prozessumgebung des Desktop-Clients
+gesetzt, hat das Vorrang (inklusive `NO_PROXY`) — sonst fragt der
+Main-Prozess Chromiums eigene Netzwerk-Erkennung (`session.resolveProxy`),
+welcher Proxy für das jeweilige Ziel gilt. Das deckt PAC-Skripte, WPAD und
+per Windows-Gruppenrichtlinie verteilte Systemproxys automatisch ab, ohne
+dass Nutzer selbst etwas konfigurieren müssen. Nur HTTP(S)-Proxys werden
+unterstützt; ein reiner SOCKS-Proxy in der Systemkonfiguration wird
+übersprungen und die Verbindung läuft dann direkt. Details zur damit
+verbundenen Abweichung vom IP-Pinning stehen in AGENTS.md 11.1b.
+
 ## Entwicklung
 
 Zuerst muss der lokale Serverstack laufen:

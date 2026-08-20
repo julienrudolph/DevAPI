@@ -71,3 +71,19 @@ export async function resolvePublicTarget(
   addresses.forEach(assertPublicIp);
   return { url, addresses };
 }
+
+// Used for targets routed through an upstream corporate proxy (see
+// security/proxy-config.ts): the proxy performs its own DNS resolution for
+// the CONNECT tunnel, so pinning our own resolved address neither reflects
+// the connection that actually gets made nor protects against DNS
+// rebinding - that protection only exists for the direct-connection path.
+// Static, resolution-free checks (protocol, hostname blocklist, and a
+// literal IP address written directly in the URL) still apply, since they
+// cost nothing and catch the obvious cases regardless of how the eventual
+// connection is made.
+export function parseAllowedProxiedUrl(rawUrl: string): URL {
+  const url = parseAllowedUrl(rawUrl);
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
+  if (ipaddr.isValid(hostname)) assertPublicIp(hostname);
+  return url;
+}
