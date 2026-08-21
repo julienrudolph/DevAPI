@@ -12,6 +12,8 @@ import { readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import started from "electron-squirrel-startup";
+
 import {
   executeRequestSchema,
   type LocalExecutionResult,
@@ -294,8 +296,18 @@ function forwardAuthCallback(value: string): void {
   }
 }
 
-const hasSingleInstanceLock = app.requestSingleInstanceLock();
-if (!hasSingleInstanceLock) {
+// Squirrel invokes the packaged exe with --squirrel-install/-updated/
+// -uninstall/-obsolete right after (un)install to let the app register/
+// remove shortcuts, then force-kills it if it isn't back within ~15s.
+// Without this check the app never recognizes that call and instead runs
+// its full normal startup (window creation, app:// load) - which routinely
+// takes longer than the timeout, so Squirrel kills it mid-boot. That looks
+// like a silent hang with no window and no crash log, since it's neither:
+// Squirrel's kill isn't a JS exception. Must short-circuit before
+// requestSingleInstanceLock() so a hook invocation never even takes the
+// lock, not just before window creation.
+const hasSingleInstanceLock = !started && app.requestSingleInstanceLock();
+if (started || !hasSingleInstanceLock) {
   app.quit();
 } else {
   app.on("second-instance", (_event, commandLine) => {
