@@ -23,4 +23,17 @@ await build({
   external: ["electron"],
   sourcemap: true,
   logLevel: "info",
+  // undici (bundled in for the local-execution transport) is internally
+  // CommonJS and calls require("node:assert"), require("node:http"), etc.
+  // In esbuild's ESM output there's no ambient `require`, so esbuild
+  // replaces every such call with a stub that throws "Dynamic require of
+  // ... is not supported" at runtime - a real crash for 20+ different
+  // Node builtins the moment each one is first touched, not a build-time
+  // problem, so it doesn't show up until the packaged app actually runs.
+  // Defining a real require via createRequire before the bundle runs
+  // fixes every one of them at once, since esbuild's shim falls back to
+  // an already-defined `require` if one exists in scope.
+  banner: {
+    js: "import { createRequire as __createRequire } from \"node:module\"; const require = __createRequire(import.meta.url);",
+  },
 });
